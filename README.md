@@ -6,9 +6,9 @@ Un launcher immersif et moderne pour World of Warcraft 3.3.5, développé en Pyt
 
 ## Captures d'écran
 
-![Capture d'écran 1](Asset/Capture%20d'écran%201.png)
+<img src="Asset/Capture d'écran 1.png" alt="Capture d'écran 1" width="800"/>
 
-![Capture d'écran 2](Asset/Capture%20d'écran%202.png)
+<img src="Asset/Capture d'écran 2.png" alt="Capture d'écran 2" width="800"/>
 
 ## Fonctionnalités
 
