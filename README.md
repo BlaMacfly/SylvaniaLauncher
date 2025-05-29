@@ -2,7 +2,13 @@
 
 Un launcher immersif et moderne pour World of Warcraft 3.3.5, développé en Python avec PySide6.
 
-![Sylvania Launcher](Asset/sylvania_logo.png)
+![Sylvania Launcher](Asset/sylvania_logo.jpeg)
+
+## Captures d'écran
+
+![Capture d'écran 1](Asset/Capture%20d'écran%201.png)
+
+![Capture d'écran 2](Asset/Capture%20d'écran%202.png)
 
 ## Fonctionnalités
 
