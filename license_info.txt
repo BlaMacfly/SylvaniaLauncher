@@ -1,0 +1,7 @@
+Informations sur la licence MIT
+
+Le Sylvania Launcher est distribué sous la licence MIT (MIT License).
+
+Cette licence permissive vous donne le droit d'utiliser, de copier, de modifier et de distribuer ce logiciel, que ce soit pour un usage personnel ou commercial, à condition de conserver la notice de copyright et la licence dans toutes les copies.
+
+La licence complète est présentée ci-dessous. En installant ce logiciel, vous acceptez les termes de cette licence.
