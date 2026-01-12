@@ -2,18 +2,29 @@
 
 🎮 **Launcher officiel pour le serveur World of Warcraft - Sylvania**
 
-## Description
+## Aperçu
 
-Sylvania Launcher est une application de bureau permettant de :
-- Télécharger et installer le client WoW 3.3.5
-- Gérer les serveurs (realmlist)
-- Lancer le jeu avec la bonne configuration
-- Prendre des notes personnelles
-- Suivre ses statistiques de jeu
+### Interface Principale
+![Interface Principale](screenshots/main_window.png)
+
+### Réglages
+![Réglages](screenshots/settings.png)
+
+### Notes (Style Post-it)
+![Notes](screenshots/notes.png)
+
+## Fonctionnalités
+
+- 🎮 **Lancement du jeu** avec configuration automatique du realmlist
+- 📥 **Téléchargement du client WoW** 3.3.5 avec progression en temps réel
+- 📊 **Statistiques de jeu** : temps de jeu, nombre de lancements
+- 📝 **Notes personnelles** style post-it avec couleurs
+- ⚙️ **Réglages** : chemin WoW, cache, AddOns, sons
+- 🔄 **Gestion des serveurs** : ajouter, modifier, supprimer
 
 ## Version actuelle
 
-**v2.3** - C++ / Qt6
+**v2.3** - Application native C++ / Qt6
 
 ## Téléchargement
 
