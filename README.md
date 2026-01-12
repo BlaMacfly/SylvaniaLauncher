@@ -7,6 +7,9 @@
 ### Interface Principale
 ![Interface Principale](screenshots/main_window.png)
 
+### Gestion des Serveurs
+![Gestion des Serveurs](screenshots/servers.png)
+
 ### Réglages
 ![Réglages](screenshots/settings.png)
 
