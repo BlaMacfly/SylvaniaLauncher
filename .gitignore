@@ -1,51 +1,7 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Ignore everything except README and specific distribution files
+*
 
-# Distribution / packaging
-dist/
-build/
-*.egg-info/
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Virtual environments
-venv/
-env/
-ENV/
-python/
-
-# IDE specific files
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Windows specific
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Logs and databases
-*.log
-*.sqlite
-
-# Build artifacts
-*.exe
-*.dll
-*.so
-*.dylib
-
-# Except specific exe files that should be tracked
-!aria2c.exe
-
-# Temporary files
-temp/
-tmp/
+# Allow only these files
+!.gitignore
+!README.md
+!LICENSE
