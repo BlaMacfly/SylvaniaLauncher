@@ -1,9 +1,0 @@
-Installation terminée !
-
-Sylvania Launcher a été installé avec succès sur votre ordinateur.
-
-Pour lancer l'application, vous pouvez utiliser le raccourci créé sur votre bureau ou dans le menu Démarrer.
-
-Si vous rencontrez des problèmes avec le launcher, veuillez consulter le fichier README_TROUBLESHOOTING.md inclus dans le dossier d'installation ou visitez notre site web à l'adresse https://sylvania-servergame.com/
-
-Merci d'avoir choisi Sylvania Launcher !
