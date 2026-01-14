@@ -1,14 +1,25 @@
-PROPRIETARY LICENSE
+SOURCE-AVAILABLE LICENSE
 
 Copyright (c) 2025 Sylvania - All Rights Reserved
 
-This software and its source code are the exclusive property of Sylvania.
+PERMISSIONS:
+- You MAY view and analyze the source code for educational or security research purposes.
+- You MAY report bugs, vulnerabilities, or suggest improvements via issues or pull requests.
 
 RESTRICTIONS:
-- No copying, modification, or distribution of the source code is permitted.
-- No reverse engineering or decompilation is allowed.
-- The software is provided for personal use only.
+- You may NOT copy, modify, merge, publish, distribute, sublicense, or sell copies of this software.
+- You may NOT use this code, in whole or in part, in any other project or product.
+- You may NOT create derivative works based on this software.
+- You may NOT reverse engineer, decompile, or disassemble the compiled binaries.
+- You may NOT use this software for commercial purposes.
+
+This software is provided for VIEWING AND ANALYSIS ONLY.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 For any inquiries, contact: https://sylvania-servergame.com
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

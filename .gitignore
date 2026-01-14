@@ -1,9 +1,35 @@
-# Ignore everything except README and specific distribution files
-*
+# Build artifacts
+cpp/build*/
+*.exe
+*.dll
+*.obj
+*.o
+*.a
+*.lib
 
-# Allow only these files
-!.gitignore
-!README.md
-!LICENSE
-!screenshots
-!screenshots/**
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+CMakeSettings.json
+
+# Qt generated files
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.qm
+
+# Distribution archives
+*.zip
+
+# Logs and data
+logs/
+data/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Dependencies (large folders)
+cpp/build2/_deps/

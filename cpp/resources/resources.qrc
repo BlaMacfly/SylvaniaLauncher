@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="background">../../Asset/Background.jpg</file>
+        <file alias="logo">../../Asset/sylvania_logo.png</file>
+        <file alias="icon">../../Asset/LogoSylvania/LogoSylvania256.ico</file>
+    </qresource>
+    <qresource prefix="/sounds">
+        <file alias="launch">../../Sounds/launch.mp3</file>
+        <file alias="toggle">../../Sounds/toggle.mp3</file>
+        <file alias="notification">../../Sounds/Notification.mp3</file>
+    </qresource>
+</RCC>

@@ -39,8 +39,27 @@
 - 100 MB d'espace disque (launcher uniquement)
 - Connexion Internet
 
+## Compilation
+
+### Prérequis
+- Qt 6.x
+- CMake 3.16+
+- MinGW ou MSVC
+
+### Build
+```bash
+cd cpp
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+## Licence
+
+⚠️ **Source-Available License** - Ce code est disponible en lecture seule pour analyse et audit de sécurité. Aucune redistribution, modification ou utilisation commerciale n'est autorisée.
+
+Voir [LICENSE](LICENSE) pour les détails complets.
+
 ## Auteur
 
 © 2025 Sylvania - Tous droits réservés.
-
-**Ce projet est propriétaire et privé. Le code source n'est pas distribué.**
