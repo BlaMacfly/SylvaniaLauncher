@@ -42,6 +42,7 @@ private:
     void setupUi();
     void updateSpeed(qint64 bytesReceived);
     void extractZip(const QString& zipPath);
+    void generateConfigWtf();
     QString formatBytes(qint64 bytes) const;
     QString formatDuration(qint64 seconds) const;
 

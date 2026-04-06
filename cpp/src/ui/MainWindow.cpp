@@ -7,6 +7,8 @@
 #include "SoundManager.h"
 #include "NotesManager.h"
 #include "PathUtils.h"
+#include "HdPatchManager.h"
+#include <QProgressBar>
 
 #include <QApplication>
 #include <QPainter>
@@ -145,7 +147,7 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    QLabel* footerLabel = new QLabel("© 2025 Sylvania Launcher v2.3 - World of Warcraft 3.3.5", this);
+    QLabel* footerLabel = new QLabel("© 2025 Sylvania Launcher v2.4 - World of Warcraft 3.3.5", this);
     footerLabel->setAlignment(Qt::AlignCenter);
     footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
     mainLayout->addWidget(footerLabel);
@@ -183,15 +185,17 @@ QWidget* MainWindow::createServerPanel() {
     
     layout->addSpacing(15);
     
-    // Buttons row 1: JOUER + TÉLÉCHARGER
+    // Buttons row 1: JOUER + TÉLÉCHARGER + HD
     QHBoxLayout* buttonsRow1 = new QHBoxLayout();
-    buttonsRow1->setSpacing(15);
+    buttonsRow1->setSpacing(10);
     
     m_playButton = createStyledButton("JOUER", "green");
     m_downloadButton = createStyledButton("TÉLÉCHARGER", "gold_outline");
+    m_hdButton = createStyledButton("HD", "blue");
     
-    buttonsRow1->addWidget(m_playButton);
-    buttonsRow1->addWidget(m_downloadButton);
+    buttonsRow1->addWidget(m_playButton, 2);
+    buttonsRow1->addWidget(m_downloadButton, 1);
+    buttonsRow1->addWidget(m_hdButton, 1);
     layout->addLayout(buttonsRow1);
     
     // Buttons row 2: RÉGLAGES + NOTES + QUITTER
@@ -246,6 +250,34 @@ QWidget* MainWindow::createStatsPanel() {
         }
     )");
     layout->addWidget(m_playTimeLabel);
+    
+    // HD Patch Progress (Hidden by default)
+    m_hdStatusLabel = new QLabel("", this);
+    m_hdStatusLabel->setStyleSheet("color: #7ec8e3; font-size: 11px; margin-top: 5px;");
+    m_hdStatusLabel->setAlignment(Qt::AlignCenter);
+    m_hdStatusLabel->hide();
+    layout->addWidget(m_hdStatusLabel);
+    
+    m_hdProgressBar = new QProgressBar(this);
+    m_hdProgressBar->setRange(0, 100);
+    m_hdProgressBar->setValue(0);
+    m_hdProgressBar->setTextVisible(false);
+    m_hdProgressBar->setFixedHeight(10);
+    m_hdProgressBar->setStyleSheet(R"(
+        QProgressBar {
+            background-color: #2a2a4e;
+            border: 1px solid #3a3a5e;
+            border-radius: 5px;
+        }
+        QProgressBar::chunk {
+            background-color: #3498db;
+            border-radius: 4px;
+        }
+    )");
+    m_hdProgressBar->hide();
+    layout->addWidget(m_hdProgressBar);
+    
+    layout->addStretch();
     
     // Launch count
     m_launchCountLabel = new QLabel("Lancements: 0", this);
@@ -384,6 +416,26 @@ QPushButton* MainWindow::createStyledButton(const QString& text, const QString& 
                     stop:0 #8a7a4a, stop:0.5 #6a5a3a, stop:1 #4a4a2a);
             }
         )";
+    } else if (style == "blue") {
+        styleSheet = R"(
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a6dd4, stop:0.5 #1e5ab8, stop:1 #15479a);
+                color: #ffffff;
+                border: 2px solid #3a7de4;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #3a7de4, stop:0.5 #2a6dd4, stop:1 #1e5ab8);
+            }
+            QPushButton:pressed {
+                background-color: #15479a;
+            }
+        )";
     }
     
     btn->setStyleSheet(styleSheet);
@@ -393,6 +445,7 @@ QPushButton* MainWindow::createStyledButton(const QString& text, const QString& 
 void MainWindow::connectSignals() {
     connect(m_playButton, &QPushButton::clicked, this, &MainWindow::onPlayButtonClicked);
     connect(m_downloadButton, &QPushButton::clicked, this, &MainWindow::onDownloadButtonClicked);
+    connect(m_hdButton, &QPushButton::clicked, this, &MainWindow::onHdButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainWindow::onSettingsButtonClicked);
     connect(m_notesButton, &QPushButton::clicked, this, &MainWindow::onNotesButtonClicked);
     connect(m_quitButton, &QPushButton::clicked, this, &MainWindow::onQuitButtonClicked);
@@ -438,7 +491,7 @@ void MainWindow::checkWowInstalled() {
     QString exePath = wowPath + "/Wow.exe";
     if (!QFile::exists(exePath)) {
         m_playButton->setEnabled(false);
-        m_statusLabel->setText("Wow.exe non trouvé - Vérifiez le chemin du client");
+        m_statusLabel->setText("Client non trouvé - Cliquez sur TÉLÉCHARGER pour installer WoW ici");
         return;
     }
     
@@ -490,6 +543,63 @@ void MainWindow::playGame() {
     } else {
         QMessageBox::warning(this, "Erreur", "Impossible de lancer World of Warcraft.");
     }
+}
+
+void MainWindow::onHdButtonClicked() {
+    m_soundManager->play("button");
+    
+    QString wowPath = m_config->getWowPath();
+    if (wowPath.isEmpty() || !QFile::exists(wowPath + "/Wow.exe")) {
+        QMessageBox::warning(this, "Patch HD", 
+            "Vous devez d'abord télécharger ou configurer l'emplacement du client World of Warcraft "
+            "avant d'installer le Patch HD.");
+        return;
+    }
+
+    if (m_hdPatchManager && m_hdPatchManager->isInstalling()) {
+        QMessageBox::information(this, "Patch HD", "L'installation du Patch HD est déjà en cours.");
+        return;
+    }
+
+    // Initialize manager if needed
+    if (!m_hdPatchManager) {
+        m_hdPatchManager = std::make_unique<HdPatchManager>(wowPath, this);
+        
+        connect(m_hdPatchManager.get(), &HdPatchManager::progressChanged, this, [this](int progress, const QString& status) {
+            m_hdProgressBar->show();
+            m_hdStatusLabel->show();
+            m_hdProgressBar->setValue(progress);
+            m_hdStatusLabel->setText(status);
+        });
+        
+        connect(m_hdPatchManager.get(), &HdPatchManager::finished, this, [this](bool success, const QString& message) {
+            m_hdProgressBar->hide();
+            m_hdStatusLabel->hide();
+            
+            if (success) {
+                QMessageBox::information(this, "Patch HD", "Patch HD installé avec succès.");
+            } else {
+                QMessageBox::warning(this, "Patch HD", "Erreur lors de l'installation : " + message);
+            }
+            
+            // Re-enable buttons
+            m_playButton->setEnabled(true);
+            m_downloadButton->setEnabled(true);
+            m_hdButton->setEnabled(true);
+        });
+    }
+
+    // Disable buttons during install
+    m_playButton->setEnabled(false);
+    m_downloadButton->setEnabled(false);
+    m_hdButton->setEnabled(false);
+    
+    m_hdStatusLabel->setText("Préparation de l'installation...");
+    m_hdStatusLabel->show();
+    m_hdProgressBar->setValue(0);
+    m_hdProgressBar->show();
+
+    m_hdPatchManager->startInstallation();
 }
 
 void MainWindow::onDownloadButtonClicked() {

@@ -9,6 +9,8 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QCoreApplication>
+#include <QDir>
+#include <QTextStream>
 
 // Default WoW client download URL
 static const QString DEFAULT_DOWNLOAD_URL = "https://sylvania-servergame.com/launcher-download.php";
@@ -311,6 +313,9 @@ void DownloadDialog::extractZip(const QString& zipPath) {
             // Remove temp zip file
             QFile::remove(zipPath);
             
+            // Generate Config.wtf
+            generateConfigWtf();
+            
             emit downloadFinished(true, "Téléchargement et extraction terminés!");
             accept();
         } else {
@@ -394,5 +399,75 @@ QString DownloadDialog::formatDuration(qint64 seconds) const {
         return QString("%1m %2s").arg(seconds / 60).arg(seconds % 60);
     } else {
         return QString("%1h %2m").arg(seconds / 3600).arg((seconds % 3600) / 60);
+    }
+}
+
+void DownloadDialog::generateConfigWtf() {
+    QString wtfPath = m_destination + "/WTF";
+    QDir dir(wtfPath);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    QFile configFile(wtfPath + "/Config.wtf");
+    if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&configFile);
+        out << "SET locale \"frFR\"\n";
+        out << "SET hwDetect \"0\"\n";
+        out << "SET gxRefresh \"60\"\n";
+        out << "SET gxMultisampleQuality \"0.000000\"\n";
+        out << "SET gxWindow \"1\"\n";
+        out << "SET videoOptionsVersion \"3\"\n";
+        out << "SET movie \"0\"\n";
+        out << "SET Gamma \"1.000000\"\n";
+        out << "SET readTOS \"1\"\n";
+        out << "SET readEULA \"1\"\n";
+        out << "SET readTerminationWithoutNotice \"1\"\n";
+        out << "SET showToolsUI \"1\"\n";
+        out << "SET Sound_OutputDriverName \"System Default\"\n";
+        out << "SET Sound_MusicVolume \"0.40000000596046\"\n";
+        out << "SET Sound_AmbienceVolume \"0.60000002384186\"\n";
+        out << "SET componentTextureLevel \"9\"\n";
+        out << "SET farclip \"1277\"\n";
+        out << "SET projectedTextures \"1\"\n";
+        out << "SET weatherDensity \"3\"\n";
+        out << "SET accounttype \"LK\"\n";
+        out << "SET mouseSpeed \"1.2000000476837\"\n";
+        out << "SET gameTip \"16\"\n";
+        out << "SET uiScale \"0.75999999046326\"\n";
+        out << "SET useUiScale \"1\"\n";
+        out << "SET checkAddonVersion \"0\"\n";
+        out << "SET Sound_VoiceChatInputDriverName \"RÃ©glage du systÃ¨me\"\n";
+        out << "SET Sound_VoiceChatOutputDriverName \"RÃ©glage du systÃ¨me\"\n";
+        out << "SET movieSubtitle \"1\"\n";
+        out << "SET Sound_SFXVolume \"0.5\"\n";
+        out << "SET dbCompress \"0\"\n";
+        out << "SET gxResolution \"1920x1080\"\n";
+        out << "SET textureFilteringMode \"5\"\n";
+        out << "SET groundEffectDist \"140\"\n";
+        out << "SET environmentDetail \"1.5\"\n";
+        out << "SET timingTestError \"0\"\n";
+        out << "SET windowResizeLock \"1\"\n";
+        out << "SET particleDensity \"1\"\n";
+        out << "SET mapShadows \"0\"\n";
+        out << "SET vertexShaders \"0\"\n";
+        out << "SET pixelShaders \"0\"\n";
+        out << "SET M2UseShaders \"0\"\n";
+        out << "SET M2Faster \"3\"\n";
+        out << "SET shadowinstancing \"0\"\n";
+        out << "SET objectFade \"0\"\n";
+        out << "SET timingMethod \"2\"\n";
+        out << "SET ffxSpecial \"0\"\n";
+        out << "SET groundEffectDensity \"64\"\n";
+        out << "SET realmList \"sylvania-servergame.com\"\n";
+        out << "SET realmName \"The Kingdom of Sylvania\"\n";
+        out << "SET specular \"1\"\n";
+        out << "SET Sound_MasterVolume \"0.60000002384186\"\n";
+        out << "SET Sound_ZoneMusicNoDelay \"1\"\n";
+        out << "SET gxTripleBuffer \"1\"\n";
+        out << "SET gxMultisample \"8\"\n";
+        out << "SET shadowLevel \"0\"\n";
+        out << "SET extShadowQuality \"5\"\n";
+        configFile.close();
     }
 }

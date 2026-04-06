@@ -226,10 +226,14 @@ void SettingsDialog::onBrowseClicked() {
     
     QString wowExe = dir + "/Wow.exe";
     if (!QFile::exists(wowExe)) {
-        QMessageBox::warning(this, "Erreur",
-            "Wow.exe non trouvé dans ce dossier.\n"
-            "Veuillez sélectionner le dossier contenant World of Warcraft.");
-        return;
+        auto result = QMessageBox::question(this, "Confirmation",
+            "Wow.exe n'a pas été trouvé dans ce dossier.\n\n"
+            "Voulez-vous utiliser cet emplacement (par exemple pour une nouvelle installation) ?",
+            QMessageBox::Yes | QMessageBox::No);
+            
+        if (result == QMessageBox::No) {
+            return;
+        }
     }
     
     m_pathEdit->setText(dir);
