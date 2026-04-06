@@ -111,6 +111,8 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         "Expand-Archive -Path '%1' -DestinationPath '%2' -Force"
     ).arg(zipPath).arg(extractPath);
     
+    progressTimer->start();
+    
     connect(progressTimer, &QTimer::timeout, this, [this, extractPath, estimatedExtractedSize]() {
         qint64 currentSize = 0;
         QDirIterator it(extractPath, QDir::Files, QDirIterator::Subdirectories);
@@ -125,8 +127,7 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         emit progressChanged(progress, QString("Extraction des fichiers HD... %1%").arg(progress));
     });
 
-    // Start with 0% extraction
-    emit progressChanged(0, "Début de l'extraction des fichiers HD...");
+    process->start("powershell", QStringList() << "-Command" << command);
     
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), 
             this, [this, process, extractPath, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {
@@ -148,9 +149,6 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
             emit finished(false, "Échec de l'extraction: " + process->readAllStandardError());
         }
     });
-    
-    progressTimer->start();
-    process->start("powershell", QStringList() << "-Command" << command);
 }
 
 void HdPatchManager::migrateFiles(const QString& sourcePath) {
