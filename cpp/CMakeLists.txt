@@ -78,9 +78,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Windows specific settings
 if(WIN32)
-    # Set application icon - DISABLED due to build errors with spaces in paths
-    # set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc")
-    # target_sources(${PROJECT_NAME} PRIVATE ${APP_ICON_RESOURCE_WINDOWS})
+    # Set application icon
+    set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc")
+    target_sources(${PROJECT_NAME} PRIVATE ${APP_ICON_RESOURCE_WINDOWS})
     
     # Copy Qt DLLs to output directory
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
