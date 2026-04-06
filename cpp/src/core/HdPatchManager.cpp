@@ -125,6 +125,9 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         emit progressChanged(progress, QString("Extraction des fichiers HD... %1%").arg(progress));
     });
 
+    // Start with 0% extraction
+    emit progressChanged(0, "Début de l'extraction des fichiers HD...");
+    
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), 
             this, [this, process, extractPath, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {
         progressTimer->stop();
@@ -197,7 +200,7 @@ void HdPatchManager::cleanup() {
 }
 
 void HdPatchManager::generateConfigWtf() {
-    QString wtfPath = m_wowPath + "/WTF";
+    QString wtfPath = m_wowPath + "/wotlk/WTF";
     QDir dir(wtfPath);
     if (!dir.exists()) {
         dir.mkpath(".");

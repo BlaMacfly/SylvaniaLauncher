@@ -403,7 +403,7 @@ QString DownloadDialog::formatDuration(qint64 seconds) const {
 }
 
 void DownloadDialog::generateConfigWtf() {
-    QString wtfPath = m_destination + "/WTF";
+    QString wtfPath = m_destination + "/wotlk/WTF";
     QDir dir(wtfPath);
     if (!dir.exists()) {
         dir.mkpath(".");
