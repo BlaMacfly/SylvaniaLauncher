@@ -20,14 +20,16 @@
 
 - 🎮 **Lancement du jeu** avec configuration automatique du realmlist
 - 📥 **Téléchargement du client WoW** 3.3.5 avec progression en temps réel
+- 💎 **Patch HD Sylvania** : Installation automatique du patch haute définition (Data, Interface, PatchMenu)
+- ⚙️ **Auto-Configuration** : Génération automatique du fichier `Config.wtf` optimal
 - 📊 **Statistiques de jeu** : temps de jeu, nombre de lancements
 - 📝 **Notes personnelles** style post-it avec couleurs
-- ⚙️ **Réglages** : chemin WoW, cache, AddOns, sons
+- ⚙️ **Réglages** : chemin WoW (sélection libre), cache, AddOns, sons
 - 🔄 **Gestion des serveurs** : ajouter, modifier, supprimer
 
 ## Version actuelle
 
-**v2.3** - Application native C++ / Qt6
+**v2.4** - Application native C++ / Qt6
 
 ## Téléchargement
 
