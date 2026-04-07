@@ -34,7 +34,6 @@
 ### Nouveautés v2.5.0
 - 🛠️ **Gestion modulaire HD** : Activez ou désactivez les éléments du patch HD (Arbres, Eau, Sorts, etc.) directement depuis les réglages.
 - 🔍 **Détection intelligente** : Le launcher détecte maintenant si le patch HD est déjà installé pour éviter les erreurs de manipulation.
-- 🎨 **Icône Applicative** : Rétablissement de l'icône officielle dans l'explorateur et la barre des tâches.
 - ⚙️ **Stabilité du Build** : Amélioration du système de compilation sur Windows pour une meilleure robustesse.
 
 ## Téléchargement
