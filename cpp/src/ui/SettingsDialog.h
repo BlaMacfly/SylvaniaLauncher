@@ -5,6 +5,13 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QComboBox>
+#include <QScrollArea>
+#include <QMap>
+#include <QVBoxLayout>
+#include <QGridLayout>
+#include <QString>
+#include <vector>
 
 class ConfigManager;
 class SoundManager;
@@ -35,8 +42,22 @@ private slots:
 
 private:
     void setupUi();
+    void setupPatchUI(QVBoxLayout* mainLayout);
     void loadSettings();
     void saveSettings();
+    
+    bool isHdPatchInstalled() const;
+    void togglePatch(const QString& fileName, bool enabled, const QString& subDir = "");
+    bool isPatchEnabled(const QString& fileName, const QString& subDir = "") const;
+
+    struct PatchInfo {
+        QString label;
+        QString fileName;
+        QString subDir;
+        bool isRoot = false;
+    };
+    std::vector<PatchInfo> m_patches;
+    QMap<QString, QComboBox*> m_patchComboBoxes;
 
     ConfigManager* m_config;
     SoundManager* m_soundManager;

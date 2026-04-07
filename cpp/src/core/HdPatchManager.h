@@ -28,6 +28,8 @@ public:
     void startInstallation();
     bool isInstalling() const { return m_installing; }
 
+    static bool isInstalled(const QString& wowPath);
+
 signals:
     void progressChanged(int percentage, const QString& status);
     void finished(bool success, const QString& message);

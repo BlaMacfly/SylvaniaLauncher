@@ -147,7 +147,7 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    QLabel* footerLabel = new QLabel("© 2025 Sylvania Launcher v2.4 - World of Warcraft 3.3.5", this);
+    QLabel* footerLabel = new QLabel("© 2025 Sylvania Launcher v2.5 - World of Warcraft 3.3.5", this);
     footerLabel->setAlignment(Qt::AlignCenter);
     footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
     mainLayout->addWidget(footerLabel);
@@ -559,6 +559,18 @@ void MainWindow::onHdButtonClicked() {
     if (m_hdPatchManager && m_hdPatchManager->isInstalling()) {
         QMessageBox::information(this, "Patch HD", "L'installation du Patch HD est déjà en cours.");
         return;
+    }
+
+    // Détection si déjà installé
+    if (HdPatchManager::isInstalled(wowPath)) {
+        auto result = QMessageBox::question(this, "Patch HD Détecté", 
+            "Le Patch HD semble déjà installé sur votre client.\n\n"
+            "Voulez-vous tout de même le réinstaller ou forcer une mise à jour ?",
+            QMessageBox::Yes | QMessageBox::No);
+        
+        if (result == QMessageBox::No) {
+            return;
+        }
     }
 
     // Initialize manager if needed

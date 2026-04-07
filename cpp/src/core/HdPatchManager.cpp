@@ -11,6 +11,8 @@
 #include <QCoreApplication>
 #include <QStandardPaths>
 #include <QTextStream>
+#include <QStringList>
+#include <QFile>
 
 HdPatchManager::HdPatchManager(const QString& wowPath, QObject* parent)
     : QObject(parent)
@@ -152,10 +154,16 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
 }
 
 void HdPatchManager::migrateFiles(const QString& sourcePath) {
+    // Supprimer PatchMenu.exe s'il existe déjà (nettoyage)
+    QString oldPatchMenu = m_wowPath + "/PatchMenu.exe";
+    if (QFile::exists(oldPatchMenu)) {
+        QFile::remove(oldPatchMenu);
+    }
+
     QStringList itemsToMigrate = {
         "Data", "Interface", "PatchMenu",                         // Folders
         "World of Warcraft.app", "d3d9.dll.disabled", 
-        "dxvk.conf.disabled", "PatchMenu.exe", "WoW.exe"           // Files
+        "dxvk.conf.disabled", "WoW.exe"           // Files
     };
     
     QDir sourceDir(sourcePath);
@@ -271,6 +279,27 @@ void HdPatchManager::onDownloadError(QNetworkReply::NetworkError error) {
     QString errorMsg = "Erreur réseau: " + m_reply->errorString();
     m_installing = false;
     emit finished(false, errorMsg);
+}
+
+bool HdPatchManager::isInstalled(const QString& wowPath) {
+    if (wowPath.isEmpty()) return false;
+
+    // Détection basée sur la présence de fichiers clés du Patch HD
+    // patch-w.mpq (arbres) et patch-5.mpq (eau/ciel/sorts) sont les plus représentatifs
+    QStringList checks = {
+        "/Data/patch-w.mpq", 
+        "/Data/patch-w.mpq.disabled",
+        "/Data/patch-5.mpq", 
+        "/Data/patch-5.mpq.disabled"
+    };
+
+    for (const QString& file : checks) {
+        if (QFile::exists(wowPath + file)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 QString HdPatchManager::formatBytes(qint64 bytes) const {
