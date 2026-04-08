@@ -1,5 +1,7 @@
 # Sylvania Launcher
 
+![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
+
 🎮 **Launcher officiel pour le serveur World of Warcraft - Sylvania**
 
 ## Aperçu
@@ -46,27 +48,43 @@
 - 100 MB d'espace disque (launcher uniquement)
 - Connexion Internet
 
-## Compilation
-
-### Prérequis
-- Qt 6.x
-- CMake 3.16+
-- MinGW ou MSVC
-
-### Build
+### Build (Windows)
 ```bash
+# Se placer dans le dossier source
 cd cpp
-mkdir build && cd build
-cmake ..
-cmake --build .
+
+# Créer un dossier de build
+mkdir build
+cd build
+
+# Configurer avec CMake (Qt 6.8 recommandé)
+cmake .. -G "MinGW Makefiles"
+
+# Compiler
+mingw32-make -j8
+```
+
+### Déploiement
+Pour créer un package exécutable avec toutes ses dépendances :
+```bash
+windeployqt --compiler-runtime --multimedia SylvaniaLauncher.exe
 ```
 
 ## Licence
 
-⚠️ **Source-Available License** - Ce code est disponible en lecture seule pour analyse et audit de sécurité. Aucune redistribution, modification ou utilisation commerciale n'est autorisée.
+Ce projet est sous licence **GNU GPL v3**. Vous êtes libre de copier, modifier et redistribuer ce logiciel tant que vous conservez cette même licence.
 
-Voir [LICENSE](LICENSE) pour les détails complets.
+Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+## Contribuer
+
+Les contributions sont les bienvenues ! 
+1. Forkez le projet
+2. Créez votre branche (`git checkout -b feature/AmazingFeature`)
+3. Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. Pushez vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrez une Pull Request
 
 ## Auteur
 
-© 2025 Sylvania - Tous droits réservés.
+© 2025 Sylvania - [sylvania-servergame.com](https://sylvania-servergame.com)
