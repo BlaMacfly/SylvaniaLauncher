@@ -17,6 +17,7 @@ struct AddonInfo {
     QString name;
     QString description;
     QString downloadFileName;
+    QString folderName;
 };
 
 class AddonsWindow : public QDialog {
@@ -35,6 +36,8 @@ private slots:
 private:
     void setupUi();
     void populateAddons();
+    bool isAddonInstalled(const AddonInfo& addon) const;
+    void updateButtonStyle(QPushButton* btn, bool installed);
     void extractZip(const QString& zipPath, const QString& destination, QPushButton* installBtn, QProgressBar* progressBar, QLabel* statusLabel);
 
     ConfigManager* m_config;

@@ -37,34 +37,34 @@ AddonsWindow::~AddonsWindow() {
 
 void AddonsWindow::populateAddons() {
     m_addons = {
-        {"ArkInventory", "Gestion d'inventaire avancée avec catégories automatiques.", "ArkInventory.zip"},
-        {"AtlasLoot", "Base de données complète des butins de donjons et raids.", "AtlasLoot.zip"},
-        {"Auctionator", "Améliore l'interface de l'Hôtel des Ventes.", "Auctionator.zip"},
-        {"Bagnon", "Regroupe tous vos sacs en une seule fenêtre épurée.", "Bagnon.zip"},
-        {"Bartender4", "Personnalisation totale de vos barres d'actions.", "Bartender4.zip"},
-        {"Deadly Boss Mods (DBM)", "Alertes et chronomètres indispensables pour les raids.", "DBM.zip"},
-        {"GatherMate2", "Mémorise l'emplacement des plantes et minerais sur la carte.", "GatherMate2.zip"},
-        {"GearScore", "Évalue le niveau d'équipement global des joueurs.", "GearScore.zip"},
-        {"HandyNotes", "Ajoute des notes personnalisées et des points d'intérêt.", "HandyNotes.zip"},
-        {"Healium", "Interface de soin avec boutons d'accès rapide aux sorts.", "Healium.zip"},
-        {"Immersion", "Modernise l'affichage des textes de quêtes et dialogues.", "Immersion.zip"},
-        {"Mapster", "Améliore la visibilité et les fonctions de la carte du monde.", "Mapster.zip"},
-        {"OneButtonHelper", "Assistant de rotation de combat pour optimiser votre DPS.", "OneButtonHelper.zip"},
-        {"Postal", "Améliore radicalement la gestion de la boîte aux lettres.", "Postal.zip"},
-        {"Prat", "Personnalisation poussée de la fenêtre de discussion.", "Prat-3.0.zip"},
-        {"Quartz", "Barres d'incantation modulaires et ultra-précises.", "Quartz.zip"},
-        {"QuestHelper", "Le guide classique pour optimiser vos itinéraires de quêtes.", "QuestHelper.zip"},
-        {"Scrap", "Vente et réparation automatique chez les marchands.", "Scrap.zip"},
-        {"SexyMap", "Donne un look moderne et personnalisable à votre mini-carte.", "SexyMap.zip"},
-        {"TomTom", "Navigation par coordonnées GPS et flèche directionnelle.", "TomTom.zip"},
-        {"WIM", "Gère vos chuchotements dans des fenêtres séparées.", "WIM.zip"},
-        {"WeakAuras", "L'outil ultime pour créer vos propres alertes visuelles.", "WeakAuras.zip"},
-        {"XPerl", "Refonte visuelle des portraits de joueurs (Style Classique).", "XPerl.zip"},
-        {"Details!", "Le compteur de combat le plus précis et détaillé.", "details.zip"},
-        {"ElvUI", "Une interface utilisateur complète, moderne et minimaliste.", "elvui.zip"},
-        {"Shadowed Unit Frames", "Portraits de joueurs épurés et hautement configurables.", "shadowedunitframes.zip"},
-        {"TotalRP3", "L'addon de référence pour l'immersion et le jeu de rôle.", "totalRP3.zip"},
-        {"VuhDo", "Interface de raid et de soin extrêmement personnalisable.", "vuhdo.zip"}
+        {"ArkInventory", "Gestion d'inventaire avancée avec catégories automatiques.", "ArkInventory.zip", "ArkInventory"},
+        {"AtlasLoot", "Base de données complète des butins de donjons et raids.", "AtlasLoot.zip", "AtlasLoot"},
+        {"Auctionator", "Améliore l'interface de l'Hôtel des Ventes.", "Auctionator.zip", "Auctionator"},
+        {"Bagnon", "Regroupe tous vos sacs en une seule fenêtre épurée.", "Bagnon.zip", "Bagnon"},
+        {"Bartender4", "Personnalisation totale de vos barres d'actions.", "Bartender4.zip", "Bartender4"},
+        {"Deadly Boss Mods (DBM)", "Alertes et chronomètres indispensables pour les raids.", "DBM.zip", "DBM-Core"},
+        {"GatherMate2", "Mémorise l'emplacement des plantes et minerais sur la carte.", "GatherMate2.zip", "GatherMate2"},
+        {"GearScore", "Évalue le niveau d'équipement global des joueurs.", "GearScore.zip", "GearScore"},
+        {"HandyNotes", "Ajoute des notes personnalisées et des points d'intérêt.", "HandyNotes.zip", "HandyNotes"},
+        {"Healium", "Interface de soin avec boutons d'accès rapide aux sorts.", "Healium.zip", "Healium"},
+        {"Immersion", "Modernise l'affichage des textes de quêtes et dialogues.", "Immersion.zip", "Immersion"},
+        {"Mapster", "Améliore la visibilité et les fonctions de la carte du monde.", "Mapster.zip", "Mapster"},
+        {"OneButtonHelper", "Assistant de rotation de combat pour optimiser votre DPS.", "OneButtonHelper.zip", "OneButtonHelper"},
+        {"Postal", "Améliore radicalement la gestion de la boîte aux lettres.", "Postal.zip", "Postal"},
+        {"Prat", "Personnalisation poussée de la fenêtre de discussion.", "Prat-3.0.zip", "Prat-3.0"},
+        {"Quartz", "Barres d'incantation modulaires et ultra-précises.", "Quartz.zip", "Quartz"},
+        {"QuestHelper", "Le guide classique pour optimiser vos itinéraires de quêtes.", "QuestHelper.zip", "QuestHelper"},
+        {"Scrap", "Vente et réparation automatique chez les marchands.", "Scrap.zip", "Scrap"},
+        {"SexyMap", "Donne un look moderne et personnalisable à votre mini-carte.", "SexyMap.zip", "SexyMap"},
+        {"TomTom", "Navigation par coordonnées GPS et flèche directionnelle.", "TomTom.zip", "TomTom"},
+        {"WIM", "Gère vos chuchotements dans des fenêtres séparées.", "WIM.zip", "WIM"},
+        {"WeakAuras", "L'outil ultime pour créer vos propres alertes visuelles.", "WeakAuras.zip", "WeakAuras2"},
+        {"XPerl", "Refonte visuelle des portraits de joueurs (Style Classique).", "XPerl.zip", "XPerl"},
+        {"Details!", "Le compteur de combat le plus précis et détaillé.", "details.zip", "Details"},
+        {"ElvUI", "Une interface utilisateur complète, moderne et minimaliste.", "elvui.zip", "ElvUI"},
+        {"Shadowed Unit Frames", "Portraits de joueurs épurés et hautement configurables.", "shadowedunitframes.zip", "ShadowedUnitFrames"},
+        {"TotalRP3", "L'addon de référence pour l'immersion et le jeu de rôle.", "totalRP3.zip", "TotalRP3"},
+        {"VuhDo", "Interface de raid et de soin extrêmement personnalisable.", "vuhdo.zip", "VuhDo"}
     };
 }
 
@@ -95,6 +95,9 @@ void AddonsWindow::setupUi() {
     m_addonsLayout = new QVBoxLayout(m_scrollWidget);
     m_addonsLayout->setSpacing(10);
     
+    QString wowPath = m_config->getWowPath();
+    QString addonsDir = wowPath + "/Interface/AddOns";
+
     for (const auto& addon : m_addons) {
         QFrame* itemFrame = new QFrame(m_scrollWidget);
         itemFrame->setStyleSheet("QFrame { background-color: #2a2a4e; border-radius: 5px; } QFrame:hover { background-color: #32325c; }");
@@ -135,18 +138,21 @@ void AddonsWindow::setupUi() {
         
         itemLayout->addLayout(textLayout, 1);
         
+        // Check if installed
+        bool installed = isAddonInstalled(addon);
+
         // Install Button
-        QPushButton* installBtn = new QPushButton("Installer", itemFrame);
+        QPushButton* installBtn = new QPushButton(installed ? "Réinstaller" : "Installer", itemFrame);
         installBtn->setCursor(Qt::PointingHandCursor);
         installBtn->setFixedSize(100, 35);
-        installBtn->setStyleSheet(R"(
-            QPushButton {
-                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4a7c3f, stop:0.5 #3a6a2f, stop:1 #2a5a1f);
-                color: #ffffff; border: 1px solid #5a8c4f; border-radius: 5px; font-weight: bold;
-            }
-            QPushButton:hover { background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5a8c4f, stop:0.5 #4a7c3f, stop:1 #3a6a2f); }
-            QPushButton:disabled { background-color: #555555; color: #888888; border: 1px solid #444444; }
-        )");
+        
+        updateButtonStyle(installBtn, installed);
+        
+        if (installed) {
+            statusLabel->setText("Déjà présent");
+            statusLabel->setStyleSheet("color: #7ec8e3; font-size: 11px;");
+            statusLabel->show();
+        }
         
         connect(installBtn, &QPushButton::clicked, this, [this, addon, installBtn, progressBar, statusLabel]() {
             onInstallClicked(addon.downloadFileName, installBtn, progressBar, statusLabel);
@@ -179,6 +185,38 @@ void AddonsWindow::setupUi() {
     bottomLayout->addStretch();
     
     mainLayout->addLayout(bottomLayout);
+}
+
+bool AddonsWindow::isAddonInstalled(const AddonInfo& addon) const {
+    QString wowPath = m_config->getWowPath();
+    if (wowPath.isEmpty() || addon.folderName.isEmpty()) return false;
+    
+    QString addonsDir = wowPath + "/Interface/AddOns";
+    QDir dir(addonsDir + "/" + addon.folderName);
+    return dir.exists();
+}
+
+void AddonsWindow::updateButtonStyle(QPushButton* btn, bool installed) {
+    if (installed) {
+        btn->setText("Réinstaller");
+        btn->setStyleSheet(R"(
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2a4a1f, stop:0.5 #1a3a1f, stop:1 #0a2a1f);
+                color: #aaaaaa; border: 1px solid #3a5c2f; border-radius: 5px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3a6a2f, stop:0.5 #2a5a1f, stop:1 #1a4a1f); color: #ffffff; }
+        )");
+    } else {
+        btn->setText("Installer");
+        btn->setStyleSheet(R"(
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4a7c3f, stop:0.5 #3a6a2f, stop:1 #2a5a1f);
+                color: #ffffff; border: 1px solid #5a8c4f; border-radius: 5px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5a8c4f, stop:0.5 #4a7c3f, stop:1 #3a6a2f); }
+            QPushButton:disabled { background-color: #555555; color: #888888; border: 1px solid #444444; }
+        )");
+    }
 }
 
 void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* installBtn, QProgressBar* progressBar, QLabel* statusLabel) {
@@ -308,7 +346,7 @@ void AddonsWindow::extractZip(const QString& zipPath, const QString& destination
     QString command = QString("Expand-Archive -Path '%1' -DestinationPath '%2' -Force").arg(zipPath).arg(destination);
     
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [zipPath, installBtn, progressBar, statusLabel, process](int exitCode, QProcess::ExitStatus exitStatus) {
+            this, [this, zipPath, installBtn, progressBar, statusLabel, process](int exitCode, QProcess::ExitStatus exitStatus) {
         process->deleteLater();
         
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
@@ -319,13 +357,8 @@ void AddonsWindow::extractZip(const QString& zipPath, const QString& destination
             statusLabel->setText("Installé avec succès !");
             statusLabel->setStyleSheet("color: #55ff55; font-size: 11px;");
             
-            installBtn->setText("Installé");
-            installBtn->setStyleSheet(R"(
-                QPushButton {
-                    background-color: #2a5a1f; color: #aaaaaa; border: 1px solid #5a8c4f; border-radius: 5px; font-weight: bold;
-                }
-            )");
-            // Keep button disabled to avoid reinstalling by mistake
+            installBtn->setEnabled(true);
+            updateButtonStyle(installBtn, true);
         } else {
             progressBar->setMaximum(100);
             progressBar->setValue(0);
