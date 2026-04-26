@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\SylvaniaLauncher.dir/objects.a
+C:\Qt\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\SylvaniaLauncher.dir/objects.a @CMakeFiles\SylvaniaLauncher.dir\objects1.rsp
+C:\Qt\Tools\mingw1310_64\bin\c++.exe -mwindows -Wl,--whole-archive CMakeFiles\SylvaniaLauncher.dir/objects.a -Wl,--no-whole-archive -o SylvaniaLauncher.exe -Wl,--out-implib,libSylvaniaLauncher.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\SylvaniaLauncher.dir\linkLibs.rsp

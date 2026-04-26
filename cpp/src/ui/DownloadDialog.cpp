@@ -254,9 +254,9 @@ void DownloadDialog::extractZip(const QString& zipPath) {
     // Use Windows PowerShell Expand-Archive for extraction
     QProcess* process = new QProcess(this);
     
-    // Progress monitoring timer
+    // Progress monitoring timer - Reduced frequency to 5s to avoid UI freeze on large folders
     QTimer* progressTimer = new QTimer(this);
-    progressTimer->setInterval(500); // Check every 500ms
+    progressTimer->setInterval(5000); 
     
     // Store initial folder size
     qint64 initialSize = 0;
@@ -276,6 +276,7 @@ void DownloadDialog::extractZip(const QString& zipPath) {
     m_progressBar->setValue(0);
     
     connect(progressTimer, &QTimer::timeout, this, [this, estimatedExtractedSize, initialSize]() {
+        QCoreApplication::processEvents(); // Keep UI reactive
         qint64 currentSize = 0;
         QDirIterator it(m_destination, QDir::Files, QDirIterator::Subdirectories);
         while (it.hasNext()) {
@@ -316,6 +317,7 @@ void DownloadDialog::extractZip(const QString& zipPath) {
             // Generate Config.wtf
             generateConfigWtf();
             
+            QCoreApplication::processEvents();
             emit downloadFinished(true, "Téléchargement et extraction terminés!");
             accept();
         } else {

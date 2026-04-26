@@ -8,9 +8,13 @@
 
 SoundManager::SoundManager(QObject* parent)
     : QObject(parent)
-    , m_player(std::make_unique<QMediaPlayer>())
-    , m_audioOutput(std::make_unique<QAudioOutput>())
 {
+    // Force native backend (WMF) to avoid heavy FFmpeg DLLs
+    qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "windowsmedia");
+    
+    m_player = std::make_unique<QMediaPlayer>();
+    m_audioOutput = std::make_unique<QAudioOutput>();
+    
     m_player->setAudioOutput(m_audioOutput.get());
     m_audioOutput->setVolume(m_volume);
     

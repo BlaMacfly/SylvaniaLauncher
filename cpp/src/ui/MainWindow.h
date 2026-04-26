@@ -18,6 +18,7 @@ class RealmlistWindow;
 class DownloadDialog;
 class HdPatchManager;
 class QProgressBar;
+class AddonsWindow;
 
 /**
  * @brief Main window for Sylvania Launcher
@@ -47,6 +48,7 @@ private slots:
     void onSettingsButtonClicked();
     void onNotesButtonClicked();
     void onServersButtonClicked();
+    void onAddonsButtonClicked();
     void onQuitButtonClicked();
     
     void onDownloadComplete(bool success, const QString& message);
@@ -94,6 +96,7 @@ private:
     QPushButton* m_hdButton = nullptr;
     QPushButton* m_settingsButton = nullptr;
     QPushButton* m_notesButton = nullptr;
+    QPushButton* m_addonsButton = nullptr;
     QPushButton* m_quitButton = nullptr;
     QPushButton* m_changeServerButton = nullptr;
 
@@ -101,6 +104,7 @@ private:
     NotesWindow* m_notesWindow = nullptr;
     RealmlistWindow* m_realmlistWindow = nullptr;
     DownloadDialog* m_downloadDialog = nullptr;
+    AddonsWindow* m_addonsWindow = nullptr;
     std::unique_ptr<HdPatchManager> m_hdPatchManager;
 
     // Background

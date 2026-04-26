@@ -105,7 +105,7 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
     qint64 estimatedExtractedSize = zipSize * 1.5;
     
     QTimer* progressTimer = new QTimer(this);
-    progressTimer->setInterval(1000); // Check every second
+    progressTimer->setInterval(5000); // Check every 5 seconds to avoid UI freeze
     
     QProcess* process = new QProcess(this);
     
@@ -116,6 +116,7 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
     progressTimer->start();
     
     connect(progressTimer, &QTimer::timeout, this, [this, extractPath, estimatedExtractedSize]() {
+        QCoreApplication::processEvents(); // Keep UI responsive
         qint64 currentSize = 0;
         QDirIterator it(extractPath, QDir::Files, QDirIterator::Subdirectories);
         while (it.hasNext()) {
@@ -188,6 +189,7 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
         }
         
         current++;
+        QCoreApplication::processEvents(); // Prevent freeze during migration
         emit progressChanged(static_cast<int>((current * 100) / total), "Migration: " + item);
     }
     

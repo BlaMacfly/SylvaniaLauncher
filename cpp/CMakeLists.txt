@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(SylvaniaLauncher VERSION 2.5 LANGUAGES CXX)
+project(SylvaniaLauncher VERSION 2.6 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,6 +28,7 @@ set(SOURCES
     src/ui/DownloadDialog.cpp
     src/ui/SettingsDialog.cpp
     src/ui/ServerEditDialog.cpp
+    src/ui/AddonsWindow.cpp
     src/utils/PathUtils.cpp
     src/core/HdPatchManager.cpp
 )
@@ -44,6 +45,7 @@ set(HEADERS
     src/ui/DownloadDialog.h
     src/ui/SettingsDialog.h
     src/ui/ServerEditDialog.h
+    src/ui/AddonsWindow.h
     src/utils/PathUtils.h
     src/core/HdPatchManager.h
 )
@@ -78,19 +80,18 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Windows specific settings
 if(WIN32)
-    # Set application icon - Manual command to avoid path issues with windres
     set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc")
     set(APP_ICON_OBJ "${CMAKE_CURRENT_BINARY_DIR}/app_icon.obj")
     
-    # We use a manual command and skip the preprocessor (--no-cpp) to avoid GCC errors 
-    # with the project path containing hyphens/spaces.
-    add_custom_command(OUTPUT "app_icon.obj"
-        COMMAND windres --no-cpp -J rc -O coff app.rc "app_icon.obj"
-        DEPENDS "${APP_ICON_RESOURCE_WINDOWS}"
+    add_custom_command(OUTPUT "${APP_ICON_OBJ}"
+        COMMAND windres -J rc -O coff app.rc -o "${APP_ICON_OBJ}"
+        DEPENDS "${APP_ICON_RESOURCE_WINDOWS}" "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.ico"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources"
         VERBATIM
     )
-    target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.obj")
+    
+    set_source_files_properties("${APP_ICON_OBJ}" PROPERTIES EXTERNAL_OBJECT true GENERATED true)
+    target_sources(${PROJECT_NAME} PRIVATE "${APP_ICON_OBJ}")
     
     # Copy Qt DLLs to output directory
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

@@ -228,6 +228,9 @@ void SettingsDialog::setupUi() {
     connect(m_openAddonsButton, &QPushButton::clicked, this, &SettingsDialog::onOpenAddonsClicked);
     connect(m_okButton, &QPushButton::clicked, this, &SettingsDialog::onOkClicked);
     connect(m_cancelButton, &QPushButton::clicked, this, &SettingsDialog::onCancelClicked);
+    connect(m_soundCheckbox, &QCheckBox::clicked, this, [this]() {
+        m_soundManager->play("button");
+    });
     
     // Dialog style
     setStyleSheet("QDialog { background-color: #1a1a1a; }");
@@ -277,6 +280,9 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
         gridLayout->addLayout(itemLayout, row, col);
         
         m_patchComboBoxes[patch.label] = combo;
+        connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+            m_soundManager->play("button");
+        });
         
         col++;
         if (col > 1) {
@@ -391,6 +397,7 @@ void SettingsDialog::togglePatch(const QString& fileName, bool enabled, const QS
 }
 
 void SettingsDialog::onBrowseClicked() {
+    m_soundManager->play("button");
     QString dir = QFileDialog::getExistingDirectory(this,
         "Sélectionner le dossier World of Warcraft",
         m_pathEdit->text().isEmpty() ? QDir::homePath() : m_pathEdit->text());
@@ -415,6 +422,7 @@ void SettingsDialog::onBrowseClicked() {
 }
 
 void SettingsDialog::onClearCacheClicked() {
+    m_soundManager->play("button");
     QString wowPath = m_pathEdit->text();
     if (wowPath.isEmpty()) {
         QMessageBox::warning(this, "Erreur", "Aucun dossier WoW configuré.");
@@ -444,6 +452,7 @@ void SettingsDialog::onClearCacheClicked() {
 }
 
 void SettingsDialog::onOpenAddonsClicked() {
+    m_soundManager->play("button");
     QString wowPath = m_pathEdit->text();
     if (wowPath.isEmpty()) {
         QMessageBox::warning(this, "Erreur", "Aucun dossier WoW configuré.");
@@ -463,11 +472,13 @@ void SettingsDialog::onOpenAddonsClicked() {
 }
 
 void SettingsDialog::onOkClicked() {
+    m_soundManager->play("button");
     saveSettings();
     emit settingsChanged();
     accept();
 }
 
 void SettingsDialog::onCancelClicked() {
+    m_soundManager->play("button");
     reject();
 }

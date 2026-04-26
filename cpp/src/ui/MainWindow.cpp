@@ -3,6 +3,7 @@
 #include "RealmlistWindow.h"
 #include "DownloadDialog.h"
 #include "SettingsDialog.h"
+#include "AddonsWindow.h"
 #include "ConfigManager.h"
 #include "SoundManager.h"
 #include "NotesManager.h"
@@ -147,7 +148,7 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    QLabel* footerLabel = new QLabel("© 2025 Sylvania Launcher v2.5 - World of Warcraft 3.3.5", this);
+    QLabel* footerLabel = new QLabel("© 2025 Sylvania Launcher v2.6 - World of Warcraft 3.3.5", this);
     footerLabel->setAlignment(Qt::AlignCenter);
     footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
     mainLayout->addWidget(footerLabel);
@@ -210,6 +211,14 @@ QWidget* MainWindow::createServerPanel() {
     buttonsRow2->addWidget(m_notesButton);
     buttonsRow2->addWidget(m_quitButton);
     layout->addLayout(buttonsRow2);
+    
+    // Buttons row 3: ADDONS
+    QHBoxLayout* buttonsRow3 = new QHBoxLayout();
+    buttonsRow3->setSpacing(10);
+    
+    m_addonsButton = createStyledButton("Liste des Addons", "teal");
+    buttonsRow3->addWidget(m_addonsButton);
+    layout->addLayout(buttonsRow3);
     
     layout->addStretch();
     
@@ -448,6 +457,7 @@ void MainWindow::connectSignals() {
     connect(m_hdButton, &QPushButton::clicked, this, &MainWindow::onHdButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainWindow::onSettingsButtonClicked);
     connect(m_notesButton, &QPushButton::clicked, this, &MainWindow::onNotesButtonClicked);
+    connect(m_addonsButton, &QPushButton::clicked, this, &MainWindow::onAddonsButtonClicked);
     connect(m_quitButton, &QPushButton::clicked, this, &MainWindow::onQuitButtonClicked);
     connect(m_changeServerButton, &QPushButton::clicked, this, &MainWindow::onServersButtonClicked);
 }
@@ -696,6 +706,18 @@ void MainWindow::onQuitButtonClicked() {
     close();
 }
 
+void MainWindow::onAddonsButtonClicked() {
+    m_soundManager->play("button");
+    
+    if (!m_addonsWindow) {
+        m_addonsWindow = new AddonsWindow(m_config.get(), this);
+    }
+    
+    m_addonsWindow->show();
+    m_addonsWindow->raise();
+    m_addonsWindow->activateWindow();
+}
+
 void MainWindow::closeEvent(QCloseEvent* event) {
     // Stop tracking if WoW was running
     if (m_wowRunning && m_sessionStartTime.isValid()) {
@@ -705,6 +727,9 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     
     if (m_notesWindow) {
         m_notesWindow->close();
+    }
+    if (m_addonsWindow) {
+        m_addonsWindow->close();
     }
     if (m_realmlistWindow) {
         m_realmlistWindow->close();
