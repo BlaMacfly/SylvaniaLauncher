@@ -29,9 +29,9 @@ int main(int argc, char* argv[]) {
     
     // Set application metadata
     app.setApplicationName("Sylvania Launcher");
-    app.setApplicationVersion("2.2.0");
+    app.setApplicationVersion("2.6");
     app.setOrganizationName("Sylvania");
-    app.setOrganizationDomain("sylvania-wow.com");
+    app.setOrganizationDomain("sylvania-servergame.com");
     
 #ifdef Q_OS_WIN
     // Windows: Set AppUserModelID for taskbar grouping

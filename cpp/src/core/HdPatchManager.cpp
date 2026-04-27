@@ -163,8 +163,8 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
 
     QStringList itemsToMigrate = {
         "Data", "Interface", "PatchMenu",                         // Folders
-        "World of Warcraft.app", "d3d9.dll.disabled", 
-        "dxvk.conf.disabled", "WoW.exe"           // Files
+        "World of Warcraft.app", "d3d9.dll", 
+        "dxvk.conf", "WoW.exe"           // Files
     };
     
     QDir sourceDir(sourcePath);
@@ -174,10 +174,28 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
     int current = 0;
     
     for (const QString& item : itemsToMigrate) {
-        QString srcItemPath = sourcePath + "/" + item;
-        QString destItemPath = m_wowPath + "/" + item;
+        QString srcName = item;
+        QString destName = item;
+
+        // Force enable DXVK during migration
+        if (item == "d3d9.dll" || item == "dxvk.conf") {
+            srcName = item + ".disabled";
+            destName = item;
+            
+            // If the source .disabled doesn't exist, try the enabled name as fallback
+            if (!QFile::exists(sourcePath + "/" + srcName)) {
+                srcName = item;
+            }
+        }
+
+        QString srcItemPath = sourcePath + "/" + srcName;
+        QString destItemPath = m_wowPath + "/" + destName;
         
         QFileInfo info(srcItemPath);
+        if (!info.exists()) {
+            continue;
+        }
+
         if (info.isDir()) {
             // Use robocopy for reliable folder migration with overwrites
             QProcess::execute("robocopy", {srcItemPath, destItemPath, "/E", "/IS", "/MOVE"});

@@ -70,6 +70,9 @@ Pour créer un package exécutable avec toutes ses dépendances :
 windeployqt --compiler-runtime --multimedia SylvaniaLauncher.exe
 ```
 
+> [!TIP]
+> Pour réduire la taille du package (environ -15 Mo), vous pouvez supprimer manuellement les DLL FFmpeg (`avcodec-*.dll`, `avformat-*.dll`, etc.) après le déploiement. Le launcher est configuré pour utiliser le moteur natif Windows Media si ces fichiers sont absents.
+
 ## Licence
 
 Ce projet est sous licence **GNU GPL v3**. Vous êtes libre de copier, modifier et redistribuer ce logiciel tant que vous conservez cette même licence.
