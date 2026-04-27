@@ -208,7 +208,7 @@ void HdPatchManager::cleanup() {
 }
 
 void HdPatchManager::generateConfigWtf() {
-    QString wtfPath = m_wowPath + "/wotlk/WTF";
+    QString wtfPath = m_wowPath + "/WTF";
     QDir dir(wtfPath);
     if (!dir.exists()) {
         dir.mkpath(".");

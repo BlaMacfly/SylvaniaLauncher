@@ -56,7 +56,7 @@ void ConfigManager::createDefaultConfig() {
     QJsonArray realmlistArray;
     QJsonObject defaultRealm{
         {"name", "Sylvania"},
-        {"address", "set realmlist logon.sylvania-wow.com"},
+        {"address", "set realmlist sylvania-servergame.com"},
         {"active", true}
     };
     realmlistArray.append(defaultRealm);

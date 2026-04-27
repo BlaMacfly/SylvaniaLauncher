@@ -337,7 +337,7 @@ void ServerEditDialog::setupUi(const QString& name, const QString& address) {
     // Address
     layout->addWidget(new QLabel("Adresse (realmlist):", this));
     m_addressEdit = new QLineEdit(address, this);
-    m_addressEdit->setPlaceholderText("Ex: set realmlist logon.sylvania-wow.com");
+    m_addressEdit->setPlaceholderText("Ex: set realmlist sylvania-servergame.com");
     layout->addWidget(m_addressEdit);
     
     layout->addStretch();
