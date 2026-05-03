@@ -463,7 +463,15 @@ QString DownloadDialog::formatDuration(qint64 seconds) const {
 }
 
 void DownloadDialog::generateConfigWtf() {
-    QString wtfPath = m_destination + "/WTF";
+    QString targetPath = m_destination;
+    
+    // Search for the actual WoW directory (containing Wow.exe)
+    QDirIterator it(m_destination, QStringList() << "Wow.exe", QDir::Files, QDirIterator::Subdirectories);
+    if (it.hasNext()) {
+        targetPath = QFileInfo(it.next()).absolutePath();
+    }
+
+    QString wtfPath = targetPath + "/WTF";
     QDir dir(wtfPath);
     if (!dir.exists()) {
         dir.mkpath(".");
