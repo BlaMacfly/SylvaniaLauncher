@@ -482,7 +482,8 @@ void DownloadDialog::generateConfigWtf() {
     QFile configFile(wtfPath + "/Config.wtf");
     if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&configFile);
-        out << "SET locale \"frFR\"\n";
+        QString locale = (m_language == "en") ? "enUS" : "frFR";
+        out << "SET locale \"" << locale << "\"\n";
         out << "SET hwDetect \"0\"\n";
         out << "SET gxRefresh \"60\"\n";
         out << "SET gxMultisampleQuality \"0.000000\"\n";

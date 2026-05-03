@@ -793,6 +793,7 @@ void MainWindow::onDownloadButtonClicked() {
     }
     
     m_downloadDialog = new DownloadDialog(this, dir);
+    m_downloadDialog->setLanguage(m_config->getLanguage());
     connect(m_downloadDialog, &DownloadDialog::downloadFinished,
             this, &MainWindow::onDownloadComplete);
     m_downloadDialog->exec();

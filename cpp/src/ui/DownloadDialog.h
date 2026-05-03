@@ -33,6 +33,7 @@ public:
   void startDownload(const QString &directory = "");
   QString getDestination() const { return m_destination; }
   void setSkipConfigWtf(bool skip) { m_skipConfigWtf = skip; }
+  void setLanguage(const QString &lang) { m_language = lang; }
 
 signals:
   void downloadFinished(bool success, const QString &message);
@@ -59,6 +60,7 @@ private:
 
   QString m_destination;
   QString m_downloadUrl;
+  QString m_language = "fr";
   qint64 m_totalBytes = 0;
   qint64 m_receivedBytes = 0;
   qint64 m_lastReceivedBytes = 0;
