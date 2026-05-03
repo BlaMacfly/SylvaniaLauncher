@@ -18,9 +18,10 @@
 #include <QGridLayout>
 #include <QFileDialog>
 #include <QMessageBox>
-#include <QProcess>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
+#include <QProcess>
 #include <QCloseEvent>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -804,9 +805,13 @@ void MainWindow::onDownloadComplete(bool success, const QString& message) {
         QMessageBox::information(this, tr("Téléchargement terminé"), message);
         if (m_downloadDialog) {
             QString downloadPath = m_downloadDialog->getDestination();
-            QString wowExe = downloadPath + "/Wow.exe";
-            if (QFile::exists(wowExe)) {
-                m_config->setWowPath(downloadPath);
+            
+            // Search recursively for Wow.exe (to handle subfolders in ZIP)
+            QDirIterator it(downloadPath, QStringList() << "Wow.exe", QDir::Files, QDirIterator::Subdirectories);
+            if (it.hasNext()) {
+                QString foundExe = it.next();
+                QString finalPath = QFileInfo(foundExe).absolutePath();
+                m_config->setWowPath(finalPath);
                 checkWowInstalled();
             }
         }
@@ -977,7 +982,7 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
     
     // If EN, check for enUS data and modify Config.wtf
     if (lang == "en" && !initial) {
-        checkEnUsData();
+        // checkEnUsData(); - removed as per request
     } else if (lang == "fr") {
         // If switching back to FR, we also update Config.wtf
         QString wtfPath = m_config->getWowPath() + "/WTF/Config.wtf";
@@ -1021,45 +1026,3 @@ void MainWindow::changeEvent(QEvent* event) {
     }
     QMainWindow::changeEvent(event);
 }
-
-void MainWindow::checkEnUsData() {
-    QString wowPath = m_config->getWowPath();
-    if (wowPath.isEmpty()) return;
-    
-    QString enUsPath = wowPath + "/Data/enUS";
-    if (!QDir(enUsPath).exists()) {
-        auto result = QMessageBox::question(this, tr("Pack Anglais Manquant"),
-            tr("Le pack de langue anglaise (enUS) n'est pas installé dans votre dossier WoW.\n"
-               "Voulez-vous le télécharger maintenant ?"),
-            QMessageBox::Yes | QMessageBox::No);
-            
-        if (result == QMessageBox::Yes) {
-            // Launch download dialog for enUS
-            DownloadDialog* dlDialog = new DownloadDialog(this, enUsPath);
-            // Temporarily change URL for enUS
-            // Since we don't have a direct setter in DownloadDialog yet, we might need to modify it.
-            // Let's assume we can set it, I will modify DownloadDialog to allow custom URL.
-            dlDialog->setDownloadUrl("https://sylvania-servergame.com/enus-download.php");
-            dlDialog->exec();
-            dlDialog->deleteLater();
-        }
-    }
-    
-    // Modifie Config.wtf
-    QString wtfPath = wowPath + "/WTF/Config.wtf";
-    if (QFile::exists(wtfPath)) {
-        QFile wtfFile(wtfPath);
-        if (wtfFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
-            QString content = wtfFile.readAll();
-            if (content.contains("SET locale")) {
-                content.replace("SET locale \"frFR\"", "SET locale \"enUS\"");
-            } else {
-                content += "\nSET locale \"enUS\"\n";
-            }
-            wtfFile.resize(0);
-            wtfFile.write(content.toUtf8());
-            wtfFile.close();
-        }
-    }
-}
-

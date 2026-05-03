@@ -71,7 +71,6 @@ private:
     bool isWowRunning();
     void changeLanguage(const QString& lang, bool initial = false);
     void retranslateUi();
-    void checkEnUsData();
     
     QWidget* createServerPanel();
     QWidget* createStatsPanel();
