@@ -980,21 +980,24 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
     
     retranslateUi();
     
-    // If EN, check for enUS data and modify Config.wtf
-    if (lang == "en" && !initial) {
-        // checkEnUsData(); - removed as per request
-    } else if (lang == "fr") {
-        // If switching back to FR, we also update Config.wtf
-        QString wtfPath = m_config->getWowPath() + "/WTF/Config.wtf";
-        if (QFile::exists(wtfPath)) {
-            QFile wtfFile(wtfPath);
-            if (wtfFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
-                QString content = wtfFile.readAll();
+    // Update Config.wtf locale
+    QString wtfPath = m_config->getWowPath() + "/WTF/Config.wtf";
+    if (QFile::exists(wtfPath)) {
+        QFile wtfFile(wtfPath);
+        if (wtfFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
+            QString content = wtfFile.readAll();
+            if (lang == "en") {
+                if (content.contains("SET locale")) {
+                    content.replace("SET locale \"frFR\"", "SET locale \"enUS\"");
+                } else {
+                    content += "\nSET locale \"enUS\"\n";
+                }
+            } else {
                 content.replace("SET locale \"enUS\"", "SET locale \"frFR\"");
-                wtfFile.resize(0);
-                wtfFile.write(content.toUtf8());
-                wtfFile.close();
             }
+            wtfFile.resize(0);
+            wtfFile.write(content.toUtf8());
+            wtfFile.close();
         }
     }
 }
