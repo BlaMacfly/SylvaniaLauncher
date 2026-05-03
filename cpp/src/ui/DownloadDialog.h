@@ -32,6 +32,7 @@ public:
 
   void startDownload(const QString &directory = "");
   QString getDestination() const { return m_destination; }
+  void setSkipConfigWtf(bool skip) { m_skipConfigWtf = skip; }
 
 signals:
   void downloadFinished(bool success, const QString &message);
@@ -63,6 +64,7 @@ private:
   qint64 m_lastReceivedBytes = 0;
   QElapsedTimer m_speedTimer;
   bool m_cancelled = false;
+  bool m_skipConfigWtf = false;
 
   // UI Elements
   QLabel *m_statusLabel = nullptr;

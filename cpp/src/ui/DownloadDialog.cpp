@@ -363,8 +363,10 @@ void DownloadDialog::extractZip(const QString& zipPath) {
             // Remove temp zip file
             QFile::remove(zipPath);
             
-            // Generate Config.wtf
-            generateConfigWtf();
+            // Generate Config.wtf if not skipped
+            if (!m_skipConfigWtf) {
+                generateConfigWtf();
+            }
             
             QCoreApplication::processEvents();
             emit downloadFinished(true, tr("Téléchargement et extraction terminés!"));

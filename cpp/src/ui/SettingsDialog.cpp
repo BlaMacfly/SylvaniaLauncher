@@ -567,6 +567,7 @@ void SettingsDialog::onDownloadEnUsClicked() {
     QString enUsUrl = "https://sylvania-servergame.com/enus-download.php";
     DownloadDialog* dlDialog = new DownloadDialog(this, wowPath + "/Data");
     dlDialog->setDownloadUrl(enUsUrl);
+    dlDialog->setSkipConfigWtf(true);
     dlDialog->setWindowTitleText(tr("Téléchargement du Pack Anglais"));
     
     connect(dlDialog, &DownloadDialog::downloadFinished, this, [this](bool success, const QString& message) {
