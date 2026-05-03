@@ -300,6 +300,7 @@ void SettingsDialog::setupUi() {
     connect(m_clearCacheButton, &QPushButton::clicked, this, &SettingsDialog::onClearCacheClicked);
     connect(m_openAddonsButton, &QPushButton::clicked, this, &SettingsDialog::onOpenAddonsClicked);
     connect(m_downloadEnUsButton, &QPushButton::clicked, this, &SettingsDialog::onDownloadEnUsClicked);
+    connect(m_pathEdit, &QLineEdit::textChanged, this, &SettingsDialog::updateButtonsState);
     connect(m_okButton, &QPushButton::clicked, this, &SettingsDialog::onOkClicked);
     connect(m_cancelButton, &QPushButton::clicked, this, &SettingsDialog::onCancelClicked);
     connect(m_soundCheckbox, &QCheckBox::clicked, this, [this]() {
@@ -389,6 +390,23 @@ void SettingsDialog::loadSettings() {
             bool enabled = isPatchEnabled(patch.fileName, patch.subDir);
             m_patchComboBoxes[patch.label]->setCurrentIndex(enabled ? 0 : 1);
         }
+    }
+    updateButtonsState();
+}
+
+void SettingsDialog::updateButtonsState() {
+    QString wowPath = m_pathEdit->text();
+    bool exists = !wowPath.isEmpty() && QFile::exists(wowPath + "/Wow.exe");
+    
+    m_downloadEnUsButton->setEnabled(exists);
+    m_clearCacheButton->setEnabled(exists);
+    m_openAddonsButton->setEnabled(exists);
+    
+    // Optional: add a tooltip to explain why it's disabled
+    if (!exists) {
+        m_downloadEnUsButton->setToolTip(tr("Veuillez d'abord configurer le dossier WoW (Wow.exe)"));
+    } else {
+        m_downloadEnUsButton->setToolTip("");
     }
 }
 

@@ -50,6 +50,7 @@ private:
   void setupPatchUI(QVBoxLayout *mainLayout);
   void loadSettings();
   void saveSettings();
+  void updateButtonsState();
 
   bool isHdPatchInstalled() const;
   void togglePatch(const QString &fileName, bool enabled,
