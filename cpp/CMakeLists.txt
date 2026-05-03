@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(SylvaniaLauncher VERSION 2.6 LANGUAGES CXX)
+project(SylvaniaLauncher VERSION 2.7 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,8 @@ find_package(Qt6 REQUIRED COMPONENTS
     Widgets 
     Network 
     Multimedia
+    Concurrent
+    LinguistTools
 )
 
 # Source files
@@ -55,11 +57,20 @@ set(RESOURCES
     resources/resources.qrc
 )
 
+# Translations
+set(TS_FILES
+    resources/translations/SylvaniaLauncher_en.ts
+)
+set_source_files_properties(${TS_FILES} PROPERTIES OUTPUT_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/../Asset/translations)
+qt_add_translation(QM_FILES ${TS_FILES})
+
 # Create executable
 add_executable(${PROJECT_NAME} WIN32
     ${SOURCES}
     ${HEADERS}
     ${RESOURCES}
+    ${TS_FILES}
+    ${QM_FILES}
 )
 
 # Link libraries
@@ -68,6 +79,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::Multimedia
+    Qt6::Concurrent
 )
 
 # Include directories
@@ -100,6 +112,7 @@ if(WIN32)
         $<TARGET_FILE:Qt6::Widgets>
         $<TARGET_FILE:Qt6::Network>
         $<TARGET_FILE:Qt6::Multimedia>
+        $<TARGET_FILE:Qt6::Concurrent>
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endif()
@@ -114,10 +127,4 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_CURRENT_SOURCE_DIR}/../Asset"
     "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Asset"
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_CURRENT_SOURCE_DIR}/../Sounds"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Sounds"
 )

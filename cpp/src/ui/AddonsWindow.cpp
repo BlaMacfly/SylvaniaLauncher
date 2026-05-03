@@ -18,7 +18,7 @@ AddonsWindow::AddonsWindow(ConfigManager* config, QWidget* parent)
     , m_config(config)
     , m_networkManager(std::make_unique<QNetworkAccessManager>(this))
 {
-    setWindowTitle("Gestionnaire d'Addons - Sylvania");
+    setWindowTitle(tr("Gestionnaire d'Addons - Sylvania"));
     setFixedSize(600, 700);
     
     // Style the dialog
@@ -37,34 +37,33 @@ AddonsWindow::~AddonsWindow() {
 
 void AddonsWindow::populateAddons() {
     m_addons = {
-        {"ArkInventory", "Gestion d'inventaire avancée avec catégories automatiques.", "ArkInventory.zip", "ArkInventory"},
-        {"AtlasLoot", "Base de données complète des butins de donjons et raids.", "AtlasLoot.zip", "AtlasLoot"},
-        {"Auctionator", "Améliore l'interface de l'Hôtel des Ventes.", "Auctionator.zip", "Auctionator"},
-        {"Bagnon", "Regroupe tous vos sacs en une seule fenêtre épurée.", "Bagnon.zip", "Bagnon"},
-        {"Bartender4", "Personnalisation totale de vos barres d'actions.", "Bartender4.zip", "Bartender4"},
-        {"Deadly Boss Mods (DBM)", "Alertes et chronomètres indispensables pour les raids.", "DBM.zip", "DBM-Core"},
-        {"GatherMate2", "Mémorise l'emplacement des plantes et minerais sur la carte.", "GatherMate2.zip", "GatherMate2"},
-        {"GearScore", "Évalue le niveau d'équipement global des joueurs.", "GearScore.zip", "GearScore"},
-        {"HandyNotes", "Ajoute des notes personnalisées et des points d'intérêt.", "HandyNotes.zip", "HandyNotes"},
-        {"Healium", "Interface de soin avec boutons d'accès rapide aux sorts.", "Healium.zip", "Healium"},
-        {"Immersion", "Modernise l'affichage des textes de quêtes et dialogues.", "Immersion.zip", "Immersion"},
-        {"Mapster", "Améliore la visibilité et les fonctions de la carte du monde.", "Mapster.zip", "Mapster"},
-        {"OneButtonHelper", "Assistant de rotation de combat pour optimiser votre DPS.", "OneButtonHelper.zip", "OneButtonHelper"},
-        {"Postal", "Améliore radicalement la gestion de la boîte aux lettres.", "Postal.zip", "Postal"},
-        {"Prat", "Personnalisation poussée de la fenêtre de discussion.", "Prat-3.0.zip", "Prat-3.0"},
-        {"Quartz", "Barres d'incantation modulaires et ultra-précises.", "Quartz.zip", "Quartz"},
-        {"QuestHelper", "Le guide classique pour optimiser vos itinéraires de quêtes.", "QuestHelper.zip", "QuestHelper"},
-        {"Scrap", "Vente et réparation automatique chez les marchands.", "Scrap.zip", "Scrap"},
-        {"SexyMap", "Donne un look moderne et personnalisable à votre mini-carte.", "SexyMap.zip", "SexyMap"},
-        {"TomTom", "Navigation par coordonnées GPS et flèche directionnelle.", "TomTom.zip", "TomTom"},
-        {"WIM", "Gère vos chuchotements dans des fenêtres séparées.", "WIM.zip", "WIM"},
-        {"WeakAuras", "L'outil ultime pour créer vos propres alertes visuelles.", "WeakAuras.zip", "WeakAuras2"},
-        {"XPerl", "Refonte visuelle des portraits de joueurs (Style Classique).", "XPerl.zip", "XPerl"},
-        {"Details!", "Le compteur de combat le plus précis et détaillé.", "details.zip", "Details"},
-        {"ElvUI", "Une interface utilisateur complète, moderne et minimaliste.", "elvui.zip", "ElvUI"},
-        {"Shadowed Unit Frames", "Portraits de joueurs épurés et hautement configurables.", "shadowedunitframes.zip", "ShadowedUnitFrames"},
-        {"TotalRP3", "L'addon de référence pour l'immersion et le jeu de rôle.", "totalRP3.zip", "TotalRP3"},
-        {"VuhDo", "Interface de raid et de soin extrêmement personnalisable.", "vuhdo.zip", "VuhDo"}
+        {"ArkInventory", tr("Gestion d'inventaire avancée avec catégories automatiques."), "ArkInventory.zip", "ArkInventory"},
+        {"AtlasLoot", tr("Base de données complète des butins de donjons et raids."), "AtlasLoot.zip", "AtlasLoot"},
+        {"Auctionator", tr("Améliore l'interface de l'Hôtel des Ventes."), "Auctionator.zip", "Auctionator"},
+        {"Bagnon", tr("Regroupe tous vos sacs en une seule fenêtre épurée."), "Bagnon.zip", "Bagnon"},
+        {"Bartender4", tr("Personnalisation totale de vos barres d'actions."), "Bartender4.zip", "Bartender4"},
+        {"Deadly Boss Mods (DBM)", tr("Alertes et chronomètres indispensables pour les raids."), "DBM.zip", "DBM-Core"},
+        {"GatherMate2", tr("Mémorise l'emplacement des plantes et minerais sur la carte."), "GatherMate2.zip", "GatherMate2"},
+        {"GearScore", tr("Évalue le niveau d'équipement global des joueurs."), "GearScore.zip", "GearScore"},
+        {"HandyNotes", tr("Ajoute des notes personnalisées et des points d'intérêt."), "HandyNotes.zip", "HandyNotes"},
+        {"Healium", tr("Interface de soin avec boutons d'accès rapide aux sorts."), "Healium.zip", "Healium"},
+        {"Immersion", tr("Modernise l'affichage des textes de quêtes et dialogues."), "Immersion.zip", "Immersion"},
+        {"Mapster", tr("Améliore la visibilité et les fonctions de la carte du monde."), "Mapster.zip", "Mapster"},
+        {"Postal", tr("Améliore radicalement la gestion de la boîte aux lettres."), "Postal.zip", "Postal"},
+        {"Prat", tr("Personnalisation poussée de la fenêtre de discussion."), "Prat-3.0.zip", "Prat-3.0"},
+        {"Quartz", tr("Barres d'incantation modulaires et ultra-précises."), "Quartz.zip", "Quartz"},
+        {"QuestHelper", tr("Le guide classique pour optimiser vos itinéraires de quêtes."), "QuestHelper.zip", "QuestHelper"},
+        {"Scrap", tr("Vente et réparation automatique chez les marchands."), "Scrap.zip", "Scrap"},
+        {"SexyMap", tr("Donne un look moderne et personnalisable à votre mini-carte."), "SexyMap.zip", "SexyMap"},
+        {"TomTom", tr("Navigation par coordonnées GPS et flèche directionnelle."), "TomTom.zip", "TomTom"},
+        {"WIM", tr("Gère vos chuchotements dans des fenêtres séparées."), "WIM.zip", "WIM"},
+        {"WeakAuras", tr("L'outil ultime pour créer vos propres alertes visuelles."), "WeakAuras.zip", "WeakAuras2"},
+        {"XPerl", tr("Refonte visuelle des portraits de joueurs (Style Classique)."), "XPerl.zip", "XPerl"},
+        {"Details!", tr("Le compteur de combat le plus précis et détaillé."), "details.zip", "Details"},
+        {"ElvUI", tr("Une interface utilisateur complète, moderne et minimaliste."), "elvui.zip", "ElvUI"},
+        {"Shadowed Unit Frames", tr("Portraits de joueurs épurés et hautement configurables."), "shadowedunitframes.zip", "ShadowedUnitFrames"},
+        {"TotalRP3", tr("L'addon de référence pour l'immersion et le jeu de rôle."), "totalRP3.zip", "TotalRP3"},
+        {"VuhDo", tr("Interface de raid et de soin extrêmement personnalisable."), "vuhdo.zip", "VuhDo"}
     };
 }
 
@@ -74,12 +73,12 @@ void AddonsWindow::setupUi() {
     mainLayout->setContentsMargins(20, 20, 20, 20);
     
     // Header
-    QLabel* titleLabel = new QLabel("Addons Recommandés", this);
+    QLabel* titleLabel = new QLabel(tr("Addons Recommandés"), this);
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setStyleSheet("color: #d4af37; font-size: 20px; font-weight: bold; margin-bottom: 10px;");
     mainLayout->addWidget(titleLabel);
     
-    QLabel* infoLabel = new QLabel("Sélectionnez les addons que vous souhaitez installer. Ils seront automatiquement placés dans le dossier de votre jeu.", this);
+    QLabel* infoLabel = new QLabel(tr("Sélectionnez les addons que vous souhaitez installer. Ils seront automatiquement placés dans le dossier de votre jeu."), this);
     infoLabel->setWordWrap(true);
     infoLabel->setAlignment(Qt::AlignCenter);
     infoLabel->setStyleSheet("color: #aaaaaa; font-size: 13px; margin-bottom: 15px;");
@@ -142,14 +141,14 @@ void AddonsWindow::setupUi() {
         bool installed = isAddonInstalled(addon);
 
         // Install Button
-        QPushButton* installBtn = new QPushButton(installed ? "Réinstaller" : "Installer", itemFrame);
+        QPushButton* installBtn = new QPushButton(installed ? tr("Réinstaller") : tr("Installer"), itemFrame);
         installBtn->setCursor(Qt::PointingHandCursor);
         installBtn->setFixedSize(100, 35);
         
         updateButtonStyle(installBtn, installed);
         
         if (installed) {
-            statusLabel->setText("Déjà présent");
+            statusLabel->setText(tr("Déjà présent"));
             statusLabel->setStyleSheet("color: #7ec8e3; font-size: 11px;");
             statusLabel->show();
         }
@@ -167,7 +166,7 @@ void AddonsWindow::setupUi() {
     mainLayout->addWidget(m_scrollArea, 1);
     
     // Close Button
-    QPushButton* closeBtn = new QPushButton("Fermer", this);
+    QPushButton* closeBtn = new QPushButton(tr("Fermer"), this);
     closeBtn->setCursor(Qt::PointingHandCursor);
     closeBtn->setFixedSize(120, 40);
     closeBtn->setStyleSheet(R"(

@@ -131,12 +131,19 @@ void ConfigManager::setSoundEnabled(bool enabled) {
 }
 
 QString ConfigManager::getLanguage() const {
-    return m_config.value("language").toString("fr");
+    return get("language", "fr").toString();
 }
 
 void ConfigManager::setLanguage(const QString& lang) {
-    m_config["language"] = lang;
-    save();
+    set("language", lang);
+}
+
+QString ConfigManager::getBackground() const {
+    return get("background", "Azeroth").toString();
+}
+
+void ConfigManager::setBackground(const QString& bgName) {
+    set("background", bgName);
 }
 
 std::vector<RealmlistEntry> ConfigManager::getRealmlistEntries() const {

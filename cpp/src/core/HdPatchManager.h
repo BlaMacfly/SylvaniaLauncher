@@ -46,6 +46,7 @@ private:
     void cleanup();
     
     QString formatBytes(qint64 bytes) const;
+    void verifyHash(const QString& filePath);
 
     QString m_wowPath;
     QString m_tempDir;

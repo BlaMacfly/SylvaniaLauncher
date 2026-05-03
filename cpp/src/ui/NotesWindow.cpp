@@ -13,7 +13,7 @@ NotesWindow::NotesWindow(NotesManager* notesManager, QWidget* parent)
     : QDialog(parent)
     , m_notesManager(notesManager)
 {
-    setWindowTitle("📝 Notes - Sylvania Launcher");
+    setWindowTitle(tr("📝 Notes - Sylvania Launcher"));
     setMinimumSize(800, 600);
     resize(900, 650);
     
@@ -30,13 +30,13 @@ void NotesWindow::setupUi() {
     // Header with title and add button
     QHBoxLayout* headerLayout = new QHBoxLayout();
     
-    QLabel* titleLabel = new QLabel("📌 Mes Notes", this);
+    QLabel* titleLabel = new QLabel(tr("📌 Mes Notes"), this);
     titleLabel->setStyleSheet("color: #d4af37; font-size: 24px; font-weight: bold; border: none;");
     
-    m_countLabel = new QLabel("0 notes", this);
+    m_countLabel = new QLabel(tr("0 notes"), this);
     m_countLabel->setStyleSheet("color: #888888; font-size: 14px; border: none;");
     
-    m_addButton = new QPushButton("+ Nouvelle Note", this);
+    m_addButton = new QPushButton(tr("+ Nouvelle Note"), this);
     m_addButton->setMinimumSize(150, 45);
     m_addButton->setCursor(Qt::PointingHandCursor);
     m_addButton->setStyleSheet(R"(
@@ -125,7 +125,7 @@ void NotesWindow::loadNotes() {
     // Add stretch at bottom
     m_notesGrid->setRowStretch(row + 1, 1);
     
-    m_countLabel->setText(QString("%1 note%2").arg(notes.size()).arg(notes.size() != 1 ? "s" : ""));
+    m_countLabel->setText(QString(tr("%1 notes")).arg(notes.size()));
 }
 
 void NotesWindow::createPostIt(const QString& id, const QString& title, 
@@ -161,7 +161,7 @@ void NotesWindow::createPostIt(const QString& id, const QString& title,
     layout->setSpacing(6);
     
     // Title
-    QLabel* titleLabel = new QLabel(title.isEmpty() ? "Sans titre" : title, postIt);
+    QLabel* titleLabel = new QLabel(title.isEmpty() ? tr("Sans titre") : title, postIt);
     titleLabel->setStyleSheet(QString("color: %1; font-size: 14px; font-weight: bold; background: transparent; border: none;").arg(textColor));
     titleLabel->setWordWrap(true);
     titleLabel->setMaximumHeight(40);
@@ -181,14 +181,14 @@ void NotesWindow::createPostIt(const QString& id, const QString& title,
     QHBoxLayout* bottomLayout = new QHBoxLayout();
     
     // Character count indicator
-    QLabel* countLabel = new QLabel(QString("%1 car.").arg(content.length()), postIt);
+    QLabel* countLabel = new QLabel(tr("%1 car.").arg(content.length()), postIt);
     countLabel->setStyleSheet(QString("color: %1; font-size: 9px; background: transparent; border: none;").arg(textColor));
     bottomLayout->addWidget(countLabel);
     
     bottomLayout->addStretch();
     
     // Edit button
-    QPushButton* editBtn = new QPushButton("✏️ Modifier", postIt);
+    QPushButton* editBtn = new QPushButton(tr("✏️ Modifier"), postIt);
     editBtn->setFixedHeight(28);
     editBtn->setCursor(Qt::PointingHandCursor);
     editBtn->setStyleSheet(R"(
@@ -336,14 +336,14 @@ void NotesWindow::onNoteClicked(const QString& noteId) {
     // Info and buttons
     QHBoxLayout* bottomLayout = new QHBoxLayout();
     
-    QLabel* dateLabel = new QLabel(QString("Créée le: %1").arg(note.createdAt.toString("dd/MM/yyyy HH:mm")), viewDialog);
+    QLabel* dateLabel = new QLabel(tr("Créée le: %1").arg(note.createdAt.toString("dd/MM/yyyy HH:mm")), viewDialog);
     dateLabel->setStyleSheet(QString("color: %1; font-size: 11px;").arg(textColor));
     bottomLayout->addWidget(dateLabel);
     
     bottomLayout->addStretch();
     
     // Edit button
-    QPushButton* editBtnDialog = new QPushButton("✏️ Modifier", viewDialog);
+    QPushButton* editBtnDialog = new QPushButton(tr("✏️ Modifier"), viewDialog);
     editBtnDialog->setMinimumSize(100, 35);
     editBtnDialog->setCursor(Qt::PointingHandCursor);
     editBtnDialog->setStyleSheet(R"(
@@ -360,7 +360,7 @@ void NotesWindow::onNoteClicked(const QString& noteId) {
     )");
     
     // Close button
-    QPushButton* closeBtn = new QPushButton("Fermer", viewDialog);
+    QPushButton* closeBtn = new QPushButton(tr("Fermer"), viewDialog);
     closeBtn->setMinimumSize(80, 35);
     closeBtn->setCursor(Qt::PointingHandCursor);
     closeBtn->setStyleSheet(R"(
@@ -397,8 +397,8 @@ void NotesWindow::onNoteClicked(const QString& noteId) {
 }
 
 void NotesWindow::onDeleteNote(const QString& noteId) {
-    auto result = QMessageBox::question(this, "Supprimer",
-        "Supprimer cette note ?",
+    auto result = QMessageBox::question(this, tr("Supprimer"),
+        tr("Supprimer cette note ?"),
         QMessageBox::Yes | QMessageBox::No);
     
     if (result == QMessageBox::Yes) {
@@ -409,7 +409,7 @@ void NotesWindow::onDeleteNote(const QString& noteId) {
 
 void NotesWindow::showEditDialog(const QString& noteId) {
     m_editDialog = new QDialog(this);
-    m_editDialog->setWindowTitle(noteId.isEmpty() ? "Nouvelle Note" : "Modifier la Note");
+    m_editDialog->setWindowTitle(noteId.isEmpty() ? tr("Nouvelle Note") : tr("Modifier la Note"));
     m_editDialog->setFixedSize(450, 400);
     m_editDialog->setStyleSheet(R"(
         QDialog {
@@ -443,19 +443,19 @@ void NotesWindow::showEditDialog(const QString& noteId) {
     layout->setContentsMargins(25, 25, 25, 25);
     
     // Title
-    layout->addWidget(new QLabel("Titre:", m_editDialog));
+    layout->addWidget(new QLabel(tr("Titre:"), m_editDialog));
     m_titleEdit = new QLineEdit(m_editDialog);
-    m_titleEdit->setPlaceholderText("Titre de la note...");
+    m_titleEdit->setPlaceholderText(tr("Titre de la note..."));
     layout->addWidget(m_titleEdit);
     
     // Content
-    layout->addWidget(new QLabel("Contenu:", m_editDialog));
+    layout->addWidget(new QLabel(tr("Contenu:"), m_editDialog));
     m_contentEdit = new QTextEdit(m_editDialog);
-    m_contentEdit->setPlaceholderText("Écrivez votre note ici...");
+    m_contentEdit->setPlaceholderText(tr("Écrivez votre note ici..."));
     layout->addWidget(m_contentEdit, 1);
     
     // Color selection
-    layout->addWidget(new QLabel("Couleur:", m_editDialog));
+    layout->addWidget(new QLabel(tr("Couleur:"), m_editDialog));
     QHBoxLayout* colorLayout = new QHBoxLayout();
     colorLayout->setSpacing(10);
     
@@ -507,7 +507,7 @@ void NotesWindow::showEditDialog(const QString& noteId) {
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     
-    QPushButton* cancelBtn = new QPushButton("Annuler", m_editDialog);
+    QPushButton* cancelBtn = new QPushButton(tr("Annuler"), m_editDialog);
     cancelBtn->setMinimumSize(100, 40);
     cancelBtn->setStyleSheet(R"(
         QPushButton {
@@ -523,7 +523,7 @@ void NotesWindow::showEditDialog(const QString& noteId) {
         }
     )");
     
-    QPushButton* saveBtn = new QPushButton("Sauvegarder", m_editDialog);
+    QPushButton* saveBtn = new QPushButton(tr("Sauvegarder"), m_editDialog);
     saveBtn->setMinimumSize(120, 40);
     saveBtn->setStyleSheet(R"(
         QPushButton {
@@ -572,7 +572,7 @@ void NotesWindow::onSaveNote() {
     QString content = m_contentEdit->toPlainText().trimmed();
     
     if (title.isEmpty() && content.isEmpty()) {
-        QMessageBox::warning(this, "Erreur", "La note ne peut pas être vide.");
+        QMessageBox::warning(this, tr("Erreur"), tr("La note ne peut pas être vide."));
         return;
     }
     

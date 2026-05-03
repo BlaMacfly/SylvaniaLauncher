@@ -33,3 +33,4 @@ Thumbs.db
 
 # Dependencies (large folders)
 cpp/build2/_deps/
+build/

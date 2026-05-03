@@ -46,8 +46,6 @@ MainWindow::MainWindow(QWidget* parent)
         setWindowIcon(QIcon(iconPath));
     }
     
-    loadBackground();
-    loadStats();
     setupUi();
     connectSignals();
     checkWowInstalled();
@@ -57,15 +55,166 @@ MainWindow::MainWindow(QWidget* parent)
     m_playTimeTimer = new QTimer(this);
     connect(m_playTimeTimer, &QTimer::timeout, this, &MainWindow::checkWowProcess);
     m_playTimeTimer->start(5000);
+
+    loadStats();
+
+    // Initial theme and language setup
+    QString currentLang = m_config->getLanguage();
+    if (currentLang.isEmpty()) currentLang = "fr";
+    changeLanguage(currentLang, true); // true means initial, so we DON'T check for enUS yet
+    
+    applyTheme(m_config->getBackground());
 }
 
 MainWindow::~MainWindow() = default;
 
-void MainWindow::loadBackground() {
-    QString bgPath = PathUtils::getAssetsDir() + "/Background.jpg";
+void MainWindow::applyTheme(const QString& bgName) {
+    // Load background image (try .jpg first, then .png)
+    QString bgPath = PathUtils::getAssetsDir() + "/Background/" + bgName + ".jpg";
+    if (!QFile::exists(bgPath)) {
+        bgPath = PathUtils::getAssetsDir() + "/Background/" + bgName + ".png";
+    }
+    if (!QFile::exists(bgPath)) {
+        bgPath = PathUtils::getAssetsDir() + "/Background/Taverne.png"; // Fallback
+    }
     if (QFile::exists(bgPath)) {
         m_backgroundImage.load(bgPath);
     }
+    update(); // Trigger repaint
+    
+    // Define theme colors based on bgName
+    QString panelBgColor, panelBorder, textPrimary, textSecondary;
+    QString btnGreen1, btnGreen2, btnGreen3, btnGreenBorder;
+    QString btnGold1, btnGold2, btnGold3, btnGoldBorder;
+    QString btnBlue1, btnBlue2, btnBlue3, btnBlueBorder;
+    QString btnBrown1, btnBrown2, btnBrown3, btnBrownBorder;
+    QString btnPink1, btnPink2, btnPink3, btnPinkBorder;
+    QString btnTeal1, btnTeal2, btnTeal3, btnTealBorder;
+
+    if (bgName == "Alliance") {
+        panelBgColor = "rgba(0, 20, 50, 180)"; panelBorder = "#15479a";
+        textPrimary = "#ffffff"; textSecondary = "#7ec8e3";
+        btnGreen1 = "#1e5ab8"; btnGreen2 = "#15479a"; btnGreen3 = "#0f326a"; btnGreenBorder = "#3a7de4";
+        btnGold1 = "#a67c00"; btnGold2 = "#bf953f"; btnGold3 = "#fcf6ba"; btnGoldBorder = "#d4af37";
+        btnBlue1 = "#2a6dd4"; btnBlue2 = "#1e5ab8"; btnBlue3 = "#15479a"; btnBlueBorder = "#3a7de4";
+        btnBrown1 = "#3a4a5a"; btnBrown2 = "#2a3a4a"; btnBrown3 = "#1a2a3a"; btnBrownBorder = "#5a6a7a";
+        btnPink1 = "#5a3a7a"; btnPink2 = "#4a2a6a"; btnPink3 = "#3a1a5a"; btnPinkBorder = "#7a5a9a";
+        btnTeal1 = "#2a5a7a"; btnTeal2 = "#1a4a6a"; btnTeal3 = "#0a3a5a"; btnTealBorder = "#4a7a9a";
+    } else if (bgName == "Horde") {
+        panelBgColor = "rgba(40, 0, 0, 180)"; panelBorder = "#6a0dad";
+        textPrimary = "#e0e0e0"; textSecondary = "#ff6b6b";
+        btnGreen1 = "#8b0000"; btnGreen2 = "#660000"; btnGreen3 = "#440000"; btnGreenBorder = "#b22222";
+        btnGold1 = "#3a3a3a"; btnGold2 = "#2a2a2a"; btnGold3 = "#1a1a1a"; btnGoldBorder = "#6a6a6a";
+        btnBlue1 = "#a52a2a"; btnBlue2 = "#8b0000"; btnBlue3 = "#660000"; btnBlueBorder = "#d2691e";
+        btnBrown1 = "#4a2d2d"; btnBrown2 = "#3a1d1d"; btnBrown3 = "#2a0d0d"; btnBrownBorder = "#6a4d4d";
+        btnPink1 = "#7a2a2a"; btnPink2 = "#6a1a1a"; btnPink3 = "#5a0a0a"; btnPinkBorder = "#9a4a4a";
+        btnTeal1 = "#5a2a2a"; btnTeal2 = "#4a1a1a"; btnTeal3 = "#3a0a0a"; btnTealBorder = "#7a4a4a";
+    } else if (bgName == "Arbre de Vie") {
+        panelBgColor = "rgba(10, 40, 10, 180)"; panelBorder = "#2e8b57";
+        textPrimary = "#f0fff0"; textSecondary = "#98fb98";
+        btnGreen1 = "#2e8b57"; btnGreen2 = "#228b22"; btnGreen3 = "#006400"; btnGreenBorder = "#3cb371";
+        btnGold1 = "#8b4513"; btnGold2 = "#a0522d"; btnGold3 = "#cd853f"; btnGoldBorder = "#d2b48c";
+        btnBlue1 = "#556b2f"; btnBlue2 = "#6b8e23"; btnBlue3 = "#808000"; btnBlueBorder = "#9acd32";
+        btnBrown1 = "#5a4a2d"; btnBrown2 = "#4a3a1d"; btnBrown3 = "#3a2a0d"; btnBrownBorder = "#7a6a4d";
+        btnPink1 = "#8a5a5a"; btnPink2 = "#7a4a4a"; btnPink3 = "#6a3a3a"; btnPinkBorder = "#aa7a7a";
+        btnTeal1 = "#20b2aa"; btnTeal2 = "#008b8b"; btnTeal3 = "#00688b"; btnTealBorder = "#48d1cc";
+    } else if (bgName == "Ilidan") {
+        panelBgColor = "rgba(20, 0, 30, 180)"; panelBorder = "#32cd32";
+        textPrimary = "#e6e6fa"; textSecondary = "#7fff00";
+        btnGreen1 = "#32cd32"; btnGreen2 = "#228b22"; btnGreen3 = "#006400"; btnGreenBorder = "#7fff00";
+        btnGold1 = "#4b0082"; btnGold2 = "#800080"; btnGold3 = "#9932cc"; btnGoldBorder = "#da70d6";
+        btnBlue1 = "#483d8b"; btnBlue2 = "#4b0082"; btnBlue3 = "#2f4f4f"; btnBlueBorder = "#6a5acd";
+        btnBrown1 = "#3a2d4a"; btnBrown2 = "#2a1d3a"; btnBrown3 = "#1a0d2a"; btnBrownBorder = "#5a4d6a";
+        btnPink1 = "#8b008b"; btnPink2 = "#800080"; btnPink3 = "#4b0082"; btnPinkBorder = "#ba55d3";
+        btnTeal1 = "#00ced1"; btnTeal2 = "#008b8b"; btnTeal3 = "#00688b"; btnTealBorder = "#20b2aa";
+    } else if (bgName == "Lich King") {
+        panelBgColor = "rgba(0, 10, 20, 180)"; panelBorder = "#4682b4";
+        textPrimary = "#f0f8ff"; textSecondary = "#87cefa";
+        btnGreen1 = "#4682b4"; btnGreen2 = "#5f9ea0"; btnGreen3 = "#1e90ff"; btnGreenBorder = "#87ceeb";
+        btnGold1 = "#708090"; btnGold2 = "#778899"; btnGold3 = "#b0c4de"; btnGoldBorder = "#d3d3d3";
+        btnBlue1 = "#000080"; btnBlue2 = "#0000cd"; btnBlue3 = "#4169e1"; btnBlueBorder = "#6495ed";
+        btnBrown1 = "#4a5a6a"; btnBrown2 = "#3a4a5a"; btnBrown3 = "#2a3a4a"; btnBrownBorder = "#6a7a8a";
+        btnPink1 = "#5a5a7a"; btnPink2 = "#4a4a6a"; btnPink3 = "#3a3a5a"; btnPinkBorder = "#7a7a9a";
+        btnTeal1 = "#20b2aa"; btnTeal2 = "#008b8b"; btnTeal3 = "#00688b"; btnTealBorder = "#48d1cc";
+    } else if (bgName == "Ragnaros") {
+        panelBgColor = "rgba(30, 10, 0, 180)"; panelBorder = "#ff4500";
+        textPrimary = "#ffebcd"; textSecondary = "#ff8c00";
+        btnGreen1 = "#ff4500"; btnGreen2 = "#cd5c5c"; btnGreen3 = "#8b0000"; btnGreenBorder = "#ff6347";
+        btnGold1 = "#696969"; btnGold2 = "#808080"; btnGold3 = "#a9a9a9"; btnGoldBorder = "#d3d3d3";
+        btnBlue1 = "#b22222"; btnBlue2 = "#8b0000"; btnBlue3 = "#dc143c"; btnBlueBorder = "#ff0000";
+        btnBrown1 = "#5a2d1d"; btnBrown2 = "#4a1d0d"; btnBrown3 = "#3a0d00"; btnBrownBorder = "#7a4d3d";
+        btnPink1 = "#8a2a2a"; btnPink2 = "#7a1a1a"; btnPink3 = "#6a0a0a"; btnPinkBorder = "#aa4a4a";
+        btnTeal1 = "#5a3a2a"; btnTeal2 = "#4a2a1a"; btnTeal3 = "#3a1a0a"; btnTealBorder = "#7a5a4a";
+    } else if (bgName == "Taverne") {
+        panelBgColor = "rgba(0, 0, 0, 150)"; panelBorder = "#5a4a2d";
+        textPrimary = "#ffffff"; textSecondary = "#7ec8e3";
+        btnGreen1 = "#4a7c3f"; btnGreen2 = "#3a6a2f"; btnGreen3 = "#2a5a1f"; btnGreenBorder = "#5a8c4f";
+        btnGold1 = "#4a3a20"; btnGold2 = "#3a2a15"; btnGold3 = "#2a1a0a"; btnGoldBorder = "#d4af37";
+        btnBlue1 = "#2a6dd4"; btnBlue2 = "#1e5ab8"; btnBlue3 = "#15479a"; btnBlueBorder = "#3a7de4";
+        btnBrown1 = "#5a4a3d"; btnBrown2 = "#4a3a2d"; btnBrown3 = "#3a2a1d"; btnBrownBorder = "#6a5a4d";
+        btnPink1 = "#8a4a5a"; btnPink2 = "#7a3a4a"; btnPink3 = "#6a2a3a"; btnPinkBorder = "#9a5a6a";
+        btnTeal1 = "#7a6a3a"; btnTeal2 = "#5a4a2a"; btnTeal3 = "#3a3a1a"; btnTealBorder = "#d4af37";
+    } else { // Azeroth or Default
+        panelBgColor = "rgba(230, 210, 170, 200)"; panelBorder = "#5a4a2d";
+        textPrimary = "#3a2a1d"; textSecondary = "#5a4a2d";
+        btnGreen1 = "#4a7c3f"; btnGreen2 = "#3a6a2f"; btnGreen3 = "#2a5a1f"; btnGreenBorder = "#5a8c4f";
+        btnGold1 = "#4a3a20"; btnGold2 = "#3a2a15"; btnGold3 = "#2a1a0a"; btnGoldBorder = "#d4af37";
+        btnBlue1 = "#2a6dd4"; btnBlue2 = "#1e5ab8"; btnBlue3 = "#15479a"; btnBlueBorder = "#3a7de4";
+        btnBrown1 = "#5a4a3d"; btnBrown2 = "#4a3a2d"; btnBrown3 = "#3a2a1d"; btnBrownBorder = "#6a5a4d";
+        btnPink1 = "#8a4a5a"; btnPink2 = "#7a3a4a"; btnPink3 = "#6a2a3a"; btnPinkBorder = "#9a5a6a";
+        btnTeal1 = "#7a6a3a"; btnTeal2 = "#5a4a2a"; btnTeal3 = "#3a3a1a"; btnTealBorder = "#d4af37";
+    }
+
+    // Apply to Panels
+    QString panelStyle = QString("QFrame { background-color: %1; border: 2px solid %2; border-radius: 10px; }").arg(panelBgColor, panelBorder);
+    if (m_serverPanel) m_serverPanel->setStyleSheet(panelStyle);
+    if (m_statsPanel) m_statsPanel->setStyleSheet(panelStyle);
+
+    // Labels Update Text Colors
+    if (bgName == "Azeroth") {
+        m_serverNameLabel->setStyleSheet(QString("color: %1; font-size: 13px; font-weight: bold; border: none;").arg(textPrimary));
+        m_realmlistLabel->setStyleSheet(QString("color: %1; font-size: 12px; border: none;").arg(textSecondary));
+        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; font-size: 12px; padding: 5px; }").arg(textPrimary));
+        m_playTimeLabel->setStyleSheet(QString("QLabel { background-color: rgba(255, 255, 255, 100); color: %1; font-size: 13px; padding: 12px; border: 2px solid %2; border-radius: 8px; }").arg(textPrimary, panelBorder));
+        m_launchCountLabel->setStyleSheet(m_playTimeLabel->styleSheet());
+        m_lastSessionLabel->setStyleSheet(m_playTimeLabel->styleSheet());
+    } else {
+        m_serverNameLabel->setStyleSheet(QString("color: %1; font-size: 13px; font-weight: bold; border: none;").arg(textPrimary));
+        m_realmlistLabel->setStyleSheet(QString("color: %1; font-size: 12px; border: none;").arg(textSecondary));
+        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; font-size: 12px; padding: 5px; }").arg(textPrimary));
+        m_playTimeLabel->setStyleSheet(QString("QLabel { background-color: rgba(0, 0, 0, 100); color: %1; font-size: 13px; padding: 12px; border: 2px solid %2; border-radius: 8px; }").arg(textPrimary, panelBorder));
+        m_launchCountLabel->setStyleSheet(m_playTimeLabel->styleSheet());
+        m_lastSessionLabel->setStyleSheet(m_playTimeLabel->styleSheet());
+    }
+
+    // Footer - adapt color to theme
+    if (m_footerLabel) m_footerLabel->setStyleSheet(QString("color: %1; font-size: 11px;").arg(textSecondary));
+
+    // Apply to Buttons
+    auto applyBtnStyle = [](QPushButton* btn, QString c1, QString c2, QString c3, QString border, QString textCol = "#ffffff", int fontSize = 14) {
+        if (!btn) return;
+        btn->setStyleSheet(QString(R"(
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %1, stop:0.5 %2, stop:1 %3);
+                color: %5; border: 2px solid %4; border-radius: 8px; padding: 10px 20px; font-size: %6px; font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %4, stop:0.5 %1, stop:1 %2);
+            }
+            QPushButton:pressed { background-color: %3; }
+        )").arg(c1, c2, c3, border, textCol).arg(fontSize));
+    };
+
+    applyBtnStyle(m_playButton, btnGreen1, btnGreen2, btnGreen3, btnGreenBorder);
+    applyBtnStyle(m_downloadButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, bgName == "Azeroth" ? "#d4af37" : "#d4af37", 12);
+    applyBtnStyle(m_hdButton, btnBlue1, btnBlue2, btnBlue3, btnBlueBorder);
+    
+    applyBtnStyle(m_settingsButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, bgName == "Azeroth" ? "#ffffff" : "#d4af37", 11);
+    applyBtnStyle(m_notesButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, bgName == "Azeroth" ? "#ffffff" : "#d4af37", 11);
+    applyBtnStyle(m_quitButton, btnPink1, btnPink2, btnPink3, btnPinkBorder, "#ffffff", 11);
+    applyBtnStyle(m_addonsButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, "#ffffff", 12);
+    applyBtnStyle(m_changeServerButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, "#ffffff", 12);
+    applyBtnStyle(m_langButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, bgName == "Azeroth" ? "#d4af37" : "#ffffff", 10);
 }
 
 void MainWindow::loadStats() {
@@ -136,7 +285,7 @@ void MainWindow::setupUi() {
     mainLayout->addLayout(panelsLayout, 1);
     
     // Status bar at bottom
-    m_statusLabel = new QLabel("Chargement...", this);
+    m_statusLabel = new QLabel(tr("Chargement..."), this);
     m_statusLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_statusLabel->setStyleSheet(R"(
         QLabel {
@@ -148,15 +297,15 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    QLabel* footerLabel = new QLabel("© 2025 Sylvania Launcher v2.6 - World of Warcraft 3.3.5", this);
-    footerLabel->setAlignment(Qt::AlignCenter);
-    footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
-    mainLayout->addWidget(footerLabel);
+    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5", this);
+    m_footerLabel->setAlignment(Qt::AlignCenter);
+    m_footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
+    mainLayout->addWidget(m_footerLabel);
 }
 
 QWidget* MainWindow::createServerPanel() {
-    QFrame* panel = new QFrame(this);
-    panel->setStyleSheet(R"(
+    m_serverPanel = new QFrame(this);
+    m_serverPanel->setStyleSheet(R"(
         QFrame {
             background-color: rgba(0, 0, 0, 150);
             border: 2px solid #5a4a2d;
@@ -164,18 +313,18 @@ QWidget* MainWindow::createServerPanel() {
         }
     )");
     
-    QVBoxLayout* layout = new QVBoxLayout(panel);
+    QVBoxLayout* layout = new QVBoxLayout(m_serverPanel);
     layout->setContentsMargins(20, 15, 20, 15);
     layout->setSpacing(10);
     
     // Title
-    QLabel* titleLabel = new QLabel("Serveur", this);
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("color: #d4af37; font-size: 18px; font-weight: bold; border: none;");
-    layout->addWidget(titleLabel);
+    m_serverTitleLabel = new QLabel(tr("Serveur"), this);
+    m_serverTitleLabel->setAlignment(Qt::AlignCenter);
+    m_serverTitleLabel->setStyleSheet("color: #d4af37; font-size: 18px; font-weight: bold; border: none;");
+    layout->addWidget(m_serverTitleLabel);
     
     // Server name
-    m_serverNameLabel = new QLabel("Serveur: The Kingdom of Sylvania 3.3.5", this);
+    m_serverNameLabel = new QLabel(tr("Serveur: The Kingdom of Sylvania 3.3.5"), this);
     m_serverNameLabel->setStyleSheet("color: #ffffff; font-size: 13px; font-weight: bold; border: none;");
     layout->addWidget(m_serverNameLabel);
     
@@ -190,9 +339,9 @@ QWidget* MainWindow::createServerPanel() {
     QHBoxLayout* buttonsRow1 = new QHBoxLayout();
     buttonsRow1->setSpacing(10);
     
-    m_playButton = createStyledButton("JOUER", "green");
-    m_downloadButton = createStyledButton("TÉLÉCHARGER", "gold_outline");
-    m_hdButton = createStyledButton("HD", "blue");
+    m_playButton = createStyledButton(tr("JOUER"), "green");
+    m_downloadButton = createStyledButton(tr("TÉLÉCHARGER"), "gold_outline");
+    m_hdButton = createStyledButton(tr("HD"), "blue");
     
     buttonsRow1->addWidget(m_playButton, 2);
     buttonsRow1->addWidget(m_downloadButton, 1);
@@ -203,9 +352,9 @@ QWidget* MainWindow::createServerPanel() {
     QHBoxLayout* buttonsRow2 = new QHBoxLayout();
     buttonsRow2->setSpacing(10);
     
-    m_settingsButton = createStyledButton("RÉGLAGES", "brown");
-    m_notesButton = createStyledButton("NOTES", "brown");
-    m_quitButton = createStyledButton("QUITTER", "pink");
+    m_settingsButton = createStyledButton(tr("RÉGLAGES"), "brown");
+    m_notesButton = createStyledButton(tr("NOTES"), "brown");
+    m_quitButton = createStyledButton(tr("QUITTER"), "pink");
     
     buttonsRow2->addWidget(m_settingsButton);
     buttonsRow2->addWidget(m_notesButton);
@@ -216,18 +365,18 @@ QWidget* MainWindow::createServerPanel() {
     QHBoxLayout* buttonsRow3 = new QHBoxLayout();
     buttonsRow3->setSpacing(10);
     
-    m_addonsButton = createStyledButton("Liste des Addons", "teal");
+    m_addonsButton = createStyledButton(tr("Liste des Addons"), "teal");
     buttonsRow3->addWidget(m_addonsButton);
     layout->addLayout(buttonsRow3);
     
     layout->addStretch();
     
-    return panel;
+    return m_serverPanel;
 }
 
 QWidget* MainWindow::createStatsPanel() {
-    QFrame* panel = new QFrame(this);
-    panel->setStyleSheet(R"(
+    m_statsPanel = new QFrame(this);
+    m_statsPanel->setStyleSheet(R"(
         QFrame {
             background-color: rgba(0, 0, 0, 150);
             border: 2px solid #5a4a2d;
@@ -235,18 +384,18 @@ QWidget* MainWindow::createStatsPanel() {
         }
     )");
     
-    QVBoxLayout* layout = new QVBoxLayout(panel);
+    QVBoxLayout* layout = new QVBoxLayout(m_statsPanel);
     layout->setContentsMargins(20, 15, 20, 15);
     layout->setSpacing(12);
     
     // Title
-    QLabel* titleLabel = new QLabel("Statistiques de Jeu", this);
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("color: #d4af37; font-size: 18px; font-weight: bold; border: none;");
-    layout->addWidget(titleLabel);
+    m_statsTitleLabel = new QLabel(tr("Statistiques de Jeu"), this);
+    m_statsTitleLabel->setAlignment(Qt::AlignCenter);
+    m_statsTitleLabel->setStyleSheet("color: #d4af37; font-size: 18px; font-weight: bold; border: none;");
+    layout->addWidget(m_statsTitleLabel);
     
     // Play time
-    m_playTimeLabel = new QLabel("Temps de jeu: 0h 0min", this);
+    m_playTimeLabel = new QLabel(tr("Temps de jeu: 0h 0min"), this);
     m_playTimeLabel->setAlignment(Qt::AlignCenter);
     m_playTimeLabel->setStyleSheet(R"(
         QLabel {
@@ -321,10 +470,16 @@ QWidget* MainWindow::createStatsPanel() {
     layout->addStretch();
     
     // Change server button
-    m_changeServerButton = createStyledButton("Changer de Serveur", "teal");
+    m_changeServerButton = createStyledButton(tr("Changer de Serveur"), "teal");
     layout->addWidget(m_changeServerButton);
     
-    return panel;
+    // Lang button
+    m_langButton = createStyledButton("FR / EN", "gold_outline");
+    m_langButton->setMinimumHeight(30);
+    m_langButton->setStyleSheet(m_langButton->styleSheet() + " QPushButton { font-size: 10px; padding: 5px 10px; }");
+    layout->addWidget(m_langButton);
+    
+    return m_statsPanel;
 }
 
 QPushButton* MainWindow::createStyledButton(const QString& text, const QString& style) {
@@ -460,6 +615,7 @@ void MainWindow::connectSignals() {
     connect(m_addonsButton, &QPushButton::clicked, this, &MainWindow::onAddonsButtonClicked);
     connect(m_quitButton, &QPushButton::clicked, this, &MainWindow::onQuitButtonClicked);
     connect(m_changeServerButton, &QPushButton::clicked, this, &MainWindow::onServersButtonClicked);
+    connect(m_langButton, &QPushButton::clicked, this, &MainWindow::onLangButtonClicked);
 }
 
 void MainWindow::updateServerInfo() {
@@ -467,8 +623,8 @@ void MainWindow::updateServerInfo() {
     int activeIndex = m_config->getActiveRealmlistIndex();
     
     if (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) {
-        m_serverNameLabel->setText("Serveur: " + entries[activeIndex].name);
-        m_realmlistLabel->setText("Realmlist: " + entries[activeIndex].address.replace("set realmlist ", ""));
+        m_serverNameLabel->setText(tr("Serveur: %1").arg(entries[activeIndex].name));
+        m_realmlistLabel->setText(tr("Realmlist: %1").arg(entries[activeIndex].address.replace("set realmlist ", "")));
     }
 }
 
@@ -476,16 +632,16 @@ void MainWindow::updateStats() {
     // Format play time
     int hours = m_totalPlayTime / 3600;
     int minutes = (m_totalPlayTime % 3600) / 60;
-    m_playTimeLabel->setText(QString("Temps de jeu: %1h %2min").arg(hours).arg(minutes));
+    m_playTimeLabel->setText(tr("Temps de jeu: %1h %2min").arg(hours).arg(minutes));
     
     // Launch count
-    m_launchCountLabel->setText(QString("Lancements: %1").arg(m_launchCount));
+    m_launchCountLabel->setText(tr("Lancements: %1").arg(m_launchCount));
     
     // Last session
     if (m_lastSession.isValid()) {
-        m_lastSessionLabel->setText("Dernière session: " + m_lastSession.toString("dd/MM/yyyy à hh:mm"));
+        m_lastSessionLabel->setText(tr("Dernière session: ") + m_lastSession.toString(tr("dd/MM/yyyy hh:mm")));
     } else {
-        m_lastSessionLabel->setText("Dernière session: --");
+        m_lastSessionLabel->setText(tr("Dernière session: --"));
     }
 }
 
@@ -494,14 +650,14 @@ void MainWindow::checkWowInstalled() {
     
     if (wowPath.isEmpty()) {
         m_playButton->setEnabled(false);
-        m_statusLabel->setText("Client WoW non configuré - Cliquez sur RÉGLAGES ou TÉLÉCHARGER");
+        m_statusLabel->setText(tr("Client WoW non configuré - Cliquez sur RÉGLAGES ou TÉLÉCHARGER"));
         return;
     }
     
     QString exePath = wowPath + "/Wow.exe";
     if (!QFile::exists(exePath)) {
         m_playButton->setEnabled(false);
-        m_statusLabel->setText("Client non trouvé - Cliquez sur TÉLÉCHARGER pour installer WoW ici");
+        m_statusLabel->setText(tr("Client non trouvé - Cliquez sur TÉLÉCHARGER pour installer WoW ici"));
         return;
     }
     
@@ -512,7 +668,7 @@ void MainWindow::checkWowInstalled() {
     QString serverName = (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) 
         ? entries[activeIndex].name : "Sylvania";
     
-    m_statusLabel->setText("World of Warcraft 3.3.5 est installé. Prêt à jouer sur " + serverName + "!");
+    m_statusLabel->setText(tr("World of Warcraft 3.3.5 est installé. Prêt à jouer sur %1!").arg(serverName));
     
     updateStats();
 }
@@ -527,8 +683,8 @@ void MainWindow::playGame() {
     QString exePath = wowPath + "/Wow.exe";
     
     if (!QFile::exists(exePath)) {
-        QMessageBox::warning(this, "Erreur", 
-            "Wow.exe non trouvé!\nVeuillez vérifier le chemin d'installation.");
+        QMessageBox::warning(this, tr("Erreur"), 
+            tr("Wow.exe non trouvé!\nVeuillez vérifier le chemin d'installation."));
         return;
     }
     
@@ -549,9 +705,9 @@ void MainWindow::playGame() {
     bool started = QProcess::startDetached(exePath, {}, wowPath);
     
     if (started) {
-        m_statusLabel->setText("World of Warcraft lancé! Bon jeu!");
+        m_statusLabel->setText(tr("World of Warcraft lancé! Bon jeu!"));
     } else {
-        QMessageBox::warning(this, "Erreur", "Impossible de lancer World of Warcraft.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Impossible de lancer World of Warcraft."));
     }
 }
 
@@ -560,22 +716,22 @@ void MainWindow::onHdButtonClicked() {
     
     QString wowPath = m_config->getWowPath();
     if (wowPath.isEmpty() || !QFile::exists(wowPath + "/Wow.exe")) {
-        QMessageBox::warning(this, "Patch HD", 
-            "Vous devez d'abord télécharger ou configurer l'emplacement du client World of Warcraft "
-            "avant d'installer le Patch HD.");
+        QMessageBox::warning(this, tr("Patch HD"), 
+            tr("Vous devez d'abord télécharger ou configurer l'emplacement du client World of Warcraft "
+               "avant d'installer le Patch HD."));
         return;
     }
 
     if (m_hdPatchManager && m_hdPatchManager->isInstalling()) {
-        QMessageBox::information(this, "Patch HD", "L'installation du Patch HD est déjà en cours.");
+        QMessageBox::information(this, tr("Patch HD"), tr("L'installation du Patch HD est déjà en cours."));
         return;
     }
 
     // Détection si déjà installé
     if (HdPatchManager::isInstalled(wowPath)) {
-        auto result = QMessageBox::question(this, "Patch HD Détecté", 
-            "Le Patch HD semble déjà installé sur votre client.\n\n"
-            "Voulez-vous tout de même le réinstaller ou forcer une mise à jour ?",
+        auto result = QMessageBox::question(this, tr("Patch HD Détecté"), 
+            tr("Le Patch HD semble déjà installé sur votre client.\n\n"
+               "Voulez-vous tout de même le réinstaller ou forcer une mise à jour ?"),
             QMessageBox::Yes | QMessageBox::No);
         
         if (result == QMessageBox::No) {
@@ -599,9 +755,9 @@ void MainWindow::onHdButtonClicked() {
             m_hdStatusLabel->hide();
             
             if (success) {
-                QMessageBox::information(this, "Patch HD", "Patch HD installé avec succès.");
+                QMessageBox::information(this, tr("Patch HD"), tr("Patch HD installé avec succès."));
             } else {
-                QMessageBox::warning(this, "Patch HD", "Erreur lors de l'installation : " + message);
+                QMessageBox::warning(this, tr("Patch HD"), tr("Erreur lors de l'installation : ") + message);
             }
             
             // Re-enable buttons
@@ -616,7 +772,7 @@ void MainWindow::onHdButtonClicked() {
     m_downloadButton->setEnabled(false);
     m_hdButton->setEnabled(false);
     
-    m_hdStatusLabel->setText("Préparation de l'installation...");
+    m_hdStatusLabel->setText(tr("Préparation de l'installation..."));
     m_hdStatusLabel->show();
     m_hdProgressBar->setValue(0);
     m_hdProgressBar->show();
@@ -628,7 +784,7 @@ void MainWindow::onDownloadButtonClicked() {
     m_soundManager->play("button");
     
     QString dir = QFileDialog::getExistingDirectory(this, 
-        "Choisir l'emplacement d'installation",
+        tr("Choisir l'emplacement d'installation"),
         QDir::homePath());
     
     if (dir.isEmpty()) {
@@ -645,7 +801,7 @@ void MainWindow::onDownloadButtonClicked() {
 
 void MainWindow::onDownloadComplete(bool success, const QString& message) {
     if (success) {
-        QMessageBox::information(this, "Téléchargement terminé", message);
+        QMessageBox::information(this, tr("Téléchargement terminé"), message);
         if (m_downloadDialog) {
             QString downloadPath = m_downloadDialog->getDestination();
             QString wowExe = downloadPath + "/Wow.exe";
@@ -655,7 +811,7 @@ void MainWindow::onDownloadComplete(bool success, const QString& message) {
             }
         }
     } else {
-        QMessageBox::warning(this, "Erreur de téléchargement", message);
+        QMessageBox::warning(this, tr("Erreur de téléchargement"), message);
     }
 }
 
@@ -664,6 +820,7 @@ void MainWindow::onSettingsButtonClicked() {
     
     SettingsDialog* dialog = new SettingsDialog(m_config.get(), m_soundManager.get(), this);
     connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::checkWowInstalled);
+    connect(dialog, &SettingsDialog::backgroundChanged, this, &MainWindow::applyTheme);
     dialog->exec();
     dialog->deleteLater();
 }
@@ -761,7 +918,7 @@ void MainWindow::checkWowProcess() {
         // WoW just started
         m_wowRunning = true;
         m_sessionStartTime = QDateTime::currentDateTime();
-        m_statusLabel->setText("World of Warcraft en cours d'exécution...");
+        m_statusLabel->setText(tr("World of Warcraft en cours d'exécution..."));
     }
     else if (!running && m_wowRunning) {
         // WoW just stopped
@@ -774,7 +931,7 @@ void MainWindow::checkWowProcess() {
             updateStats();
             
             int mins = sessionTime / 60;
-            m_statusLabel->setText(QString("Session terminée! Temps joué: %1 min").arg(mins));
+            m_statusLabel->setText(tr("Session terminée! Temps joué: %1 min").arg(mins));
         }
         
         m_sessionStartTime = QDateTime();
@@ -786,7 +943,122 @@ void MainWindow::checkWowProcess() {
             qint64 totalWithSession = m_totalPlayTime + sessionTime;
             int hours = totalWithSession / 3600;
             int mins = (totalWithSession % 3600) / 60;
-            m_playTimeLabel->setText(QString("Temps de jeu: %1h %2min").arg(hours).arg(mins));
+            m_playTimeLabel->setText(tr("Temps de jeu: %1h %2min").arg(hours).arg(mins));
+        }
+    }
+}
+
+void MainWindow::onLangButtonClicked() {
+    m_soundManager->play("button");
+    QString currentLang = m_config->getLanguage();
+    QString newLang = (currentLang == "fr") ? "en" : "fr";
+    changeLanguage(newLang, false); // false means NOT initial, so we DO check for enUS
+}
+
+void MainWindow::changeLanguage(const QString& lang, bool initial) {
+    m_config->setLanguage(lang);
+    m_config->save();
+    
+    // Load Qt translator
+    qApp->removeTranslator(&m_translator);
+    if (lang == "en") {
+        if (m_translator.load("SylvaniaLauncher_en", PathUtils::getAssetsDir() + "/translations")) {
+            qApp->installTranslator(&m_translator);
+        }
+    }
+    
+    if (lang == "en") {
+        m_langButton->setText("Lang: EN");
+    } else {
+        m_langButton->setText("Lang: FR");
+    }
+    
+    retranslateUi();
+    
+    // If EN, check for enUS data and modify Config.wtf
+    if (lang == "en" && !initial) {
+        checkEnUsData();
+    } else if (lang == "fr") {
+        // If switching back to FR, we also update Config.wtf
+        QString wtfPath = m_config->getWowPath() + "/WTF/Config.wtf";
+        if (QFile::exists(wtfPath)) {
+            QFile wtfFile(wtfPath);
+            if (wtfFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
+                QString content = wtfFile.readAll();
+                content.replace("SET locale \"enUS\"", "SET locale \"frFR\"");
+                wtfFile.resize(0);
+                wtfFile.write(content.toUtf8());
+                wtfFile.close();
+            }
+        }
+    }
+}
+
+void MainWindow::retranslateUi() {
+    m_playButton->setText(tr("JOUER"));
+    m_downloadButton->setText(tr("TÉLÉCHARGER"));
+    m_hdButton->setText(tr("HD"));
+    m_settingsButton->setText(tr("RÉGLAGES"));
+    m_notesButton->setText(tr("NOTES"));
+    m_quitButton->setText(tr("QUITTER"));
+    m_addonsButton->setText(tr("Liste des Addons"));
+    m_changeServerButton->setText(tr("Changer de Serveur"));
+    
+    if (m_serverTitleLabel) m_serverTitleLabel->setText(tr("Serveur"));
+    if (m_statsTitleLabel) m_statsTitleLabel->setText(tr("Statistiques de Jeu"));
+    // Note: m_serverNameLabel is updated via updateServerInfo below
+    
+    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5"));
+    
+    checkWowInstalled();
+    updateStats();
+    updateServerInfo();
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QMainWindow::changeEvent(event);
+}
+
+void MainWindow::checkEnUsData() {
+    QString wowPath = m_config->getWowPath();
+    if (wowPath.isEmpty()) return;
+    
+    QString enUsPath = wowPath + "/Data/enUS";
+    if (!QDir(enUsPath).exists()) {
+        auto result = QMessageBox::question(this, tr("Pack Anglais Manquant"),
+            tr("Le pack de langue anglaise (enUS) n'est pas installé dans votre dossier WoW.\n"
+               "Voulez-vous le télécharger maintenant ?"),
+            QMessageBox::Yes | QMessageBox::No);
+            
+        if (result == QMessageBox::Yes) {
+            // Launch download dialog for enUS
+            DownloadDialog* dlDialog = new DownloadDialog(this, enUsPath);
+            // Temporarily change URL for enUS
+            // Since we don't have a direct setter in DownloadDialog yet, we might need to modify it.
+            // Let's assume we can set it, I will modify DownloadDialog to allow custom URL.
+            dlDialog->setDownloadUrl("https://sylvania-servergame.com/enus-download.php");
+            dlDialog->exec();
+            dlDialog->deleteLater();
+        }
+    }
+    
+    // Modifie Config.wtf
+    QString wtfPath = wowPath + "/WTF/Config.wtf";
+    if (QFile::exists(wtfPath)) {
+        QFile wtfFile(wtfPath);
+        if (wtfFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
+            QString content = wtfFile.readAll();
+            if (content.contains("SET locale")) {
+                content.replace("SET locale \"frFR\"", "SET locale \"enUS\"");
+            } else {
+                content += "\nSET locale \"enUS\"\n";
+            }
+            wtfFile.resize(0);
+            wtfFile.write(content.toUtf8());
+            wtfFile.close();
         }
     }
 }

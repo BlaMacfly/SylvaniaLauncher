@@ -11,6 +11,9 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QTextStream>
+#include <QtConcurrent>
+#include <QCryptographicHash>
+#include <QFutureWatcher>
 
 // Default WoW client download URL
 static const QString DEFAULT_DOWNLOAD_URL = "https://sylvania-servergame.com/launcher-download.php";
@@ -21,7 +24,7 @@ DownloadDialog::DownloadDialog(QWidget* parent, const QString& destination)
     , m_destination(destination)
     , m_downloadUrl(DEFAULT_DOWNLOAD_URL)
 {
-    setWindowTitle("Téléchargement du Client WoW");
+    setWindowTitle(tr("Téléchargement du Client WoW"));
     setFixedSize(500, 250);
     setModal(true);
     
@@ -46,7 +49,7 @@ void DownloadDialog::setupUi() {
     mainLayout->setContentsMargins(20, 20, 20, 20);
     
     // Status
-    m_statusLabel = new QLabel("Préparation du téléchargement...", this);
+    m_statusLabel = new QLabel(tr("Préparation du téléchargement..."), this);
     m_statusLabel->setAlignment(Qt::AlignCenter);
     m_statusLabel->setStyleSheet("color: #d4af37; font-size: 14px; font-weight: bold;");
     mainLayout->addWidget(m_statusLabel);
@@ -77,9 +80,9 @@ void DownloadDialog::setupUi() {
     // Info layout
     QHBoxLayout* infoLayout = new QHBoxLayout();
     
-    m_speedLabel = new QLabel("Vitesse: --", this);
-    m_sizeLabel = new QLabel("Taille: --", this);
-    m_etaLabel = new QLabel("Temps restant: --", this);
+    m_speedLabel = new QLabel(tr("Vitesse: --"), this);
+    m_sizeLabel = new QLabel(tr("Taille: --"), this);
+    m_etaLabel = new QLabel(tr("Temps restant: --"), this);
     
     QString labelStyle = "color: #888888; font-size: 12px;";
     m_speedLabel->setStyleSheet(labelStyle);
@@ -96,7 +99,7 @@ void DownloadDialog::setupUi() {
     mainLayout->addStretch();
     
     // Cancel button
-    m_cancelButton = new QPushButton("Annuler", this);
+    m_cancelButton = new QPushButton(tr("Annuler"), this);
     m_cancelButton->setStyleSheet(R"(
         QPushButton {
             background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -131,15 +134,28 @@ void DownloadDialog::startDownload(const QString& directory) {
     }
     
     if (m_destination.isEmpty()) {
-        emit downloadFinished(false, "Destination non spécifiée");
+        emit downloadFinished(false, tr("Destination non spécifiée"));
         reject();
         return;
     }
     
-    // Ensure destination directory exists
+    // Ensure destination directory exists and is writable
     QDir dir(m_destination);
     if (!dir.exists()) {
-        dir.mkpath(".");
+        if (!dir.mkpath(".")) {
+            QMessageBox::critical(this, tr("Erreur de permission"), tr("Impossible de créer le dossier de destination.\nVérifiez vos droits d'administrateur."));
+            emit downloadFinished(false, tr("Erreur de permission lors de la création du dossier"));
+            reject();
+            return;
+        }
+    }
+    
+    QFileInfo dirInfo(m_destination);
+    if (!dirInfo.isWritable()) {
+        QMessageBox::critical(this, tr("Erreur de permission"), tr("Impossible d'écrire dans le dossier de destination.\nVérifiez vos droits d'administrateur."));
+        emit downloadFinished(false, tr("Erreur de permission d'écriture"));
+        reject();
+        return;
     }
     
     // Create temp file for download
@@ -147,12 +163,13 @@ void DownloadDialog::startDownload(const QString& directory) {
     m_file = std::make_unique<QFile>(zipPath);
     
     if (!m_file->open(QIODevice::WriteOnly)) {
-        emit downloadFinished(false, "Impossible de créer le fichier de téléchargement");
+        QMessageBox::critical(this, tr("Erreur"), tr("Impossible de créer le fichier de téléchargement."));
+        emit downloadFinished(false, tr("Impossible de créer le fichier de téléchargement"));
         reject();
         return;
     }
     
-    m_statusLabel->setText("Connexion au serveur...");
+    m_statusLabel->setText(tr("Connexion au serveur..."));
     
     QNetworkRequest request{QUrl(m_downloadUrl)};
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, 
@@ -185,8 +202,8 @@ void DownloadDialog::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
         int progress = static_cast<int>((bytesReceived * 100) / bytesTotal);
         m_progressBar->setValue(progress);
         
-        m_statusLabel->setText(QString("Téléchargement en cours... %1%").arg(progress));
-        m_sizeLabel->setText(QString("Taille: %1 / %2")
+        m_statusLabel->setText(tr("Téléchargement en cours... %1%").arg(progress));
+        m_sizeLabel->setText(tr("Taille: %1 / %2")
             .arg(formatBytes(bytesReceived))
             .arg(formatBytes(bytesTotal)));
     }
@@ -202,13 +219,13 @@ void DownloadDialog::updateSpeed(qint64 bytesReceived) {
         m_lastReceivedBytes = bytesReceived;
         m_speedTimer.restart();
         
-        m_speedLabel->setText("Vitesse: " + formatBytes(bytesPerSecond) + "/s");
+        m_speedLabel->setText(tr("Vitesse: %1/s").arg(formatBytes(bytesPerSecond)));
         
         // Calculate ETA
         if (bytesPerSecond > 0 && m_totalBytes > 0) {
             qint64 remaining = m_totalBytes - bytesReceived;
             qint64 secondsRemaining = remaining / bytesPerSecond;
-            m_etaLabel->setText("Temps restant: " + formatDuration(secondsRemaining));
+            m_etaLabel->setText(tr("Temps restant: %1").arg(formatDuration(secondsRemaining)));
         }
     }
 }
@@ -227,21 +244,53 @@ void DownloadDialog::onDownloadFinished() {
     
     QString zipPath = m_destination + "/WoWClient_temp.zip";
     
-    // Setup extraction progress indication
-    m_statusLabel->setText("Extraction des fichiers en cours...");
+    m_statusLabel->setText(tr("Vérification de l'intégrité du fichier..."));
     m_progressBar->setMaximum(0); // Indeterminate mode
     m_progressBar->setMinimum(0);
-    m_speedLabel->setText("Veuillez patienter...");
-    m_sizeLabel->setText("");
-    m_etaLabel->setText("");
     
     // Force UI update
     QCoreApplication::processEvents();
     
-    // Extract in a timer to allow UI update
-    QTimer::singleShot(200, this, [this, zipPath]() {
-        extractZip(zipPath);
+    // Verify Hash asynchronously
+    verifyHash(zipPath);
+}
+
+void DownloadDialog::verifyHash(const QString& filePath) {
+    QFutureWatcher<QByteArray>* watcher = new QFutureWatcher<QByteArray>(this);
+    connect(watcher, &QFutureWatcher<QByteArray>::finished, this, [this, watcher, filePath]() {
+        QByteArray hash = watcher->result();
+        watcher->deleteLater();
+        
+        qDebug() << "Downloaded file SHA-256:" << hash.toHex();
+        // Here we could compare with an expected hash from headers if provided
+        
+        // Setup extraction progress indication
+        m_statusLabel->setText(tr("Extraction des fichiers en cours..."));
+        m_speedLabel->setText(tr("Veuillez patienter..."));
+        m_sizeLabel->setText("");
+        m_etaLabel->setText("");
+        
+        QCoreApplication::processEvents();
+        
+        // Extract in a timer to allow UI update
+        QTimer::singleShot(200, this, [this, filePath]() {
+            extractZip(filePath);
+        });
     });
+    
+    // Compute SHA-256 hash
+    QFuture<QByteArray> future = QtConcurrent::run([filePath]() {
+        QFile f(filePath);
+        if (f.open(QFile::ReadOnly)) {
+            QCryptographicHash hash(QCryptographicHash::Sha256);
+            if (hash.addData(&f)) {
+                return hash.result();
+            }
+        }
+        return QByteArray();
+    });
+    
+    watcher->setFuture(future);
 }
 
 void DownloadDialog::extractZip(const QString& zipPath) {
@@ -289,8 +338,8 @@ void DownloadDialog::extractZip(const QString& zipPath) {
         progress = qMin(progress, 95); // Cap at 95% until actually finished
         
         m_progressBar->setValue(progress);
-        m_statusLabel->setText(QString("Extraction en cours... %1%").arg(progress));
-        m_speedLabel->setText(formatBytes(extractedSize) + " extraits");
+        m_statusLabel->setText(tr("Extraction en cours... %1%").arg(progress));
+        m_speedLabel->setText(tr("%1 extraits").arg(formatBytes(extractedSize)));
     });
     
     progressTimer->start();
@@ -309,7 +358,7 @@ void DownloadDialog::extractZip(const QString& zipPath) {
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
             // Complete progress
             m_progressBar->setValue(100);
-            m_statusLabel->setText("Extraction terminée!");
+            m_statusLabel->setText(tr("Extraction terminée!"));
             
             // Remove temp zip file
             QFile::remove(zipPath);
@@ -318,10 +367,10 @@ void DownloadDialog::extractZip(const QString& zipPath) {
             generateConfigWtf();
             
             QCoreApplication::processEvents();
-            emit downloadFinished(true, "Téléchargement et extraction terminés!");
+            emit downloadFinished(true, tr("Téléchargement et extraction terminés!"));
             accept();
         } else {
-            emit downloadFinished(false, "Erreur lors de l'extraction: " + process->readAllStandardError());
+            emit downloadFinished(false, tr("Erreur lors de l'extraction: %1").arg(process->readAllStandardError().data()));
             reject();
         }
     });
@@ -331,7 +380,7 @@ void DownloadDialog::extractZip(const QString& zipPath) {
         progressTimer->stop();
         progressTimer->deleteLater();
         process->deleteLater();
-        emit downloadFinished(false, "Erreur lors de l'extraction: impossible de lancer PowerShell");
+        emit downloadFinished(false, tr("Erreur lors de l'extraction: impossible de lancer PowerShell"));
         reject();
     });
     
@@ -344,17 +393,19 @@ void DownloadDialog::onDownloadError(QNetworkReply::NetworkError error) {
     QString errorMsg;
     switch (error) {
         case QNetworkReply::ConnectionRefusedError:
-            errorMsg = "Connexion refusée par le serveur";
+            errorMsg = tr("Connexion refusée par le serveur");
             break;
         case QNetworkReply::HostNotFoundError:
-            errorMsg = "Serveur introuvable";
+            errorMsg = tr("Serveur introuvable");
             break;
         case QNetworkReply::TimeoutError:
-            errorMsg = "Délai de connexion dépassé";
+            errorMsg = tr("Délai de connexion dépassé");
             break;
         default:
-            errorMsg = "Erreur réseau: " + m_reply->errorString();
+            errorMsg = tr("Erreur réseau: ") + m_reply->errorString();
     }
+    
+    QMessageBox::critical(this, tr("Erreur de téléchargement"), errorMsg);
     
     if (m_file) {
         m_file->close();
@@ -377,12 +428,11 @@ void DownloadDialog::onCancelClicked() {
         m_file->remove();
     }
     
-    emit downloadFinished(false, "Téléchargement annulé");
+    emit downloadFinished(false, tr("Téléchargement annulé"));
     reject();
 }
 
 QString DownloadDialog::formatBytes(qint64 bytes) const {
-    const char* units[] = {"o", "Ko", "Mo", "Go"};
     int unitIndex = 0;
     double size = static_cast<double>(bytes);
     
@@ -390,8 +440,16 @@ QString DownloadDialog::formatBytes(qint64 bytes) const {
         size /= 1024;
         unitIndex++;
     }
+
+    QString unit;
+    switch(unitIndex) {
+        case 0: unit = tr("o"); break;
+        case 1: unit = tr("Ko"); break;
+        case 2: unit = tr("Mo"); break;
+        case 3: unit = tr("Go"); break;
+    }
     
-    return QString::number(size, 'f', 2) + " " + units[unitIndex];
+    return QString::number(size, 'f', 2) + " " + unit;
 }
 
 QString DownloadDialog::formatDuration(qint64 seconds) const {

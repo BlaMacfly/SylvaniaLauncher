@@ -48,6 +48,9 @@ public:
     QString getLanguage() const;
     void setLanguage(const QString& lang);
 
+    QString getBackground() const;
+    void setBackground(const QString& bgName);
+
     // Realmlist management
     std::vector<RealmlistEntry> getRealmlistEntries() const;
     void setRealmlistEntries(const std::vector<RealmlistEntry>& entries);

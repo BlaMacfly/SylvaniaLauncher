@@ -8,6 +8,7 @@
 #include <QFrame>
 #include <QDateTime>
 #include <QTimer>
+#include <QTranslator>
 #include <memory>
 
 class ConfigManager;
@@ -40,6 +41,7 @@ public:
 protected:
     void paintEvent(QPaintEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
 private slots:
     void onPlayButtonClicked();
@@ -50,6 +52,7 @@ private slots:
     void onServersButtonClicked();
     void onAddonsButtonClicked();
     void onQuitButtonClicked();
+    void onLangButtonClicked();
     
     void onDownloadComplete(bool success, const QString& message);
     void updateServerInfo();
@@ -59,13 +62,16 @@ private slots:
 private:
     void setupUi();
     void connectSignals();
-    void loadBackground();
+    void applyTheme(const QString& bgName);
     void checkWowInstalled();
     void playGame();
     void browseWowDirectory();
     void loadStats();
     void saveStats();
     bool isWowRunning();
+    void changeLanguage(const QString& lang, bool initial = false);
+    void retranslateUi();
+    void checkEnUsData();
     
     QWidget* createServerPanel();
     QWidget* createStatsPanel();
@@ -99,6 +105,14 @@ private:
     QPushButton* m_addonsButton = nullptr;
     QPushButton* m_quitButton = nullptr;
     QPushButton* m_changeServerButton = nullptr;
+    QPushButton* m_langButton = nullptr;
+
+    // Panels
+    QFrame* m_serverPanel = nullptr;
+    QFrame* m_statsPanel = nullptr;
+    QLabel* m_serverTitleLabel = nullptr;
+    QLabel* m_statsTitleLabel = nullptr;
+    QLabel* m_footerLabel = nullptr;
 
     // Child windows
     NotesWindow* m_notesWindow = nullptr;
@@ -120,5 +134,7 @@ private:
     QTimer* m_playTimeTimer = nullptr;
     QDateTime m_sessionStartTime;
     bool m_wowRunning = false;
+    
+    QTranslator m_translator;
 };
 

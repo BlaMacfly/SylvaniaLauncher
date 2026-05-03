@@ -83,22 +83,7 @@ inline QString getAssetsDir() {
  * @return Path to the Sounds directory
  */
 inline QString getSoundsDir() {
-    QString exeDir = QCoreApplication::applicationDirPath();
-    
-    QStringList possiblePaths = {
-        exeDir + "/Sounds",
-        exeDir + "/../Sounds",
-        exeDir + "/Asset/Sounds",
-        QDir::currentPath() + "/Sounds"
-    };
-    
-    for (const QString& path : possiblePaths) {
-        if (QDir(path).exists()) {
-            return QDir(path).absolutePath();
-        }
-    }
-    
-    return exeDir + "/Sounds";
+    return getAssetsDir() + "/Sounds";
 }
 
 } // namespace PathUtils

@@ -6,13 +6,14 @@
 #include <QGroupBox>
 #include <QMessageBox>
 #include <QFrame>
+#include <QScrollArea>
 
 RealmlistWindow::RealmlistWindow(ConfigManager* config, QWidget* parent)
     : QDialog(parent)
     , m_config(config)
     , m_buttonGroup(new QButtonGroup(this))
 {
-    setWindowTitle("🌐 Gestion des Serveurs - Sylvania Launcher");
+    setWindowTitle(tr("🌐 Gestion des Serveurs - Sylvania Launcher"));
     setMinimumSize(500, 400);
     resize(600, 500);
     
@@ -27,7 +28,7 @@ void RealmlistWindow::setupUi() {
     mainLayout->setContentsMargins(20, 20, 20, 20);
     
     // Current server label
-    m_currentServerLabel = new QLabel("Serveur actuel: Chargement...", this);
+    m_currentServerLabel = new QLabel(tr("Serveur actuel: Chargement..."), this);
     m_currentServerLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(m_currentServerLabel);
     
@@ -47,10 +48,10 @@ void RealmlistWindow::setupUi() {
     // Buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     
-    m_addButton = new QPushButton("➕ Ajouter", this);
-    m_editButton = new QPushButton("✏️ Modifier", this);
-    m_deleteButton = new QPushButton("🗑️ Supprimer", this);
-    m_applyButton = new QPushButton("✅ Appliquer", this);
+    m_addButton = new QPushButton(tr("➕ Ajouter"), this);
+    m_editButton = new QPushButton(tr("✏️ Modifier"), this);
+    m_deleteButton = new QPushButton(tr("🗑️ Supprimer"), this);
+    m_applyButton = new QPushButton(tr("✅ Appliquer"), this);
     
     buttonLayout->addWidget(m_addButton);
     buttonLayout->addWidget(m_editButton);
@@ -176,7 +177,7 @@ QWidget* RealmlistWindow::createServerWidget(const RealmlistEntry& entry, int in
     layout->addLayout(infoLayout, 1);
     
     if (isActive) {
-        QLabel* activeLabel = new QLabel("✓ Actif", this);
+        QLabel* activeLabel = new QLabel(tr("✓ Actif"), this);
         activeLabel->setStyleSheet("color: #4CAF50; font-weight: bold;");
         layout->addWidget(activeLabel);
     }
@@ -189,9 +190,9 @@ void RealmlistWindow::updateCurrentServerLabel() {
     int activeIndex = m_config->getActiveRealmlistIndex();
     
     if (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) {
-        m_currentServerLabel->setText("Serveur actuel: " + entries[activeIndex].name);
+        m_currentServerLabel->setText(tr("Serveur actuel: %1").arg(entries[activeIndex].name));
     } else {
-        m_currentServerLabel->setText("Aucun serveur configuré");
+        m_currentServerLabel->setText(tr("Aucun serveur configuré"));
     }
 }
 
@@ -217,7 +218,7 @@ void RealmlistWindow::onAddServer() {
 
 void RealmlistWindow::onEditServer() {
     if (m_selectedIndex < 0) {
-        QMessageBox::warning(this, "Erreur", "Veuillez sélectionner un serveur à modifier.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Veuillez sélectionner un serveur à modifier."));
         return;
     }
     
@@ -237,18 +238,18 @@ void RealmlistWindow::onEditServer() {
 
 void RealmlistWindow::onDeleteServer() {
     if (m_selectedIndex < 0) {
-        QMessageBox::warning(this, "Erreur", "Veuillez sélectionner un serveur à supprimer.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Veuillez sélectionner un serveur à supprimer."));
         return;
     }
     
     auto entries = m_config->getRealmlistEntries();
     if (entries.size() <= 1) {
-        QMessageBox::warning(this, "Erreur", "Vous devez garder au moins un serveur.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Vous devez garder au moins un serveur."));
         return;
     }
     
-    auto result = QMessageBox::question(this, "Confirmer",
-        "Êtes-vous sûr de vouloir supprimer ce serveur?",
+    auto result = QMessageBox::question(this, tr("Confirmer"),
+        tr("Êtes-vous sûr de vouloir supprimer ce serveur?"),
         QMessageBox::Yes | QMessageBox::No);
     
     if (result != QMessageBox::Yes) return;
@@ -271,7 +272,7 @@ void RealmlistWindow::onApplyChanges() {
         m_config->switchRealmlist(m_selectedIndex);
         emit realmlistChanged();
         loadRealmlistEntries();
-        QMessageBox::information(this, "Succès", "Serveur modifié avec succès!");
+        QMessageBox::information(this, tr("Succès"), tr("Serveur modifié avec succès!"));
     }
     close();
 }
@@ -280,7 +281,7 @@ void RealmlistWindow::onApplyChanges() {
 ServerEditDialog::ServerEditDialog(QWidget* parent, const QString& name, const QString& address)
     : QDialog(parent)
 {
-    setWindowTitle("Configuration du Serveur");
+    setWindowTitle(tr("Configuration du Serveur"));
     setModal(true);
     setFixedSize(450, 240);
     
@@ -329,15 +330,15 @@ void ServerEditDialog::setupUi(const QString& name, const QString& address) {
     layout->setContentsMargins(25, 20, 25, 20);
     
     // Name
-    layout->addWidget(new QLabel("Nom du serveur:", this));
+    layout->addWidget(new QLabel(tr("Nom du serveur:"), this));
     m_nameEdit = new QLineEdit(name, this);
-    m_nameEdit->setPlaceholderText("Ex: Sylvania");
+    m_nameEdit->setPlaceholderText(tr("Ex: Sylvania"));
     layout->addWidget(m_nameEdit);
     
     // Address
-    layout->addWidget(new QLabel("Adresse (realmlist):", this));
+    layout->addWidget(new QLabel(tr("Adresse (realmlist):"), this));
     m_addressEdit = new QLineEdit(address, this);
-    m_addressEdit->setPlaceholderText("Ex: set realmlist sylvania-servergame.com");
+    m_addressEdit->setPlaceholderText(tr("Ex: set realmlist sylvania-servergame.com"));
     layout->addWidget(m_addressEdit);
     
     layout->addStretch();
@@ -345,8 +346,8 @@ void ServerEditDialog::setupUi(const QString& name, const QString& address) {
     // Buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(15);
-    QPushButton* cancelButton = new QPushButton("Annuler", this);
-    QPushButton* okButton = new QPushButton("OK", this);
+    QPushButton* cancelButton = new QPushButton(tr("Annuler"), this);
+    QPushButton* okButton = new QPushButton(tr("OK"), this);
     
     buttonLayout->addStretch();
     buttonLayout->addWidget(okButton);
@@ -367,7 +368,7 @@ QString ServerEditDialog::getAddress() const {
 
 void ServerEditDialog::validate() {
     if (getName().isEmpty() || getAddress().isEmpty()) {
-        QMessageBox::warning(this, "Erreur", "Tous les champs sont requis.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Tous les champs sont requis."));
         return;
     }
     accept();

@@ -3,6 +3,7 @@
 #include "SoundManager.h"
 #include "PathUtils.h"
 #include "HdPatchManager.h"
+#include "DownloadDialog.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -13,37 +14,50 @@
 #include <QFile>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QEvent>
+
+class WheelEventFilter : public QObject {
+public:
+    explicit WheelEventFilter(QObject* parent = nullptr) : QObject(parent) {}
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override {
+        if (event->type() == QEvent::Wheel) {
+            return true; // Ignore wheel event
+        }
+        return QObject::eventFilter(obj, event);
+    }
+};
 
 SettingsDialog::SettingsDialog(ConfigManager* config, SoundManager* soundManager, QWidget* parent)
     : QDialog(parent)
     , m_config(config)
     , m_soundManager(soundManager)
 {
-    setWindowTitle("Réglages");
+    setWindowTitle(tr("Réglages"));
     setModal(true);
     setFixedSize(600, 750); // Increased height for patch list
 
     // Initialize patch mapping
     m_patches = {
-        {"Nouveaux arbres", "patch-w.mpq", ""},
-        {"Nouvelles Icônes", "patch-8.mpq", ""},
-        {"Nouvelle eau", "patch-5.mpq", ""},
-        {"Textures du ciel", "patch-5.mpq", ""},
-        {"Nouveaux sorts", "patch-5.mpq", ""},
-        {"Cartes des donjons", "patch-k.mpq", ""},
-        {"Nouvelle musique", "patch-c.mpq", ""},
-        {"Écrans de chargement", "patch-frFR-q.mpq", "frFR"},
-        {"Polices", "patch-frFR-f.mpq", "frFR"},
-        {"DXVK 'API Vulkan'", "d3d9.dll", "", true}, // isRoot = true
-        {"Personnages HD", "patch-f.mpq", ""},
-        {"Mort-vivant sans os", "patch-frFR-9.mpq", "frFR"},
-        {"Modèles HD et PNJ", "patch-x.mpq", ""},
-        {"Textures du monde HD", "patch-6.mpq", ""},
-        {"Armures HD", "patch-a.mpq", ""},
-        {"Armes HD", "patch-a.mpq", ""},
-        {"Fenêtres d'Interface", "patch-frFR-q.mpq", "frFR"},
-        {"Curseur et Interface", "patch-frFR-q.mpq", "frFR"},
-        {"Sang", "patch-s.mpq", ""}
+        {tr("Nouveaux arbres"), "patch-w.mpq", ""},
+        {tr("Nouvelles Icônes"), "patch-8.mpq", ""},
+        {tr("Nouvelle eau"), "patch-5.mpq", ""},
+        {tr("Textures du ciel"), "patch-5.mpq", ""},
+        {tr("Nouveaux sorts"), "patch-5.mpq", ""},
+        {tr("Cartes des donjons"), "patch-k.mpq", ""},
+        {tr("Nouvelle musique"), "patch-c.mpq", ""},
+        {tr("Écrans de chargement"), "patch-frFR-q.mpq", "frFR"},
+        {tr("Polices"), "patch-frFR-f.mpq", "frFR"},
+        {tr("DXVK 'API Vulkan'"), "d3d9.dll", "", true}, // isRoot = true
+        {tr("Personnages HD"), "patch-f.mpq", ""},
+        {tr("Mort-vivant sans os"), "patch-frFR-9.mpq", "frFR"},
+        {tr("Modèles HD et PNJ"), "patch-x.mpq", ""},
+        {tr("Textures du monde HD"), "patch-6.mpq", ""},
+        {tr("Armures HD"), "patch-a.mpq", ""},
+        {tr("Armes HD"), "patch-a.mpq", ""},
+        {tr("Fenêtres d'Interface"), "patch-frFR-q.mpq", "frFR"},
+        {tr("Curseur et Interface"), "patch-frFR-q.mpq", "frFR"},
+        {tr("Sang"), "patch-s.mpq", ""}
     };
     
     setupUi();
@@ -56,7 +70,7 @@ void SettingsDialog::setupUi() {
     mainLayout->setContentsMargins(20, 20, 20, 20);
     
     // Installation de WoW section
-    QLabel* installTitle = new QLabel("Installation de WoW", this);
+    QLabel* installTitle = new QLabel(tr("Installation de WoW"), this);
     installTitle->setAlignment(Qt::AlignCenter);
     installTitle->setStyleSheet("color: #d4af37; font-size: 14px; font-weight: bold;");
     mainLayout->addWidget(installTitle);
@@ -65,7 +79,7 @@ void SettingsDialog::setupUi() {
     QHBoxLayout* pathLayout = new QHBoxLayout();
     pathLayout->setSpacing(10);
     
-    QLabel* pathLabel = new QLabel("Dossier d'installation:", this);
+    QLabel* pathLabel = new QLabel(tr("Dossier d'installation:"), this);
     pathLabel->setStyleSheet("color: #ffffff; font-size: 12px;");
     pathLabel->setMinimumWidth(130);
     
@@ -82,7 +96,7 @@ void SettingsDialog::setupUi() {
         }
     )");
     
-    m_browseButton = new QPushButton("Parcourir", this);
+    m_browseButton = new QPushButton(tr("Parcourir"), this);
     m_browseButton->setStyleSheet(R"(
         QPushButton {
             background-color: #3a3a3a;
@@ -102,7 +116,7 @@ void SettingsDialog::setupUi() {
     mainLayout->addLayout(pathLayout);
     
     // Clear cache button
-    m_clearCacheButton = new QPushButton("Vider le cache", this);
+    m_clearCacheButton = new QPushButton(tr("Vider le cache"), this);
     m_clearCacheButton->setStyleSheet(R"(
         QPushButton {
             background-color: #3a3a3a;
@@ -118,12 +132,12 @@ void SettingsDialog::setupUi() {
     mainLayout->addWidget(m_clearCacheButton);
     
     // AddOns section
-    QLabel* addonsTitle = new QLabel("AddOns", this);
+    QLabel* addonsTitle = new QLabel(tr("AddOns"), this);
     addonsTitle->setAlignment(Qt::AlignCenter);
     addonsTitle->setStyleSheet("color: #d4af37; font-size: 14px; font-weight: bold;");
     mainLayout->addWidget(addonsTitle);
     
-    m_openAddonsButton = new QPushButton("Ouvrir le dossier AddOns", this);
+    m_openAddonsButton = new QPushButton(tr("Ouvrir le dossier AddOns"), this);
     m_openAddonsButton->setMinimumHeight(40);
     m_openAddonsButton->setStyleSheet(R"(
         QPushButton {
@@ -143,13 +157,72 @@ void SettingsDialog::setupUi() {
     )");
     mainLayout->addWidget(m_openAddonsButton);
     
+    // Download enUS section
+    m_downloadEnUsButton = new QPushButton(tr("Télécharger le Pack Anglais (enUS)"), this);
+    m_downloadEnUsButton->setMinimumHeight(40);
+    m_downloadEnUsButton->setStyleSheet(R"(
+        QPushButton {
+            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #2a3a4a, stop:0.5 #1e2a3a, stop:1 #151a2a);
+            color: #7ec8e3;
+            border: 1px solid #3a4a5a;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        QPushButton:hover {
+            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #3a4a5a, stop:0.5 #2a3a4a, stop:1 #1e2a3a);
+        }
+    )");
+    mainLayout->addWidget(m_downloadEnUsButton);
+    
+    // Appearance section
+    QLabel* appearanceTitle = new QLabel(tr("Apparence"), this);
+    appearanceTitle->setAlignment(Qt::AlignCenter);
+    appearanceTitle->setStyleSheet("color: #d4af37; font-size: 14px; font-weight: bold; margin-top: 10px;");
+    mainLayout->addWidget(appearanceTitle);
+    
+    QHBoxLayout* appearanceLayout = new QHBoxLayout();
+    QLabel* bgLabel = new QLabel(tr("Arrière-plan:"), this);
+    bgLabel->setStyleSheet("color: #ffffff; font-size: 12px;");
+    
+    m_backgroundCombo = new QComboBox(this);
+    m_backgroundCombo->addItem("Alliance", "Alliance");
+    m_backgroundCombo->addItem(tr("Arbre de Vie"), "Arbre de Vie");
+    m_backgroundCombo->addItem("Azeroth", "Azeroth");
+    m_backgroundCombo->addItem("Horde", "Horde");
+    m_backgroundCombo->addItem("Ilidan", "Ilidan");
+    m_backgroundCombo->addItem("Lich King", "Lich King");
+    m_backgroundCombo->addItem("Ragnaros", "Ragnaros");
+    m_backgroundCombo->addItem(tr("Taverne"), "Taverne");
+    m_backgroundCombo->setStyleSheet(R"(
+        QComboBox {
+            background-color: #2a2a2a;
+            color: #ffffff;
+            border: 1px solid #5a4a2d;
+            border-radius: 4px;
+            padding: 5px;
+            min-width: 150px;
+        }
+        QComboBox::drop-down { border: none; }
+    )");
+    m_backgroundCombo->installEventFilter(new WheelEventFilter(m_backgroundCombo));
+    
+    appearanceLayout->addWidget(bgLabel);
+    appearanceLayout->addWidget(m_backgroundCombo);
+    appearanceLayout->addStretch();
+    mainLayout->addLayout(appearanceLayout);
+    
     // Audio section
-    QLabel* audioTitle = new QLabel("Audio", this);
+    QLabel* audioTitle = new QLabel(tr("Audio"), this);
     audioTitle->setAlignment(Qt::AlignCenter);
     audioTitle->setStyleSheet("color: #d4af37; font-size: 14px; font-weight: bold;");
     mainLayout->addWidget(audioTitle);
     
-    m_soundCheckbox = new QCheckBox("Activer les sons du launcher", this);
+    m_soundCheckbox = new QCheckBox(tr("Activer les sons du launcher"), this);
     m_soundCheckbox->setStyleSheet(R"(
         QCheckBox {
             color: #ffffff;
@@ -172,8 +245,8 @@ void SettingsDialog::setupUi() {
     )");
     mainLayout->addWidget(m_soundCheckbox);
     
-    // Patch Management Section (Visible only if HD patch is detected)
-    if (isHdPatchInstalled()) {
+    // Patch Management Section (Visible if WoW path is set)
+    if (!m_config->getWowPath().isEmpty()) {
         setupPatchUI(mainLayout);
     }
     
@@ -183,7 +256,7 @@ void SettingsDialog::setupUi() {
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     
-    m_okButton = new QPushButton("OK", this);
+    m_okButton = new QPushButton(tr("OK"), this);
     m_okButton->setMinimumSize(100, 40);
     m_okButton->setStyleSheet(R"(
         QPushButton {
@@ -202,7 +275,7 @@ void SettingsDialog::setupUi() {
         }
     )");
     
-    m_cancelButton = new QPushButton("Annuler", this);
+    m_cancelButton = new QPushButton(tr("Annuler"), this);
     m_cancelButton->setMinimumSize(100, 40);
     m_cancelButton->setStyleSheet(R"(
         QPushButton {
@@ -226,10 +299,14 @@ void SettingsDialog::setupUi() {
     connect(m_browseButton, &QPushButton::clicked, this, &SettingsDialog::onBrowseClicked);
     connect(m_clearCacheButton, &QPushButton::clicked, this, &SettingsDialog::onClearCacheClicked);
     connect(m_openAddonsButton, &QPushButton::clicked, this, &SettingsDialog::onOpenAddonsClicked);
+    connect(m_downloadEnUsButton, &QPushButton::clicked, this, &SettingsDialog::onDownloadEnUsClicked);
     connect(m_okButton, &QPushButton::clicked, this, &SettingsDialog::onOkClicked);
     connect(m_cancelButton, &QPushButton::clicked, this, &SettingsDialog::onCancelClicked);
     connect(m_soundCheckbox, &QCheckBox::clicked, this, [this]() {
         m_soundManager->play("button");
+    });
+    connect(m_backgroundCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        onBackgroundChanged(m_backgroundCombo->itemData(index).toString());
     });
     
     // Dialog style
@@ -237,7 +314,7 @@ void SettingsDialog::setupUi() {
 }
 
 void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
-    QLabel* patchesTitle = new QLabel("Gestion des Patchs HD", this);
+    QLabel* patchesTitle = new QLabel(tr("Gestion des Patchs HD"), this);
     patchesTitle->setAlignment(Qt::AlignCenter);
     patchesTitle->setStyleSheet("color: #d4af37; font-size: 14px; font-weight: bold; margin-top: 10px;");
     mainLayout->addWidget(patchesTitle);
@@ -260,8 +337,8 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
         label->setStyleSheet("color: #d4af37; font-size: 11px; font-weight: bold;");
         
         QComboBox* combo = new QComboBox(this);
-        combo->addItem("Inclus", true);
-        combo->addItem("Eteindre", false);
+        combo->addItem(tr("Inclus"), true);
+        combo->addItem(tr("Eteindre"), false);
         combo->setStyleSheet(R"(
             QComboBox {
                 background-color: #2a2a2a;
@@ -273,6 +350,8 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
             }
             QComboBox::drop-down { border: none; }
         )");
+        
+        combo->installEventFilter(new WheelEventFilter(combo));
         
         itemLayout->addWidget(label);
         itemLayout->addWidget(combo);
@@ -298,6 +377,11 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
 void SettingsDialog::loadSettings() {
     m_pathEdit->setText(m_config->getWowPath());
     m_soundCheckbox->setChecked(!m_soundManager->isMuted());
+    
+    int bgIndex = m_backgroundCombo->findData(m_config->getBackground());
+    if (bgIndex != -1) {
+        m_backgroundCombo->setCurrentIndex(bgIndex);
+    }
 
     // Load patch states
     for (const auto& patch : m_patches) {
@@ -311,6 +395,7 @@ void SettingsDialog::loadSettings() {
 void SettingsDialog::saveSettings() {
     m_config->setWowPath(m_pathEdit->text());
     m_soundManager->setMuted(!m_soundCheckbox->isChecked());
+    m_config->setBackground(m_backgroundCombo->currentData().toString());
     
     // Save patch states: Group by file name and subDir to handle shared files
     // Logic: If ANY UI option for a file is enabled, the file is enabled.
@@ -399,7 +484,7 @@ void SettingsDialog::togglePatch(const QString& fileName, bool enabled, const QS
 void SettingsDialog::onBrowseClicked() {
     m_soundManager->play("button");
     QString dir = QFileDialog::getExistingDirectory(this,
-        "Sélectionner le dossier World of Warcraft",
+        tr("Sélectionner le dossier World of Warcraft"),
         m_pathEdit->text().isEmpty() ? QDir::homePath() : m_pathEdit->text());
     
     if (dir.isEmpty()) {
@@ -408,9 +493,9 @@ void SettingsDialog::onBrowseClicked() {
     
     QString wowExe = dir + "/Wow.exe";
     if (!QFile::exists(wowExe)) {
-        auto result = QMessageBox::question(this, "Confirmation",
-            "Wow.exe n'a pas été trouvé dans ce dossier.\n\n"
-            "Voulez-vous utiliser cet emplacement (par exemple pour une nouvelle installation) ?",
+        auto result = QMessageBox::question(this, tr("Confirmation"),
+            tr("Wow.exe n'a pas été trouvé dans ce dossier.\n\n"
+               "Voulez-vous utiliser cet emplacement (par exemple pour une nouvelle installation) ?"),
             QMessageBox::Yes | QMessageBox::No);
             
         if (result == QMessageBox::No) {
@@ -425,7 +510,7 @@ void SettingsDialog::onClearCacheClicked() {
     m_soundManager->play("button");
     QString wowPath = m_pathEdit->text();
     if (wowPath.isEmpty()) {
-        QMessageBox::warning(this, "Erreur", "Aucun dossier WoW configuré.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Aucun dossier WoW configuré."));
         return;
     }
     
@@ -433,21 +518,21 @@ void SettingsDialog::onClearCacheClicked() {
     QDir cacheDir(cachePath);
     
     if (!cacheDir.exists()) {
-        QMessageBox::information(this, "Info", "Aucun cache à vider.");
+        QMessageBox::information(this, tr("Info"), tr("Aucun cache à vider."));
         return;
     }
     
-    auto result = QMessageBox::question(this, "Confirmer",
-        "Êtes-vous sûr de vouloir vider le cache WoW?\n"
-        "Cela supprimera le dossier Cache.",
+    auto result = QMessageBox::question(this, tr("Confirmer"),
+        tr("Êtes-vous sûr de vouloir vider le cache WoW?\n"
+           "Cela supprimera le dossier Cache."),
         QMessageBox::Yes | QMessageBox::No);
     
     if (result != QMessageBox::Yes) return;
     
     if (cacheDir.removeRecursively()) {
-        QMessageBox::information(this, "Succès", "Cache vidé avec succès!");
+        QMessageBox::information(this, tr("Succès"), tr("Cache vidé avec succès!"));
     } else {
-        QMessageBox::warning(this, "Erreur", "Impossible de vider le cache.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Impossible de vider le cache."));
     }
 }
 
@@ -455,7 +540,7 @@ void SettingsDialog::onOpenAddonsClicked() {
     m_soundManager->play("button");
     QString wowPath = m_pathEdit->text();
     if (wowPath.isEmpty()) {
-        QMessageBox::warning(this, "Erreur", "Aucun dossier WoW configuré.");
+        QMessageBox::warning(this, tr("Erreur"), tr("Aucun dossier WoW configuré."));
         return;
     }
     
@@ -471,6 +556,28 @@ void SettingsDialog::onOpenAddonsClicked() {
     QDesktopServices::openUrl(QUrl::fromLocalFile(addonsPath));
 }
 
+void SettingsDialog::onDownloadEnUsClicked() {
+    m_soundManager->play("button");
+    QString wowPath = m_pathEdit->text();
+    if (wowPath.isEmpty()) {
+        QMessageBox::warning(this, tr("Erreur"), tr("Aucun dossier WoW configuré."));
+        return;
+    }
+
+    QString enUsUrl = "https://sylvania-servergame.com/patch-enUS.zip";
+    DownloadDialog* dlDialog = new DownloadDialog(this, wowPath);
+    dlDialog->setDownloadUrl(enUsUrl);
+    dlDialog->setWindowTitleText(tr("Téléchargement du Pack Anglais"));
+    
+    connect(dlDialog, &DownloadDialog::downloadFinished, this, [this](bool success, const QString& message) {
+        if (success) {
+            QMessageBox::information(this, tr("Succès"), tr("Pack Anglais installé avec succès !"));
+        }
+    });
+    
+    dlDialog->show();
+}
+
 void SettingsDialog::onOkClicked() {
     m_soundManager->play("button");
     saveSettings();
@@ -480,5 +587,14 @@ void SettingsDialog::onOkClicked() {
 
 void SettingsDialog::onCancelClicked() {
     m_soundManager->play("button");
+    
+    // If user cancels, we might need to revert background if they changed it
+    // But since it emits live, we restore the original if they cancel.
+    emit backgroundChanged(m_config->getBackground());
+    
     reject();
+}
+
+void SettingsDialog::onBackgroundChanged(const QString& bgName) {
+    emit backgroundChanged(bgName);
 }

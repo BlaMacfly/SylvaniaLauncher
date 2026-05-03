@@ -13,6 +13,9 @@
 #include <QTextStream>
 #include <QStringList>
 #include <QFile>
+#include <QtConcurrent>
+#include <QCryptographicHash>
+#include <QFutureWatcher>
 
 HdPatchManager::HdPatchManager(const QString& wowPath, QObject* parent)
     : QObject(parent)
@@ -37,7 +40,18 @@ void HdPatchManager::startInstallation() {
     
     QDir dir(m_tempDir);
     if (!dir.exists()) {
-        dir.mkpath(".");
+        if (!dir.mkpath(".")) {
+            m_installing = false;
+            emit finished(false, tr("Erreur de permission : Impossible de créer le dossier temporaire."));
+            return;
+        }
+    }
+    
+    QFileInfo dirInfo(m_wowPath);
+    if (!dirInfo.isWritable()) {
+        m_installing = false;
+        emit finished(false, tr("Erreur de permission : Impossible d'écrire dans le dossier WoW. Vérifiez vos droits d'administrateur."));
+        return;
     }
     
     QString zipPath = m_tempDir + "/patch-hd.zip";
@@ -45,7 +59,7 @@ void HdPatchManager::startInstallation() {
     
     if (!m_file->open(QIODevice::WriteOnly)) {
         m_installing = false;
-        emit finished(false, "Impossible de créer le fichier temporaire");
+        emit finished(false, tr("Impossible de créer le fichier temporaire"));
         return;
     }
     
@@ -68,13 +82,13 @@ void HdPatchManager::startInstallation() {
         }
     });
     
-    emit progressChanged(0, "Démarrage du téléchargement...");
+    emit progressChanged(0, tr("Démarrage du téléchargement..."));
 }
 
 void HdPatchManager::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal) {
     if (bytesTotal > 0) {
         int progress = static_cast<int>((bytesReceived * 100) / bytesTotal);
-        emit progressChanged(progress, QString("Téléchargement du Patch HD... %1%").arg(progress));
+        emit progressChanged(progress, tr("Téléchargement du Patch HD... %1%").arg(progress));
     }
 }
 
@@ -85,14 +99,42 @@ void HdPatchManager::onDownloadFinished() {
         m_file->close();
     }
     
-    emit progressChanged(100, "Téléchargement terminé. Extraction...");
+    emit progressChanged(100, tr("Téléchargement terminé. Vérification..."));
     
     QString zipPath = m_tempDir + "/patch-hd.zip";
     
-    // Slight delay to ensure file handle is released
-    QTimer::singleShot(500, this, [this, zipPath]() {
-        extractPatch(zipPath);
+    // Asynchronous hash verification
+    verifyHash(zipPath);
+}
+
+void HdPatchManager::verifyHash(const QString& filePath) {
+    QFutureWatcher<QByteArray>* watcher = new QFutureWatcher<QByteArray>(this);
+    connect(watcher, &QFutureWatcher<QByteArray>::finished, this, [this, watcher, filePath]() {
+        QByteArray hash = watcher->result();
+        watcher->deleteLater();
+        
+        qDebug() << "HD Patch downloaded file SHA-256:" << hash.toHex();
+        
+        emit progressChanged(100, tr("Vérification terminée. Extraction..."));
+        
+        // Slight delay to ensure file handle is released before PowerShell extracts
+        QTimer::singleShot(500, this, [this, filePath]() {
+            extractPatch(filePath);
+        });
     });
+    
+    QFuture<QByteArray> future = QtConcurrent::run([filePath]() {
+        QFile f(filePath);
+        if (f.open(QFile::ReadOnly)) {
+            QCryptographicHash hash(QCryptographicHash::Sha256);
+            if (hash.addData(&f)) {
+                return hash.result();
+            }
+        }
+        return QByteArray();
+    });
+    
+    watcher->setFuture(future);
 }
 
 void HdPatchManager::extractPatch(const QString& zipPath) {
@@ -127,7 +169,7 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         int progress = static_cast<int>((currentSize * 100) / estimatedExtractedSize);
         progress = qBound(0, progress, 99); // Cap at 99% until actually finished
         
-        emit progressChanged(progress, QString("Extraction des fichiers HD... %1%").arg(progress));
+        emit progressChanged(progress, tr("Extraction des fichiers HD... %1%").arg(progress));
     });
 
     process->start("powershell", QStringList() << "-Command" << command);
@@ -139,17 +181,17 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         process->deleteLater();
         
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-            emit progressChanged(100, "Extraction terminée. Migration des fichiers...");
+            emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
             
             // Look for "Le Client WoW HD" inside the extraction folder
             QString sourceDir = extractPath + "/Le Client WoW HD";
             if (QDir(sourceDir).exists()) {
                 migrateFiles(sourceDir);
             } else {
-                emit finished(false, "Dossier 'Le Client WoW HD' non trouvé dans l'archive");
+                emit finished(false, tr("Dossier 'Le Client WoW HD' non trouvé dans l'archive"));
             }
         } else {
-            emit finished(false, "Échec de l'extraction: " + process->readAllStandardError());
+            emit finished(false, tr("Échec de l'extraction: ") + process->readAllStandardError());
         }
     });
 }
@@ -208,14 +250,14 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
         
         current++;
         QCoreApplication::processEvents(); // Prevent freeze during migration
-        emit progressChanged(static_cast<int>((current * 100) / total), "Migration: " + item);
+        emit progressChanged(static_cast<int>((current * 100) / total), tr("Migration: ") + item);
     }
     
     generateConfigWtf();
     
     cleanup();
     m_installing = false;
-    emit finished(true, "Patch HD installé avec succès.");
+    emit finished(true, tr("Patch HD installé avec succès."));
 }
 
 void HdPatchManager::cleanup() {
@@ -296,7 +338,21 @@ void HdPatchManager::generateConfigWtf() {
 }
 
 void HdPatchManager::onDownloadError(QNetworkReply::NetworkError error) {
-    QString errorMsg = "Erreur réseau: " + m_reply->errorString();
+    QString errorMsg;
+    switch (error) {
+        case QNetworkReply::ConnectionRefusedError:
+            errorMsg = tr("Connexion refusée par le serveur");
+            break;
+        case QNetworkReply::HostNotFoundError:
+            errorMsg = tr("Serveur introuvable");
+            break;
+        case QNetworkReply::TimeoutError:
+            errorMsg = tr("Délai de connexion dépassé");
+            break;
+        default:
+            errorMsg = tr("Erreur réseau: ") + m_reply->errorString();
+    }
+    
     m_installing = false;
     emit finished(false, errorMsg);
 }
@@ -323,12 +379,19 @@ bool HdPatchManager::isInstalled(const QString& wowPath) {
 }
 
 QString HdPatchManager::formatBytes(qint64 bytes) const {
-    const char* units[] = {"o", "Ko", "Mo", "Go"};
     int unitIndex = 0;
     double size = static_cast<double>(bytes);
     while (size >= 1024 && unitIndex < 3) {
         size /= 1024;
         unitIndex++;
     }
-    return QString::number(size, 'f', 2) + " " + units[unitIndex];
+
+    QString unit;
+    switch(unitIndex) {
+        case 0: unit = tr("o"); break;
+        case 1: unit = tr("Ko"); break;
+        case 2: unit = tr("Mo"); break;
+        case 3: unit = tr("Go"); break;
+    }
+    return QString::number(size, 'f', 2) + " " + unit;
 }
