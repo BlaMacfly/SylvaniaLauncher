@@ -36,7 +36,7 @@
 ### Nouveautés v2.7
 - 🌐 **Internationalisation (i18n)** : Support complet du Français et de l'Anglais (US). Changement de langue dynamique sans redémarrage.
 - 📥 **Pack de Langue WoW** : Nouveau bouton dans les réglages pour télécharger et installer automatiquement le pack `enUS`.
-- 🎨 **Aesthétique & Thèmes** : Correction de la persistance des thèmes et adaptation dynamique des couleurs de texte selon l'arrière-plan.
+- 🎨 **Personnalisation Visuelle** : Nouveau système de thèmes interchangeables ! Choisissez votre arrière-plan (Arbre de Vie, Taverne, etc.) directement dans les réglages. L'interface adapte dynamiquement ses couleurs pour garantir une lisibilité parfaite.
 - 📅 **Localisation intelligente** : Format des dates et des unités (vitesse, taille) adapté à la langue choisie.
 - 🛠️ **Gestion HD améliorée** : Section de gestion des patchs HD toujours accessible et détection plus souple.
 
