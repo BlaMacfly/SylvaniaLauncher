@@ -381,14 +381,19 @@ void SettingsDialog::loadSettings() {
     
     int bgIndex = m_backgroundCombo->findData(m_config->getBackground());
     if (bgIndex != -1) {
+        m_backgroundCombo->blockSignals(true);
         m_backgroundCombo->setCurrentIndex(bgIndex);
+        m_backgroundCombo->blockSignals(false);
     }
 
     // Load patch states
     for (const auto& patch : m_patches) {
         if (m_patchComboBoxes.contains(patch.label)) {
+            QComboBox* combo = m_patchComboBoxes[patch.label];
+            combo->blockSignals(true);
             bool enabled = isPatchEnabled(patch.fileName, patch.subDir);
-            m_patchComboBoxes[patch.label]->setCurrentIndex(enabled ? 0 : 1);
+            combo->setCurrentIndex(enabled ? 0 : 1);
+            combo->blockSignals(false);
         }
     }
     updateButtonsState();
