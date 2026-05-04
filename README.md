@@ -34,11 +34,11 @@
 **v2.7** - Application native C++ / Qt6
 
 ### Nouveautés v2.7
-- 🌐 **Internationalisation (i18n)** : Support complet du Français et de l'Anglais (US). Changement de langue dynamique sans redémarrage.
-- 📥 **Pack de Langue WoW** : Nouveau bouton dans les réglages pour télécharger et installer automatiquement le pack `enUS`.
-- 🎨 **Personnalisation Visuelle** : Nouveau système de thèmes interchangeables ! Choisissez votre arrière-plan (Arbre de Vie, Taverne, etc.) directement dans les réglages. L'interface adapte dynamiquement ses couleurs pour garantir une lisibilité parfaite.
-- 📅 **Localisation intelligente** : Format des dates et des unités (vitesse, taille) adapté à la langue choisie.
-- 🛠️ **Gestion HD améliorée** : Section de gestion des patchs HD toujours accessible et détection plus souple.
+- 🌐 Internationalisation (i18n) complète (Français/Anglais).
+- 🎨 Personnalisation : Nouveaux thèmes dynamiques interchangeables.
+- 📥 Nouveau bouton d'installation du pack de langue WoW (enUS).
+- 🛠️ Gestion HD Correction de bugs
+- 🚀 Performance : Optimisation majeure avec Qt 6.8.
 
 ### Nouveautés v2.5
 - 🛠️ **Gestion modulaire HD** : Activez ou désactivez les éléments du patch HD (Arbres, Eau, Sorts, etc.) directement depuis les réglages.
