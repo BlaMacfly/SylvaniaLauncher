@@ -1,4 +1,5 @@
 #include "HdPatchManager.h"
+#include "ZipExtractor.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -140,60 +141,58 @@ void HdPatchManager::verifyHash(const QString& filePath) {
 void HdPatchManager::extractPatch(const QString& zipPath) {
     QString extractPath = m_tempDir + "/extracted";
     QDir().mkpath(extractPath);
-    
-    QFileInfo zipInfo(zipPath);
-    qint64 zipSize = zipInfo.size();
-    // Estimate uncompressed size is roughly 1.5x ZIP size (typical for game files)
-    qint64 estimatedExtractedSize = zipSize * 1.5;
-    
-    QTimer* progressTimer = new QTimer(this);
-    progressTimer->setInterval(5000); // Check every 5 seconds to avoid UI freeze
-    
-    QProcess* process = new QProcess(this);
-    
-    QString command = QString(
-        "Expand-Archive -Path '%1' -DestinationPath '%2' -Force"
-    ).arg(zipPath).arg(extractPath);
-    
-    progressTimer->start();
-    
-    connect(progressTimer, &QTimer::timeout, this, [this, extractPath, estimatedExtractedSize]() {
-        QCoreApplication::processEvents(); // Keep UI responsive
-        qint64 currentSize = 0;
-        QDirIterator it(extractPath, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            currentSize += it.fileInfo().size();
-        }
-        
-        int progress = static_cast<int>((currentSize * 100) / estimatedExtractedSize);
-        progress = qBound(0, progress, 99); // Cap at 99% until actually finished
-        
-        emit progressChanged(progress, tr("Extraction des fichiers HD... %1%").arg(progress));
-    });
 
-    process->start("powershell", QStringList() << "-Command" << command);
-    
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), 
-            this, [this, process, extractPath, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {
-        progressTimer->stop();
-        progressTimer->deleteLater();
-        process->deleteLater();
-        
-        if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-            emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
-            
-            // Look for "Le Client WoW HD" inside the extraction folder
-            QString sourceDir = extractPath + "/Le Client WoW HD";
-            if (QDir(sourceDir).exists()) {
-                migrateFiles(sourceDir);
+    ZipExtractor::extractAsync(zipPath, extractPath, this,
+        [this](int progress, const QString& status) {
+            emit progressChanged(progress, status);
+        },
+        [this, extractPath](bool success, const QString& error) {
+            if (success) {
+                emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
+                
+                // Look for "Le Client WoW HD" inside the extraction folder
+                QString sourceDir = extractPath + "/Le Client WoW HD";
+                if (QDir(sourceDir).exists()) {
+                    migrateFiles(sourceDir);
+                } else {
+                    emit finished(false, tr("Dossier 'Le Client WoW HD' non trouvé dans l'archive"));
+                }
             } else {
-                emit finished(false, tr("Dossier 'Le Client WoW HD' non trouvé dans l'archive"));
+                emit finished(false, tr("Échec de l'extraction: ") + error);
             }
-        } else {
-            emit finished(false, tr("Échec de l'extraction: ") + process->readAllStandardError());
+        });
+}
+
+/**
+ * @brief Recursively copy a directory, overwriting existing files
+ */
+static bool copyDirectoryRecursively(const QString& srcPath, const QString& destPath) {
+    QDir srcDir(srcPath);
+    if (!srcDir.exists()) return false;
+
+    QDir destDir(destPath);
+    if (!destDir.exists()) {
+        destDir.mkpath(".");
+    }
+
+    // Copy files
+    QStringList files = srcDir.entryList(QDir::Files | QDir::Hidden);
+    for (const QString& file : files) {
+        QString srcFile = srcPath + "/" + file;
+        QString destFile = destPath + "/" + file;
+        if (QFile::exists(destFile)) {
+            QFile::remove(destFile);
         }
-    });
+        QFile::copy(srcFile, destFile);
+    }
+
+    // Recurse into subdirectories
+    QStringList dirs = srcDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden);
+    for (const QString& dir : dirs) {
+        copyDirectoryRecursively(srcPath + "/" + dir, destPath + "/" + dir);
+    }
+
+    return true;
 }
 
 void HdPatchManager::migrateFiles(const QString& sourcePath) {
@@ -239,8 +238,8 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
         }
 
         if (info.isDir()) {
-            // Use robocopy for reliable folder migration with overwrites
-            QProcess::execute("robocopy", {srcItemPath, destItemPath, "/E", "/IS", "/MOVE"});
+            // Cross-platform recursive copy with overwrite
+            copyDirectoryRecursively(srcItemPath, destItemPath);
         } else if (info.isFile()) {
             if (QFile::exists(destItemPath)) {
                 QFile::remove(destItemPath);

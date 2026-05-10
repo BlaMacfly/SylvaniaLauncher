@@ -1,5 +1,6 @@
 #include "AddonsWindow.h"
 #include "ConfigManager.h"
+#include "ZipExtractor.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -340,34 +341,35 @@ void AddonsWindow::onDownloadFinished() {
 void AddonsWindow::extractZip(const QString& zipPath, const QString& destination, QPushButton* installBtn, QProgressBar* progressBar, QLabel* statusLabel) {
     statusLabel->setText("Extraction en cours...");
     progressBar->setMaximum(0); // Indeterminate mode
-    
-    QProcess* process = new QProcess(this);
-    QString command = QString("Expand-Archive -Path '%1' -DestinationPath '%2' -Force").arg(zipPath).arg(destination);
-    
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, zipPath, installBtn, progressBar, statusLabel, process](int exitCode, QProcess::ExitStatus exitStatus) {
-        process->deleteLater();
-        
-        if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-            QFile::remove(zipPath); // Cleanup
-            
-            progressBar->setMaximum(100);
-            progressBar->setValue(100);
-            statusLabel->setText("Installé avec succès !");
-            statusLabel->setStyleSheet("color: #55ff55; font-size: 11px;");
-            
-            installBtn->setEnabled(true);
-            updateButtonStyle(installBtn, true);
-        } else {
-            progressBar->setMaximum(100);
-            progressBar->setValue(0);
-            statusLabel->setText("Erreur d'extraction.");
-            statusLabel->setStyleSheet("color: #ff5555; font-size: 11px;");
-            
-            installBtn->setEnabled(true);
-            installBtn->setText("Réessayer");
-        }
-    });
-    
-    process->start("powershell", QStringList() << "-Command" << command);
+
+    ZipExtractor::extractAsync(zipPath, destination, this,
+        [progressBar, statusLabel](int progress, const QString& status) {
+            Q_UNUSED(status);
+            if (progressBar->maximum() == 0) {
+                progressBar->setMaximum(100);
+            }
+            progressBar->setValue(progress);
+        },
+        [this, zipPath, installBtn, progressBar, statusLabel](bool success, const QString& error) {
+            if (success) {
+                QFile::remove(zipPath); // Cleanup
+                
+                progressBar->setMaximum(100);
+                progressBar->setValue(100);
+                statusLabel->setText("Installé avec succès !");
+                statusLabel->setStyleSheet("color: #55ff55; font-size: 11px;");
+                
+                installBtn->setEnabled(true);
+                updateButtonStyle(installBtn, true);
+            } else {
+                Q_UNUSED(error);
+                progressBar->setMaximum(100);
+                progressBar->setValue(0);
+                statusLabel->setText("Erreur d'extraction.");
+                statusLabel->setStyleSheet("color: #ff5555; font-size: 11px;");
+                
+                installBtn->setEnabled(true);
+                installBtn->setText("Réessayer");
+            }
+        });
 }

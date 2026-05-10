@@ -1,0 +1,104 @@
+name: Build Linux AppImage
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-appimage:
+    name: Build AppImage (Ubuntu 20.04)
+    runs-on: ubuntu-20.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake g++ \
+            qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-l10n-tools \
+            libzip-dev \
+            libgl-dev libglu1-mesa-dev \
+            libxkbcommon-dev libxkbcommon-x11-0 \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libfuse2 \
+            file wget
+
+      - name: Download linuxdeploy tools
+        run: |
+          wget -q -O linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q -O linuxdeploy-plugin-qt-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+          # Move to build directory (will be created by cmake)
+          mkdir -p build-appimage
+          mv linuxdeploy*.AppImage build-appimage/
+
+      - name: Configure with CMake
+        run: |
+          cd build-appimage
+          cmake ../cpp \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cd build-appimage
+          make -j$(nproc)
+
+      - name: Prepare AppDir
+        run: |
+          cd build-appimage
+          APPDIR=AppDir
+          
+          # Install binary
+          make DESTDIR=${APPDIR} install
+          
+          # Copy assets
+          mkdir -p ${APPDIR}/usr/share/sylvania-launcher
+          cp -r ../Asset ${APPDIR}/usr/share/sylvania-launcher/
+          cp -r ../Asset ${APPDIR}/usr/bin/Asset
+          
+          # Copy metadata
+          cp ../Asset/LogoSylvania/LogoSylvania256.png ${APPDIR}/sylvania-launcher.png
+          cp ../linux/sylvania-launcher.desktop ${APPDIR}/
+          cp ../linux/AppRun ${APPDIR}/
+          chmod +x ${APPDIR}/AppRun
+
+      - name: Create AppImage
+        run: |
+          cd build-appimage
+          export QMAKE=$(which qmake6 2>/dev/null || which qmake 2>/dev/null)
+          export EXTRA_QT_PLUGINS="multimedia"
+          
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --desktop-file AppDir/sylvania-launcher.desktop \
+            --icon-file AppDir/sylvania-launcher.png \
+            --plugin qt \
+            --output appimage
+
+      - name: Rename AppImage
+        run: |
+          cd build-appimage
+          APPIMAGE=$(ls *.AppImage | grep -v linuxdeploy | head -1)
+          VERSION=${GITHUB_REF_NAME:-dev}
+          mv "${APPIMAGE}" "SylvaniaLauncher-${VERSION}-x86_64.AppImage"
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SylvaniaLauncher-Linux-AppImage
+          path: build-appimage/SylvaniaLauncher-*-x86_64.AppImage
+
+      - name: Upload to Release (if tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build-appimage/SylvaniaLauncher-*-x86_64.AppImage
+          draft: false
+          prerelease: false

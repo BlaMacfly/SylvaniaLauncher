@@ -1,0 +1,22 @@
+#!/bin/bash
+# AppRun script for SylvaniaLauncher AppImage
+# This is the entry point when the AppImage is executed
+
+SELF="$(readlink -f "$0")"
+APPDIR="$(dirname "$SELF")"
+
+# Set up library paths
+export PATH="${APPDIR}/usr/bin:${PATH}"
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+
+# Qt plugin paths
+export QT_PLUGIN_PATH="${APPDIR}/usr/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="${APPDIR}/usr/plugins/platforms"
+
+# XDG paths for proper desktop integration
+export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+# Ensure assets are found
+export SYLVANIA_ASSETS_DIR="${APPDIR}/usr/share/sylvania-launcher/Asset"
+
+exec "${APPDIR}/usr/bin/SylvaniaLauncher" "$@"

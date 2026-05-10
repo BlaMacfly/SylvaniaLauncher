@@ -687,8 +687,8 @@ Do you want to download it now?</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="1011"/>
-        <source>© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5</source>
-        <translation>© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5</translation>
+        <source>© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version</source>
+        <translation>© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="686"/>

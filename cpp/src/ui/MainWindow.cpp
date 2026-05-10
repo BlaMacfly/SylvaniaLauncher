@@ -11,6 +11,10 @@
 #include "HdPatchManager.h"
 #include <QProgressBar>
 
+#ifdef Q_OS_LINUX
+#include "WineManager.h"
+#endif
+
 #include <QApplication>
 #include <QPainter>
 #include <QVBoxLayout>
@@ -155,6 +159,15 @@ void MainWindow::applyTheme(const QString& bgName) {
         btnBrown1 = "#5a4a3d"; btnBrown2 = "#4a3a2d"; btnBrown3 = "#3a2a1d"; btnBrownBorder = "#6a5a4d";
         btnPink1 = "#8a4a5a"; btnPink2 = "#7a3a4a"; btnPink3 = "#6a2a3a"; btnPinkBorder = "#9a5a6a";
         btnTeal1 = "#7a6a3a"; btnTeal2 = "#5a4a2a"; btnTeal3 = "#3a3a1a"; btnTealBorder = "#d4af37";
+    } else if (bgName == "Linux") {
+        panelBgColor = "rgba(10, 10, 10, 200)"; panelBorder = "#ffcc00"; // Tux yellow/dark mode
+        textPrimary = "#e0e0e0"; textSecondary = "#ffcc00";
+        btnGreen1 = "#4a7c3f"; btnGreen2 = "#3a6a2f"; btnGreen3 = "#2a5a1f"; btnGreenBorder = "#5a8c4f";
+        btnGold1 = "#cc9900"; btnGold2 = "#b38600"; btnGold3 = "#806000"; btnGoldBorder = "#ffcc00";
+        btnBlue1 = "#2a6dd4"; btnBlue2 = "#1e5ab8"; btnBlue3 = "#15479a"; btnBlueBorder = "#3a7de4";
+        btnBrown1 = "#3a3a3a"; btnBrown2 = "#2a2a2a"; btnBrown3 = "#1a1a1a"; btnBrownBorder = "#6a6a6a";
+        btnPink1 = "#8a4a5a"; btnPink2 = "#7a3a4a"; btnPink3 = "#6a2a3a"; btnPinkBorder = "#9a5a6a";
+        btnTeal1 = "#00ced1"; btnTeal2 = "#008b8b"; btnTeal3 = "#00688b"; btnTealBorder = "#20b2aa";
     } else { // Azeroth or Default
         panelBgColor = "rgba(230, 210, 170, 200)"; panelBorder = "#5a4a2d";
         textPrimary = "#3a2a1d"; textSecondary = "#5a4a2d";
@@ -298,7 +311,7 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5", this);
+    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version", this);
     m_footerLabel->setAlignment(Qt::AlignCenter);
     m_footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
     mainLayout->addWidget(m_footerLabel);
@@ -703,7 +716,35 @@ void MainWindow::playGame() {
     updateStats();
     
     // Launch WoW
-    bool started = QProcess::startDetached(exePath, {}, wowPath);
+    bool started = false;
+
+#ifdef Q_OS_LINUX
+    // On Linux, launch via WineManager
+    WineManager wineManager;
+    if (!wineManager.isReady()) {
+        m_statusLabel->setText(tr("Configuration du moteur de jeu (Wine)..."));
+        QCoreApplication::processEvents();
+        
+        // Connect progress signals
+        connect(&wineManager, &WineManager::downloadProgress, this, [this](int percent, const QString& status) {
+            m_statusLabel->setText(status);
+            QCoreApplication::processEvents();
+        });
+        connect(&wineManager, &WineManager::error, this, [this](const QString& message) {
+            QMessageBox::warning(this, tr("Erreur Wine"), 
+                tr("Impossible de configurer Wine: %1").arg(message));
+        });
+        
+        wineManager.downloadAndInstall();
+        
+        if (!wineManager.isReady()) {
+            return; // Installation failed
+        }
+    }
+    started = wineManager.launchExe(exePath, wowPath);
+#else
+    started = QProcess::startDetached(exePath, {}, wowPath);
+#endif
     
     if (started) {
         m_statusLabel->setText(tr("World of Warcraft lancé! Bon jeu!"));
@@ -912,6 +953,10 @@ bool MainWindow::isWowRunning() {
     process.waitForFinished(3000);
     QString output = process.readAllStandardOutput();
     return output.contains("Wow.exe", Qt::CaseInsensitive);
+#elif defined(Q_OS_LINUX)
+    // On Linux, scan /proc for Wine processes running Wow.exe
+    WineManager wineManager;
+    return wineManager.isProcessRunning("Wow.exe");
 #else
     return false;
 #endif
@@ -1017,7 +1062,7 @@ void MainWindow::retranslateUi() {
     if (m_statsTitleLabel) m_statsTitleLabel->setText(tr("Statistiques de Jeu"));
     // Note: m_serverNameLabel is updated via updateServerInfo below
     
-    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5"));
+    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version"));
     
     checkWowInstalled();
     updateStats();

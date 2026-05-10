@@ -1,0 +1,23 @@
+/usr/bin/SylvaniaLauncher
+/usr/share/applications/sylvania-launcher.desktop
+/usr/share/icons/hicolor/256x256/apps/sylvania-launcher.png
+/usr/share/sylvania-launcher/Asset/Background/Azeroth.png
+/usr/share/sylvania-launcher/Asset/Background/Lich King.jpg
+/usr/share/sylvania-launcher/Asset/Background/Ragnaros.jpg
+/usr/share/sylvania-launcher/Asset/Background/Alliance.jpg
+/usr/share/sylvania-launcher/Asset/Background/Taverne.png
+/usr/share/sylvania-launcher/Asset/Background/Ilidan.jpg
+/usr/share/sylvania-launcher/Asset/Background/Arbre de Vie.jpg
+/usr/share/sylvania-launcher/Asset/Background/Horde.jpg
+/usr/share/sylvania-launcher/Asset/sylvania_logo.ico
+/usr/share/sylvania-launcher/Asset/translations/SylvaniaLauncher_en.qm
+/usr/share/sylvania-launcher/Asset/LogoSylvania/LogoSylvania256-Uninstall.ico
+/usr/share/sylvania-launcher/Asset/LogoSylvania/LogoSylvania256.png
+/usr/share/sylvania-launcher/Asset/LogoSylvania/LogoSylvania256 - Uninstall.png
+/usr/share/sylvania-launcher/Asset/LogoSylvania/LogoSylvania_Source.png
+/usr/share/sylvania-launcher/Asset/LogoSylvania/LogoSylvania256.ico
+/usr/share/sylvania-launcher/Asset/sylvania_logo.png
+/usr/share/sylvania-launcher/Asset/Sounds/toggle.wav
+/usr/share/sylvania-launcher/Asset/Sounds/Notification.wav
+/usr/share/sylvania-launcher/Asset/Sounds/launch.wav
+/usr/share/sylvania-launcher/Asset/Sounds/Notification.mp3

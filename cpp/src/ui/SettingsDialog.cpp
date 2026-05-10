@@ -198,6 +198,7 @@ void SettingsDialog::setupUi() {
     m_backgroundCombo->addItem("Lich King", "Lich King");
     m_backgroundCombo->addItem("Ragnaros", "Ragnaros");
     m_backgroundCombo->addItem(tr("Taverne"), "Taverne");
+    m_backgroundCombo->addItem("Linux", "Linux");
     m_backgroundCombo->setStyleSheet(R"(
         QComboBox {
             background-color: #2a2a2a;

@@ -1,4 +1,5 @@
 #include "DownloadDialog.h"
+#include "ZipExtractor.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -294,99 +295,43 @@ void DownloadDialog::verifyHash(const QString& filePath) {
 }
 
 void DownloadDialog::extractZip(const QString& zipPath) {
-    // Get ZIP file size to estimate extraction progress
-    QFileInfo zipInfo(zipPath);
-    qint64 zipSize = zipInfo.size();
-    // Estimate extracted size (typically 1.5-3x compressed size, use 2x as estimate)
-    qint64 estimatedExtractedSize = zipSize * 2;
-    
-    // Use Windows PowerShell Expand-Archive for extraction
-    QProcess* process = new QProcess(this);
-    
-    // Progress monitoring timer - Reduced frequency to 5s to avoid UI freeze on large folders
-    QTimer* progressTimer = new QTimer(this);
-    progressTimer->setInterval(5000); 
-    
-    // Store initial folder size
-    qint64 initialSize = 0;
-    QDir destDir(m_destination);
-    if (destDir.exists()) {
-        // Calculate initial folder size
-        QDirIterator it(m_destination, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            initialSize += it.fileInfo().size();
-        }
-    }
+    m_statusLabel->setText(tr("Extraction des fichiers en cours..."));
+    m_speedLabel->setText(tr("Veuillez patienter..."));
+    m_sizeLabel->setText("");
+    m_etaLabel->setText("");
     
     // Set progress bar to determinate mode
     m_progressBar->setMinimum(0);
     m_progressBar->setMaximum(100);
     m_progressBar->setValue(0);
-    
-    connect(progressTimer, &QTimer::timeout, this, [this, estimatedExtractedSize, initialSize]() {
-        QCoreApplication::processEvents(); // Keep UI reactive
-        qint64 currentSize = 0;
-        QDirIterator it(m_destination, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            currentSize += it.fileInfo().size();
-        }
-        
-        qint64 extractedSize = currentSize - initialSize;
-        int progress = static_cast<int>((extractedSize * 100) / estimatedExtractedSize);
-        progress = qMin(progress, 95); // Cap at 95% until actually finished
-        
-        m_progressBar->setValue(progress);
-        m_statusLabel->setText(tr("Extraction en cours... %1%").arg(progress));
-        m_speedLabel->setText(tr("%1 extraits").arg(formatBytes(extractedSize)));
-    });
-    
-    progressTimer->start();
-    
-    // PowerShell command to extract ZIP
-    QString command = QString(
-        "Expand-Archive -Path '%1' -DestinationPath '%2' -Force"
-    ).arg(zipPath).arg(m_destination);
-    
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, process, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {
-        progressTimer->stop();
-        progressTimer->deleteLater();
-        process->deleteLater();
-        
-        if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-            // Complete progress
-            m_progressBar->setValue(100);
-            m_statusLabel->setText(tr("Extraction terminée!"));
-            
-            // Remove temp zip file
-            QFile::remove(zipPath);
-            
-            // Generate Config.wtf if not skipped
-            if (!m_skipConfigWtf) {
-                generateConfigWtf();
+
+    ZipExtractor::extractAsync(zipPath, m_destination, this,
+        [this](int progress, const QString& status) {
+            m_progressBar->setValue(progress);
+            m_statusLabel->setText(tr("Extraction en cours... %1%").arg(progress));
+        },
+        [this, zipPath](bool success, const QString& error) {
+            if (success) {
+                // Complete progress
+                m_progressBar->setValue(100);
+                m_statusLabel->setText(tr("Extraction terminée!"));
+                
+                // Remove temp zip file
+                QFile::remove(zipPath);
+                
+                // Generate Config.wtf if not skipped
+                if (!m_skipConfigWtf) {
+                    generateConfigWtf();
+                }
+                
+                QCoreApplication::processEvents();
+                emit downloadFinished(true, tr("Téléchargement et extraction terminés!"));
+                accept();
+            } else {
+                emit downloadFinished(false, tr("Erreur lors de l'extraction: %1").arg(error));
+                reject();
             }
-            
-            QCoreApplication::processEvents();
-            emit downloadFinished(true, tr("Téléchargement et extraction terminés!"));
-            accept();
-        } else {
-            emit downloadFinished(false, tr("Erreur lors de l'extraction: %1").arg(process->readAllStandardError().data()));
-            reject();
-        }
-    });
-    
-    connect(process, &QProcess::errorOccurred, this, [this, process, progressTimer](QProcess::ProcessError error) {
-        Q_UNUSED(error);
-        progressTimer->stop();
-        progressTimer->deleteLater();
-        process->deleteLater();
-        emit downloadFinished(false, tr("Erreur lors de l'extraction: impossible de lancer PowerShell"));
-        reject();
-    });
-    
-    process->start("powershell", QStringList() << "-Command" << command);
+        });
 }
 
 void DownloadDialog::onDownloadError(QNetworkReply::NetworkError error) {

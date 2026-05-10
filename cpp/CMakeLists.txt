@@ -17,6 +17,12 @@ find_package(Qt6 REQUIRED COMPONENTS
     LinguistTools
 )
 
+# Linux: find libzip for native ZIP extraction
+if(UNIX AND NOT APPLE)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBZIP REQUIRED libzip)
+endif()
+
 # Source files
 set(SOURCES
     src/main.cpp
@@ -32,6 +38,7 @@ set(SOURCES
     src/ui/ServerEditDialog.cpp
     src/ui/AddonsWindow.cpp
     src/utils/PathUtils.cpp
+    src/utils/ZipExtractor.cpp
     src/core/HdPatchManager.cpp
 )
 
@@ -49,8 +56,15 @@ set(HEADERS
     src/ui/ServerEditDialog.h
     src/ui/AddonsWindow.h
     src/utils/PathUtils.h
+    src/utils/ZipExtractor.h
     src/core/HdPatchManager.h
 )
+
+# Linux-only sources: WineManager
+if(UNIX AND NOT APPLE)
+    list(APPEND SOURCES src/core/WineManager.cpp)
+    list(APPEND HEADERS src/core/WineManager.h)
+endif()
 
 # Resources
 set(RESOURCES
@@ -65,13 +79,24 @@ set_source_files_properties(${TS_FILES} PROPERTIES OUTPUT_LOCATION ${CMAKE_CURRE
 qt_add_translation(QM_FILES ${TS_FILES})
 
 # Create executable
-add_executable(${PROJECT_NAME} WIN32
-    ${SOURCES}
-    ${HEADERS}
-    ${RESOURCES}
-    ${TS_FILES}
-    ${QM_FILES}
-)
+# WIN32 flag is only applied on Windows (hides console window)
+if(WIN32)
+    add_executable(${PROJECT_NAME} WIN32
+        ${SOURCES}
+        ${HEADERS}
+        ${RESOURCES}
+        ${TS_FILES}
+        ${QM_FILES}
+    )
+else()
+    add_executable(${PROJECT_NAME}
+        ${SOURCES}
+        ${HEADERS}
+        ${RESOURCES}
+        ${TS_FILES}
+        ${QM_FILES}
+    )
+endif()
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -81,6 +106,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Multimedia
     Qt6::Concurrent
 )
+
+# Linux: link libzip
+if(UNIX AND NOT APPLE)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${LIBZIP_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBZIP_LIBRARIES})
+endif()
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -121,6 +152,17 @@ endif()
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin
 )
+
+# Linux: Install .desktop file and icon
+if(UNIX AND NOT APPLE)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../linux/sylvania-launcher.desktop"
+            DESTINATION share/applications)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../Asset/LogoSylvania/LogoSylvania256.png"
+            DESTINATION share/icons/hicolor/256x256/apps
+            RENAME sylvania-launcher.png)
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../Asset"
+            DESTINATION share/sylvania-launcher)
+endif()
 
 # Copy assets to build directory
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

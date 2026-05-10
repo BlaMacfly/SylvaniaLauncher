@@ -5,8 +5,8 @@
         <file alias="icon">../../Asset/LogoSylvania/LogoSylvania256.ico</file>
     </qresource>
     <qresource prefix="/sounds">
-        <file alias="launch">../../Asset/Sounds/launch.mp3</file>
-        <file alias="toggle">../../Asset/Sounds/toggle.mp3</file>
+        <file alias="launch">../../Asset/Sounds/launch.wav</file>
+        <file alias="toggle">../../Asset/Sounds/toggle.wav</file>
         <file alias="notification">../../Asset/Sounds/Notification.mp3</file>
     </qresource>
 </RCC>
