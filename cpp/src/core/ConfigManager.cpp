@@ -1,7 +1,9 @@
 #include "ConfigManager.h"
 #include "PathUtils.h"
+#include "Constants.h"
 
 #include <QFile>
+#include <QSaveFile>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QDir>
@@ -13,6 +15,24 @@ ConfigManager::ConfigManager(QObject* parent)
 {
     m_configDir = PathUtils::getConfigDir();
     loadConfig();
+
+    // H4: coalesce bursts of setX() calls (e.g. Settings dialog applying many
+    // options at once) into a single disk write 200 ms after the last change.
+    m_saveTimer.setSingleShot(true);
+    m_saveTimer.setInterval(SylvaniaConstants::kConfigSaveDebounceMs);
+    connect(&m_saveTimer, &QTimer::timeout, this, [this]() { save(); });
+}
+
+ConfigManager::~ConfigManager() {
+    // Flush any pending write before tear-down so we never lose the last edit.
+    if (m_saveTimer.isActive()) {
+        m_saveTimer.stop();
+        save();
+    }
+}
+
+void ConfigManager::scheduleSave() {
+    m_saveTimer.start();  // restart restarts the timer if already running
 }
 
 void ConfigManager::loadConfig() {
@@ -75,17 +95,21 @@ bool ConfigManager::save() {
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-    
-    QFile file(getConfigPath());
-    if (file.open(QIODevice::WriteOnly)) {
-        QJsonDocument doc(m_config);
-        file.write(doc.toJson(QJsonDocument::Indented));
-        file.close();
-        return true;
+
+    // C3: atomic write — QSaveFile writes to a temp file and renames on commit(),
+    // preventing TOCTOU and partial-write corruption if the process is killed.
+    QSaveFile file(getConfigPath());
+    if (!file.open(QIODevice::WriteOnly)) {
+        qWarning() << "Impossible de sauvegarder la configuration";
+        return false;
     }
-    
-    qWarning() << "Impossible de sauvegarder la configuration";
-    return false;
+
+    file.write(QJsonDocument(m_config).toJson(QJsonDocument::Compact));
+    if (!file.commit()) {
+        qWarning() << "Échec du commit atomique de la configuration";
+        return false;
+    }
+    return true;
 }
 
 QVariant ConfigManager::get(const QString& key, const QVariant& defaultValue) const {
@@ -97,7 +121,7 @@ QVariant ConfigManager::get(const QString& key, const QVariant& defaultValue) co
 
 void ConfigManager::set(const QString& key, const QVariant& value) {
     m_config[key] = QJsonValue::fromVariant(value);
-    save();
+    scheduleSave();
     emit configChanged(key);
 }
 
@@ -107,7 +131,7 @@ QString ConfigManager::getWowPath() const {
 
 void ConfigManager::setWowPath(const QString& path) {
     m_config["wow_path"] = path;
-    save();
+    scheduleSave();
     emit configChanged("wow_path");
 }
 
@@ -117,7 +141,7 @@ bool ConfigManager::isFirstRun() const {
 
 void ConfigManager::setFirstRun(bool firstRun) {
     m_config["first_run"] = firstRun;
-    save();
+    scheduleSave();
 }
 
 bool ConfigManager::isSoundEnabled() const {
@@ -126,7 +150,7 @@ bool ConfigManager::isSoundEnabled() const {
 
 void ConfigManager::setSoundEnabled(bool enabled) {
     m_config["sound_enabled"] = enabled;
-    save();
+    scheduleSave();
     emit configChanged("sound_enabled");
 }
 
@@ -173,7 +197,7 @@ void ConfigManager::setRealmlistEntries(const std::vector<RealmlistEntry>& entri
         array.append(obj);
     }
     m_config["realmlist_entries"] = array;
-    save();
+    scheduleSave();
     emit realmlistChanged();
 }
 
@@ -198,7 +222,7 @@ void ConfigManager::setRealmlistEntry(int index, const QString& name, const QStr
     }
     
     m_config["realmlist_entries"] = array;
-    save();
+    scheduleSave();
     emit realmlistChanged();
 }
 
@@ -217,8 +241,8 @@ void ConfigManager::setActiveRealmlistIndex(int index) {
         array[i] = obj;
     }
     m_config["realmlist_entries"] = array;
-    
-    save();
+
+    scheduleSave();
     emit realmlistChanged();
 }
 
@@ -249,23 +273,26 @@ bool ConfigManager::updateRealmlist(const QString& realmlistText) {
     
     bool success = false;
     for (const QString& path : realmlistPaths) {
-        QFile file(path);
         QFileInfo fileInfo(path);
-        
-        // Create parent directory if it doesn't exist
-        QDir parentDir = fileInfo.dir();
-        if (!parentDir.exists()) {
-            continue; // Skip if locale folder doesn't exist
+
+        // Skip locales that don't exist on disk.
+        if (!fileInfo.dir().exists()) {
+            continue;
         }
-        
+
+        // C3: atomic write avoids leaving a half-written realmlist.wtf if WoW
+        // launches concurrently or the launcher crashes mid-write.
+        QSaveFile file(path);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
             stream << realmlistText << "\n";
-            file.close();
-            qDebug() << "Realmlist mis à jour:" << path;
-            success = true;
+            stream.flush();
+            if (file.commit()) {
+                qDebug() << "Realmlist mis à jour:" << path;
+                success = true;
+            }
         }
     }
-    
+
     return success;
 }

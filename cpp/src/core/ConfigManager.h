@@ -6,6 +6,7 @@
 #include <QVariant>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QTimer>
 #include <vector>
 
 /**
@@ -28,12 +29,13 @@ class ConfigManager : public QObject {
 
 public:
     explicit ConfigManager(QObject* parent = nullptr);
-    ~ConfigManager() override = default;
+    ~ConfigManager() override;
 
     // Generic config access
     QVariant get(const QString& key, const QVariant& defaultValue = QVariant()) const;
     void set(const QString& key, const QVariant& value);
-    bool save();
+    bool save();             // synchronous write
+    void scheduleSave();     // H4: coalesce bursts of setter calls into one disk write
 
     // Specific getters
     QString getWowPath() const;
@@ -71,4 +73,5 @@ private:
 
     QJsonObject m_config;
     QString m_configDir;
+    QTimer m_saveTimer;
 };

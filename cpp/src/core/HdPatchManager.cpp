@@ -1,18 +1,17 @@
 #include "HdPatchManager.h"
+#include "Constants.h"
 
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QMessageBox>
 #include <QDir>
-#include <QDirIterator>
 #include <QTimer>
 #include <QFileInfo>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QCoreApplication>
 #include <QStandardPaths>
 #include <QTextStream>
 #include <QStringList>
 #include <QFile>
+#include <QSaveFile>
 #include <QtConcurrent>
 #include <QCryptographicHash>
 #include <QFutureWatcher>
@@ -22,7 +21,7 @@ HdPatchManager::HdPatchManager(const QString& wowPath, QObject* parent)
     , m_wowPath(wowPath)
     , m_networkManager(std::make_unique<QNetworkAccessManager>(this))
 {
-    m_downloadUrl = "https://sylvania-servergame.com/patch-hd-download.php";
+    m_downloadUrl = SylvaniaConstants::kHdPatchUrl;
     m_tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/SylvaniaLauncher_HD";
 }
 
@@ -64,9 +63,9 @@ void HdPatchManager::startInstallation() {
     }
     
     QNetworkRequest request{QUrl(m_downloadUrl)};
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, 
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
-    
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::SameOriginRedirectPolicy);
+
     m_reply = m_networkManager->get(request);
     
     connect(m_reply, &QNetworkReply::downloadProgress,
@@ -118,7 +117,7 @@ void HdPatchManager::verifyHash(const QString& filePath) {
         emit progressChanged(100, tr("Vérification terminée. Extraction..."));
         
         // Slight delay to ensure file handle is released before PowerShell extracts
-        QTimer::singleShot(500, this, [this, filePath]() {
+        QTimer::singleShot(SylvaniaConstants::kHashVerifyDelayMs, this, [this, filePath]() {
             extractPatch(filePath);
         });
     });
@@ -140,49 +139,45 @@ void HdPatchManager::verifyHash(const QString& filePath) {
 void HdPatchManager::extractPatch(const QString& zipPath) {
     QString extractPath = m_tempDir + "/extracted";
     QDir().mkpath(extractPath);
-    
-    QFileInfo zipInfo(zipPath);
-    qint64 zipSize = zipInfo.size();
-    // Estimate uncompressed size is roughly 1.5x ZIP size (typical for game files)
-    qint64 estimatedExtractedSize = zipSize * 1.5;
-    
+
     QTimer* progressTimer = new QTimer(this);
-    progressTimer->setInterval(5000); // Check every 5 seconds to avoid UI freeze
-    
+    progressTimer->setInterval(SylvaniaConstants::kExtractProgressMs);
+
     QProcess* process = new QProcess(this);
-    
-    QString command = QString(
-        "Expand-Archive -Path '%1' -DestinationPath '%2' -Force"
-    ).arg(zipPath).arg(extractPath);
-    
+
+    // Safe extraction: paths flow via environment variables, never interpolated
+    // into the PowerShell command string -> no command-injection surface.
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SYL_SRC", QDir::toNativeSeparators(zipPath));
+    env.insert("SYL_DST", QDir::toNativeSeparators(extractPath));
+    process->setProcessEnvironment(env);
+
     progressTimer->start();
-    
-    connect(progressTimer, &QTimer::timeout, this, [this, extractPath, estimatedExtractedSize]() {
-        QCoreApplication::processEvents(); // Keep UI responsive
-        qint64 currentSize = 0;
-        QDirIterator it(extractPath, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            currentSize += it.fileInfo().size();
-        }
-        
-        int progress = static_cast<int>((currentSize * 100) / estimatedExtractedSize);
-        progress = qBound(0, progress, 99); // Cap at 99% until actually finished
-        
-        emit progressChanged(progress, tr("Extraction des fichiers HD... %1%").arg(progress));
+
+    connect(progressTimer, &QTimer::timeout, this, [this, extractPath]() {
+        // Sample only the top-level directory (cheap) for a coarse progress indication.
+        QDir dir(extractPath);
+        const QFileInfoList entries = dir.entryInfoList(
+            QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        int progress = qBound(0, static_cast<int>(entries.size()), 99);
+        emit progressChanged(progress, tr("Extraction des fichiers HD..."));
     });
 
-    process->start("powershell", QStringList() << "-Command" << command);
-    
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), 
+    process->start("powershell", QStringList()
+        << "-NoProfile"
+        << "-ExecutionPolicy" << "Bypass"
+        << "-Command"
+        << "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
+
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, process, extractPath, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {
         progressTimer->stop();
         progressTimer->deleteLater();
         process->deleteLater();
-        
+
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
             emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
-            
+
             // Look for "Le Client WoW HD" inside the extraction folder
             QString sourceDir = extractPath + "/Le Client WoW HD";
             if (QDir(sourceDir).exists()) {
@@ -274,7 +269,7 @@ void HdPatchManager::generateConfigWtf() {
         dir.mkpath(".");
     }
 
-    QFile configFile(wtfPath + "/Config.wtf");
+    QSaveFile configFile(wtfPath + "/Config.wtf");
     if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&configFile);
         out << "SET locale \"frFR\"\n";
@@ -333,7 +328,8 @@ void HdPatchManager::generateConfigWtf() {
         out << "SET gxMultisample \"8\"\n";
         out << "SET shadowLevel \"0\"\n";
         out << "SET extShadowQuality \"5\"\n";
-        configFile.close();
+        out.flush();
+        configFile.commit();  // atomic rename, avoid half-written Config.wtf
     }
 }
 

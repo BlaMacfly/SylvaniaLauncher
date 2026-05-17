@@ -9,6 +9,7 @@
 #include "NotesManager.h"
 #include "PathUtils.h"
 #include "HdPatchManager.h"
+#include "Constants.h"
 #include <QProgressBar>
 
 #include <QApplication>
@@ -33,7 +34,8 @@ MainWindow::MainWindow(QWidget* parent)
     , m_notesManager(std::make_unique<NotesManager>(this))
 {
     setWindowTitle("Sylvania Launcher - World of Warcraft 3.3.5");
-    setFixedSize(920, 580);
+    setFixedSize(SylvaniaConstants::kMainWindowWidth,
+                 SylvaniaConstants::kMainWindowHeight);
     
     // Load logo
     QString logoPath = PathUtils::getAssetsDir() + "/sylvania_logo.png";
@@ -52,10 +54,10 @@ MainWindow::MainWindow(QWidget* parent)
     checkWowInstalled();
     updateServerInfo();
     
-    // Setup play time tracking timer (checks every 5 seconds)
+    // Setup play time tracking timer
     m_playTimeTimer = new QTimer(this);
     connect(m_playTimeTimer, &QTimer::timeout, this, &MainWindow::checkWowProcess);
-    m_playTimeTimer->start(5000);
+    m_playTimeTimer->start(SylvaniaConstants::kPlayTimeCheckMs);
 
     loadStats();
 
@@ -191,31 +193,40 @@ void MainWindow::applyTheme(const QString& bgName) {
     // Footer - adapt color to theme
     if (m_footerLabel) m_footerLabel->setStyleSheet(QString("color: %1; font-size: 11px;").arg(textSecondary));
 
-    // Apply to Buttons
-    auto applyBtnStyle = [](QPushButton* btn, QString c1, QString c2, QString c3, QString border, QString textCol = "#ffffff", int fontSize = 14) {
-        if (!btn) return;
-        btn->setStyleSheet(QString(R"(
-            QPushButton {
-                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %1, stop:0.5 %2, stop:1 %3);
-                color: %5; border: 2px solid %4; border-radius: 8px; padding: 10px 20px; font-size: %6px; font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %4, stop:0.5 %1, stop:1 %2);
-            }
-            QPushButton:pressed { background-color: %3; }
-        )").arg(c1, c2, c3, border, textCol).arg(fontSize));
-    };
+    // H7: per-button styles delegate to a single helper. Used to be 8 inlined
+    // lambda calls duplicating the same QSS template.
+    const QString downloadText = QStringLiteral("#d4af37");
+    const QString secondaryText = (bgName == "Azeroth") ? QStringLiteral("#ffffff") : QStringLiteral("#d4af37");
+    const QString langText = (bgName == "Azeroth") ? QStringLiteral("#d4af37") : QStringLiteral("#ffffff");
 
-    applyBtnStyle(m_playButton, btnGreen1, btnGreen2, btnGreen3, btnGreenBorder);
-    applyBtnStyle(m_downloadButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, bgName == "Azeroth" ? "#d4af37" : "#d4af37", 12);
-    applyBtnStyle(m_hdButton, btnBlue1, btnBlue2, btnBlue3, btnBlueBorder);
-    
-    applyBtnStyle(m_settingsButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, bgName == "Azeroth" ? "#ffffff" : "#d4af37", 11);
-    applyBtnStyle(m_notesButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, bgName == "Azeroth" ? "#ffffff" : "#d4af37", 11);
-    applyBtnStyle(m_quitButton, btnPink1, btnPink2, btnPink3, btnPinkBorder, "#ffffff", 11);
-    applyBtnStyle(m_addonsButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, "#ffffff", 12);
-    applyBtnStyle(m_changeServerButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, "#ffffff", 12);
-    applyBtnStyle(m_langButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, bgName == "Azeroth" ? "#d4af37" : "#ffffff", 10);
+    styleButton(m_playButton, btnGreen1, btnGreen2, btnGreen3, btnGreenBorder);
+    styleButton(m_downloadButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, downloadText, 12);
+    styleButton(m_hdButton, btnBlue1, btnBlue2, btnBlue3, btnBlueBorder);
+
+    styleButton(m_settingsButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, secondaryText, 11);
+    styleButton(m_notesButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, secondaryText, 11);
+    styleButton(m_quitButton, btnPink1, btnPink2, btnPink3, btnPinkBorder, QStringLiteral("#ffffff"), 11);
+    styleButton(m_addonsButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, QStringLiteral("#ffffff"), 12);
+    styleButton(m_changeServerButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, QStringLiteral("#ffffff"), 12);
+    styleButton(m_langButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, langText, 10);
+}
+
+void MainWindow::styleButton(QPushButton* btn,
+                             const QString& c1, const QString& c2, const QString& c3,
+                             const QString& border,
+                             const QString& textColor,
+                             int fontSize) {
+    if (!btn) return;
+    btn->setStyleSheet(QString(R"(
+        QPushButton {
+            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %1, stop:0.5 %2, stop:1 %3);
+            color: %5; border: 2px solid %4; border-radius: 8px; padding: 10px 20px; font-size: %6px; font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %4, stop:0.5 %1, stop:1 %2);
+        }
+        QPushButton:pressed { background-color: %3; }
+    )").arg(c1, c2, c3, border, textColor).arg(fontSize));
 }
 
 void MainWindow::loadStats() {
@@ -263,7 +274,8 @@ void MainWindow::paintEvent(QPaintEvent* event) {
     
     // Draw logo top-left
     if (!m_logoImage.isNull()) {
-        QPixmap scaledLogo = m_logoImage.scaled(140, 140, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        const int sz = SylvaniaConstants::kLogoSizePx;
+        QPixmap scaledLogo = m_logoImage.scaled(sz, sz, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         painter.drawPixmap(15, 15, scaledLogo);
     }
 }

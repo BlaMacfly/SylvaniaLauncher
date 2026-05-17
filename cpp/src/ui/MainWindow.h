@@ -76,6 +76,14 @@ private:
     QWidget* createStatsPanel();
     QPushButton* createStyledButton(const QString& text, const QString& style);
 
+    // H7: applies a gradient/border style sheet to a button. Used 8+ times by
+    // applyTheme(); extracted from a duplicated lambda for clarity & reuse.
+    static void styleButton(QPushButton* btn,
+                            const QString& c1, const QString& c2, const QString& c3,
+                            const QString& border,
+                            const QString& textColor = QStringLiteral("#ffffff"),
+                            int fontSize = 14);
+
     // Managers
     std::unique_ptr<ConfigManager> m_config;
     std::unique_ptr<SoundManager> m_soundManager;

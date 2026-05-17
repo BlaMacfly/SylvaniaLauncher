@@ -85,7 +85,7 @@ public:
     bool toggleArchive(const QString& noteId);
     
     // Categories
-    std::vector<NoteCategory> getCategories() const;
+    const std::vector<NoteCategory>& getCategories() const;
     bool addCategory(const QString& id, const QString& name, const QString& color = "#4CAF50");
     
     // Statistics
@@ -111,7 +111,18 @@ private:
     QString getCategoriesFilePath() const;
     void migrateOldNotes();
 
+    // H2: cached lowercase form, parallel to m_notes, rebuilt on every mutation.
+    // Avoids recomputing toLower() for every note × every keystroke during search.
+    struct SearchIndexEntry {
+        QString titleLower;
+        QString contentLower;
+        QStringList tagsLower;
+    };
+    void rebuildSearchIndex();
+    void appendSearchIndexFor(const Note& note);
+
     std::vector<Note> m_notes;
     std::vector<NoteCategory> m_categories;
+    std::vector<SearchIndexEntry> m_searchIndex;
     QString m_dataDir;
 };

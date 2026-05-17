@@ -1,5 +1,6 @@
 #include "AddonsWindow.h"
 #include "ConfigManager.h"
+#include "Constants.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -7,10 +8,13 @@
 #include <QMessageBox>
 #include <QDir>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QFile>
 #include <QCoreApplication>
 #include <QTimer>
 #include <QNetworkRequest>
+#include <QUrlQuery>
+#include <QRegularExpression>
 #include <QFrame>
 
 AddonsWindow::AddonsWindow(ConfigManager* config, QWidget* parent)
@@ -219,29 +223,36 @@ void AddonsWindow::updateButtonStyle(QPushButton* btn, bool installed) {
 }
 
 void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* installBtn, QProgressBar* progressBar, QLabel* statusLabel) {
+    // C2: whitelist addon filenames to prevent path traversal / parameter injection.
+    static const QRegularExpression kValidAddonName(QStringLiteral("^[A-Za-z0-9_\\-.]+\\.zip$"));
+    if (!kValidAddonName.match(fileName).hasMatch()) {
+        QMessageBox::warning(this, tr("Erreur"), tr("Nom de fichier d'addon invalide."));
+        return;
+    }
+
     QString wowPath = m_config->getWowPath();
     if (wowPath.isEmpty() || !QFile::exists(wowPath + "/Wow.exe")) {
         QMessageBox::warning(this, "Erreur", "Veuillez d'abord configurer le chemin d'installation de World of Warcraft dans les réglages.");
         return;
     }
-    
+
     if (m_currentReply) {
         QMessageBox::information(this, "Information", "Un téléchargement est déjà en cours. Veuillez patienter.");
         return;
     }
-    
+
     QString addonsDir = wowPath + "/Interface/AddOns";
     QDir dir(addonsDir);
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-    
+
     m_currentZipPath = addonsDir + "/" + fileName;
     m_currentDestination = addonsDir;
     m_currentInstallBtn = installBtn;
     m_currentProgressBar = progressBar;
     m_currentStatusLabel = statusLabel;
-    
+
     // Create file
     QFile* file = new QFile(m_currentZipPath, this);
     if (!file->open(QIODevice::WriteOnly)) {
@@ -249,7 +260,7 @@ void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* instal
         file->deleteLater();
         return;
     }
-    
+
     // Setup UI
     installBtn->setEnabled(false);
     installBtn->setText("Patientez...");
@@ -257,10 +268,14 @@ void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* instal
     progressBar->show();
     statusLabel->setText("Téléchargement...");
     statusLabel->show();
-    
-    QString urlStr = "https://sylvania-servergame.com/download_addon.php?file=" + fileName;
-    QNetworkRequest request{QUrl(urlStr)};
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    QUrl url(QString::fromUtf8(SylvaniaConstants::kAddonDownloadEndpoint));
+    QUrlQuery query;
+    query.addQueryItem("file", fileName);
+    url.setQuery(query);
+    QNetworkRequest request(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::SameOriginRedirectPolicy);
     
     m_currentReply = m_networkManager->get(request);
     
@@ -340,22 +355,28 @@ void AddonsWindow::onDownloadFinished() {
 void AddonsWindow::extractZip(const QString& zipPath, const QString& destination, QPushButton* installBtn, QProgressBar* progressBar, QLabel* statusLabel) {
     statusLabel->setText("Extraction en cours...");
     progressBar->setMaximum(0); // Indeterminate mode
-    
+
     QProcess* process = new QProcess(this);
-    QString command = QString("Expand-Archive -Path '%1' -DestinationPath '%2' -Force").arg(zipPath).arg(destination);
-    
+
+    // C1: paths flow via env vars instead of being interpolated into the
+    // PowerShell command string -> no shell-injection surface.
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SYL_SRC", QDir::toNativeSeparators(zipPath));
+    env.insert("SYL_DST", QDir::toNativeSeparators(destination));
+    process->setProcessEnvironment(env);
+
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, zipPath, installBtn, progressBar, statusLabel, process](int exitCode, QProcess::ExitStatus exitStatus) {
         process->deleteLater();
-        
+
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
             QFile::remove(zipPath); // Cleanup
-            
+
             progressBar->setMaximum(100);
             progressBar->setValue(100);
             statusLabel->setText("Installé avec succès !");
             statusLabel->setStyleSheet("color: #55ff55; font-size: 11px;");
-            
+
             installBtn->setEnabled(true);
             updateButtonStyle(installBtn, true);
         } else {
@@ -363,11 +384,15 @@ void AddonsWindow::extractZip(const QString& zipPath, const QString& destination
             progressBar->setValue(0);
             statusLabel->setText("Erreur d'extraction.");
             statusLabel->setStyleSheet("color: #ff5555; font-size: 11px;");
-            
+
             installBtn->setEnabled(true);
             installBtn->setText("Réessayer");
         }
     });
-    
-    process->start("powershell", QStringList() << "-Command" << command);
+
+    process->start("powershell", QStringList()
+        << "-NoProfile"
+        << "-ExecutionPolicy" << "Bypass"
+        << "-Command"
+        << "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
 }
