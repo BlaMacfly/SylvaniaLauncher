@@ -2,6 +2,7 @@
 #include "Constants.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QTimer>
 #include <QFileInfo>
 #include <QProcess>
@@ -140,6 +141,11 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
     QString extractPath = m_tempDir + "/extracted";
     QDir().mkpath(extractPath);
 
+    QFileInfo zipInfo(zipPath);
+    qint64 zipSize = zipInfo.size();
+    // Estimate uncompressed size is roughly 1.5x ZIP size (typical for game files)
+    qint64 estimatedExtractedSize = static_cast<qint64>(zipSize * 1.5);
+
     QTimer* progressTimer = new QTimer(this);
     progressTimer->setInterval(SylvaniaConstants::kExtractProgressMs);
 
@@ -154,13 +160,24 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
 
     progressTimer->start();
 
-    connect(progressTimer, &QTimer::timeout, this, [this, extractPath]() {
-        // Sample only the top-level directory (cheap) for a coarse progress indication.
-        QDir dir(extractPath);
-        const QFileInfoList entries = dir.entryInfoList(
-            QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-        int progress = qBound(0, static_cast<int>(entries.size()), 99);
-        emit progressChanged(progress, tr("Extraction des fichiers HD..."));
+    connect(progressTimer, &QTimer::timeout, this, [this, extractPath, estimatedExtractedSize]() {
+        // Recursive byte scan of the extraction folder gives a meaningful
+        // percentage during long extractions. The 5 s interval keeps the I/O
+        // cost well below the actual work done by Expand-Archive.
+        QCoreApplication::processEvents();
+        qint64 currentSize = 0;
+        QDirIterator it(extractPath, QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            currentSize += it.fileInfo().size();
+        }
+
+        int progress = (estimatedExtractedSize > 0)
+            ? static_cast<int>((currentSize * 100) / estimatedExtractedSize)
+            : 0;
+        progress = qBound(0, progress, 99);  // cap at 99% until really finished
+
+        emit progressChanged(progress, tr("Extraction des fichiers HD... %1%").arg(progress));
     });
 
     process->start("powershell", QStringList()
