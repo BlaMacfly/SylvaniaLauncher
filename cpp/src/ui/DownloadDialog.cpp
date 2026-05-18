@@ -8,8 +8,10 @@
 #include <QTimer>
 #include <QFileInfo>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QCoreApplication>
 #include <QDir>
+#include <QSaveFile>
 #include <QTextStream>
 #include <QtConcurrent>
 #include <QCryptographicHash>
@@ -172,8 +174,8 @@ void DownloadDialog::startDownload(const QString& directory) {
     m_statusLabel->setText(tr("Connexion au serveur..."));
     
     QNetworkRequest request{QUrl(m_downloadUrl)};
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, 
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::SameOriginRedirectPolicy);
     
     m_reply = m_networkManager->get(request);
     
@@ -302,10 +304,18 @@ void DownloadDialog::extractZip(const QString& zipPath) {
     
     // Use Windows PowerShell Expand-Archive for extraction
     QProcess* process = new QProcess(this);
-    
+
+    // C1: paths flow via environment variables instead of being interpolated
+    // into the PowerShell command string -> no shell-injection surface even
+    // when the destination path contains quotes, $() or backticks.
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SYL_SRC", QDir::toNativeSeparators(zipPath));
+    env.insert("SYL_DST", QDir::toNativeSeparators(m_destination));
+    process->setProcessEnvironment(env);
+
     // Progress monitoring timer - Reduced frequency to 5s to avoid UI freeze on large folders
     QTimer* progressTimer = new QTimer(this);
-    progressTimer->setInterval(5000); 
+    progressTimer->setInterval(5000);
     
     // Store initial folder size
     qint64 initialSize = 0;
@@ -344,11 +354,6 @@ void DownloadDialog::extractZip(const QString& zipPath) {
     
     progressTimer->start();
     
-    // PowerShell command to extract ZIP
-    QString command = QString(
-        "Expand-Archive -Path '%1' -DestinationPath '%2' -Force"
-    ).arg(zipPath).arg(m_destination);
-    
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, process, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {
         progressTimer->stop();
@@ -386,7 +391,11 @@ void DownloadDialog::extractZip(const QString& zipPath) {
         reject();
     });
     
-    process->start("powershell", QStringList() << "-Command" << command);
+    process->start("powershell", QStringList()
+        << "-NoProfile"
+        << "-ExecutionPolicy" << "Bypass"
+        << "-Command"
+        << "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
 }
 
 void DownloadDialog::onDownloadError(QNetworkReply::NetworkError error) {
@@ -479,7 +488,8 @@ void DownloadDialog::generateConfigWtf() {
         dir.mkpath(".");
     }
 
-    QFile configFile(wtfPath + "/Config.wtf");
+    // C3: atomic write so a crash mid-write can't leave a half-written Config.wtf.
+    QSaveFile configFile(wtfPath + "/Config.wtf");
     if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&configFile);
         QString locale = (m_language == "en") ? "enUS" : "frFR";
@@ -539,6 +549,7 @@ void DownloadDialog::generateConfigWtf() {
         out << "SET gxMultisample \"8\"\n";
         out << "SET shadowLevel \"0\"\n";
         out << "SET extShadowQuality \"5\"\n";
-        configFile.close();
+        out.flush();
+        configFile.commit();
     }
 }
