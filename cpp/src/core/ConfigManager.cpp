@@ -16,11 +16,63 @@ ConfigManager::ConfigManager(QObject* parent)
     m_configDir = PathUtils::getConfigDir();
     loadConfig();
 
+    // Migrate any stale realmlist inherited from an older launcher build
+    // (e.g. logon.sylvania-wow.com). Done before wiring up the debounce
+    // timer so the corrected config is written synchronously and the
+    // realmlist.wtf on disk is refreshed immediately.
+    if (migrateLegacyRealmlist()) {
+        save();
+        const auto entries = getRealmlistEntries();
+        const int activeIndex = getActiveRealmlistIndex();
+        if (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) {
+            updateRealmlist(entries[activeIndex].address);
+        }
+    }
+
     // H4: coalesce bursts of setX() calls (e.g. Settings dialog applying many
     // options at once) into a single disk write 200 ms after the last change.
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(SylvaniaConstants::kConfigSaveDebounceMs);
     connect(&m_saveTimer, &QTimer::timeout, this, [this]() { save(); });
+}
+
+bool ConfigManager::migrateLegacyRealmlist() {
+    // Domains used by previous launcher builds that must be rewritten to
+    // the current production address. The match is case-insensitive and
+    // substring-based so any historical spelling is caught.
+    static const QStringList kLegacyHosts = {
+        QStringLiteral("logon.sylvania-wow.com"),
+        QStringLiteral("sylvania-wow.com"),
+        QStringLiteral("logon.sylvania.com"),
+    };
+    static const QString kCanonicalAddress =
+        QStringLiteral("set realmlist sylvania-servergame.com");
+
+    QJsonArray array = m_config.value("realmlist_entries").toArray();
+    bool migrated = false;
+
+    for (int i = 0; i < array.size(); ++i) {
+        QJsonObject obj = array[i].toObject();
+        const QString address = obj.value("address").toString();
+        bool isLegacy = false;
+        for (const QString& legacy : kLegacyHosts) {
+            if (address.contains(legacy, Qt::CaseInsensitive)) {
+                isLegacy = true;
+                break;
+            }
+        }
+        if (!isLegacy) continue;
+
+        obj["address"] = kCanonicalAddress;
+        array[i] = obj;
+        migrated = true;
+        qWarning() << "Realmlist legacy migré: " << address << " -> " << kCanonicalAddress;
+    }
+
+    if (migrated) {
+        m_config["realmlist_entries"] = array;
+    }
+    return migrated;
 }
 
 ConfigManager::~ConfigManager() {

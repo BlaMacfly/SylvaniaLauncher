@@ -69,6 +69,12 @@ signals:
 private:
     void loadConfig();
     void createDefaultConfig();
+    // Rewrites stale realmlist entries inherited from earlier launcher
+    // versions (logon.sylvania-wow.com, sylvania-wow.com, etc.) to the
+    // current canonical address. Returns true if at least one entry was
+    // rewritten. Runs once on construction and is idempotent on subsequent
+    // launches.
+    bool migrateLegacyRealmlist();
     QString getConfigPath() const;
 
     QJsonObject m_config;
