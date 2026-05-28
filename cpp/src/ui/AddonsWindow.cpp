@@ -53,6 +53,8 @@ void AddonsWindow::populateAddons() {
         {"Healium", tr("Interface de soin avec boutons d'accès rapide aux sorts."), "Healium.zip", "Healium"},
         {"Immersion", tr("Modernise l'affichage des textes de quêtes et dialogues."), "Immersion.zip", "Immersion"},
         {"Mapster", tr("Améliore la visibilité et les fonctions de la carte du monde."), "Mapster.zip", "Mapster"},
+        {"NPCScan", tr("Détecte les créatures rares à proximité et vous alerte avec un signal sonore."), "NPCScan.zip", "_NPCScan"},
+        {"NPCScan-Overlay", tr("Affiche les trajets et zones d'apparition des créatures rares sur la carte."), "NPCScan-Overlay.zip", "_NPCScan-Overlay"},
         {"Postal", tr("Améliore radicalement la gestion de la boîte aux lettres."), "Postal.zip", "Postal"},
         {"Prat", tr("Personnalisation poussée de la fenêtre de discussion."), "Prat-3.0.zip", "Prat-3.0"},
         {"Quartz", tr("Barres d'incantation modulaires et ultra-précises."), "Quartz.zip", "Quartz"},

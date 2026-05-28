@@ -216,8 +216,8 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
     }
 
     QStringList itemsToMigrate = {
-        "Data", "Interface", "PatchMenu",                         // Folders
-        "World of Warcraft.app", "d3d9.dll", 
+        "Data", "Interface",                                      // Folders
+        "World of Warcraft.app", "d3d9.dll",
         "dxvk.conf", "WoW.exe"           // Files
     };
     
