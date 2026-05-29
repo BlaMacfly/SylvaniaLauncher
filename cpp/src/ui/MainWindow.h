@@ -63,6 +63,7 @@ private:
     void setupUi();
     void connectSignals();
     void applyTheme(const QString& bgName);
+    QString pickRandomBackground(const QString& exclude = QString()) const;
     void checkWowInstalled();
     void playGame();
     void browseWowDirectory();

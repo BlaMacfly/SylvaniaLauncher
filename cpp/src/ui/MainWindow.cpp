@@ -26,6 +26,7 @@
 #include <QCloseEvent>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRandomGenerator>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -66,10 +67,26 @@ MainWindow::MainWindow(QWidget* parent)
     if (currentLang.isEmpty()) currentLang = "fr";
     changeLanguage(currentLang, true); // true means initial, so we DON'T check for enUS yet
     
-    applyTheme(m_config->getBackground());
+    // Pick a fresh random background on every launch (different from last time)
+    QString launchBg = pickRandomBackground(m_config->getBackground());
+    m_config->setBackground(launchBg);
+    applyTheme(launchBg);
 }
 
 MainWindow::~MainWindow() = default;
+
+QString MainWindow::pickRandomBackground(const QString& exclude) const {
+    static const QStringList backgrounds = {
+        "Alliance", "Arbre de Vie", "Azeroth", "Horde",
+        "Ilidan", "Lich King", "Ragnaros", "Taverne"
+    };
+    if (backgrounds.size() <= 1) return backgrounds.value(0);
+    QString chosen = exclude;
+    while (chosen == exclude) {
+        chosen = backgrounds.at(QRandomGenerator::global()->bounded(backgrounds.size()));
+    }
+    return chosen;
+}
 
 void MainWindow::applyTheme(const QString& bgName) {
     // Load background image (try .jpg first, then .png)

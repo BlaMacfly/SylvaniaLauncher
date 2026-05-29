@@ -391,7 +391,7 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
     connect(m_masterToggle, &QPushButton::toggled, this, &SettingsDialog::onMasterToggled);
 
     QLabel* hint = new QLabel(
-        tr("⚠️ Les patchs marqués ⚠ modifient des tables (.dbc). Videz le cache après changement."), this);
+        tr("Videz le cache après tout changement de patch (certains modifient des tables .dbc)."), this);
     hint->setWordWrap(true);
     hint->setStyleSheet("color: #c08a4a; font-size: 10px;");
     mainLayout->addWidget(hint);
@@ -409,10 +409,7 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
 
     int row = 0;
     for (const auto& feature : m_features) {
-        QString text = feature.label;
-        if (feature.dangerous) text += "  ⚠";
-
-        QLabel* label = new QLabel(text, this);
+        QLabel* label = new QLabel(feature.label, this);
         label->setStyleSheet("color: #d4af37; font-size: 11px; font-weight: bold;");
         if (feature.dangerous) {
             label->setToolTip(tr("Patch « Dangereux » : il remplace une table .dbc "

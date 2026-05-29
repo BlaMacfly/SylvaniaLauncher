@@ -1284,8 +1284,8 @@ DISABLED: turns off all patches (original client).</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="456"/>
-        <source>⚠️ Les patchs marqués ⚠ modifient des tables (.dbc). Videz le cache après changement.</source>
-        <translation>⚠️ Patches marked ⚠ modify tables (.dbc). Clear the cache after any change.</translation>
+        <source>Videz le cache après tout changement de patch (certains modifient des tables .dbc).</source>
+        <translation>Clear the cache after any patch change (some modify .dbc tables).</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="494"/>
