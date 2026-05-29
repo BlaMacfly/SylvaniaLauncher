@@ -781,7 +781,12 @@ void MainWindow::onHdButtonClicked() {
         connect(m_hdPatchManager.get(), &HdPatchManager::progressChanged, this, [this](int progress, const QString& status) {
             m_hdProgressBar->show();
             m_hdStatusLabel->show();
-            m_hdProgressBar->setValue(progress);
+            if (progress < 0) {
+                m_hdProgressBar->setRange(0, 0); // indeterminate / busy
+            } else {
+                m_hdProgressBar->setRange(0, 100);
+                m_hdProgressBar->setValue(progress);
+            }
             m_hdStatusLabel->setText(status);
         });
         
@@ -938,22 +943,32 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     QMainWindow::closeEvent(event);
 }
 
-bool MainWindow::isWowRunning() {
+void MainWindow::checkWowProcess() {
 #ifdef Q_OS_WIN
-    // Use Windows API to check if Wow.exe is running
-    QProcess process;
-    process.start("tasklist", QStringList() << "/FI" << "IMAGENAME eq Wow.exe" << "/NH");
-    process.waitForFinished(3000);
-    QString output = process.readAllStandardOutput();
-    return output.contains("Wow.exe", Qt::CaseInsensitive);
-#else
-    return false;
+    // Query tasklist ASYNCHRONOUSLY. The previous waitForFinished(3000) ran on
+    // the UI thread every 5 s and could freeze the launcher for up to 3 s each
+    // tick. Skip this tick if a previous check is still running.
+    if (m_wowCheckProcess) return;
+
+    m_wowCheckProcess = new QProcess(this);
+    connect(m_wowCheckProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this](int, QProcess::ExitStatus) {
+        const bool running = QString::fromLocal8Bit(m_wowCheckProcess->readAllStandardOutput())
+                                 .contains("Wow.exe", Qt::CaseInsensitive);
+        m_wowCheckProcess->deleteLater();
+        m_wowCheckProcess = nullptr;
+        handleWowRunningState(running);
+    });
+    connect(m_wowCheckProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+        m_wowCheckProcess->deleteLater();
+        m_wowCheckProcess = nullptr;
+    });
+    m_wowCheckProcess->start("tasklist",
+        QStringList() << "/FI" << "IMAGENAME eq Wow.exe" << "/NH");
 #endif
 }
 
-void MainWindow::checkWowProcess() {
-    bool running = isWowRunning();
-    
+void MainWindow::handleWowRunningState(bool running) {
     if (running && !m_wowRunning) {
         // WoW just started
         m_wowRunning = true;

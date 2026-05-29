@@ -19,6 +19,7 @@ class RealmlistWindow;
 class DownloadDialog;
 class HdPatchManager;
 class QProgressBar;
+class QProcess;
 class AddonsWindow;
 
 /**
@@ -69,7 +70,7 @@ private:
     void browseWowDirectory();
     void loadStats();
     void saveStats();
-    bool isWowRunning();
+    void handleWowRunningState(bool running);
     void changeLanguage(const QString& lang, bool initial = false);
     void retranslateUi();
     
@@ -142,6 +143,7 @@ private:
     QTimer* m_playTimeTimer = nullptr;
     QDateTime m_sessionStartTime;
     bool m_wowRunning = false;
+    QProcess* m_wowCheckProcess = nullptr; // async Wow.exe presence check
     
     QTranslator m_translator;
 };

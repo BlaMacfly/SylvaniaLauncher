@@ -141,14 +141,6 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
     QString extractPath = m_tempDir + "/extracted";
     QDir().mkpath(extractPath);
 
-    QFileInfo zipInfo(zipPath);
-    qint64 zipSize = zipInfo.size();
-    // Estimate uncompressed size is roughly 1.5x ZIP size (typical for game files)
-    qint64 estimatedExtractedSize = static_cast<qint64>(zipSize * 1.5);
-
-    QTimer* progressTimer = new QTimer(this);
-    progressTimer->setInterval(SylvaniaConstants::kExtractProgressMs);
-
     QProcess* process = new QProcess(this);
 
     // Safe extraction: paths flow via environment variables, never interpolated
@@ -158,34 +150,15 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
     env.insert("SYL_DST", QDir::toNativeSeparators(extractPath));
     process->setProcessEnvironment(env);
 
-    progressTimer->start();
-
-    connect(progressTimer, &QTimer::timeout, this, [this, extractPath, estimatedExtractedSize]() {
-        // Recursive byte scan of the extraction folder gives a meaningful
-        // percentage during long extractions. The 5 s interval keeps the I/O
-        // cost well below the actual work done by Expand-Archive.
-        QCoreApplication::processEvents();
-        qint64 currentSize = 0;
-        QDirIterator it(extractPath, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            currentSize += it.fileInfo().size();
-        }
-
-        int progress = (estimatedExtractedSize > 0)
-            ? static_cast<int>((currentSize * 100) / estimatedExtractedSize)
-            : 0;
-        progress = qBound(0, progress, 99);  // cap at 99% until really finished
-
-        emit progressChanged(progress, tr("Extraction des fichiers HD... %1%").arg(progress));
-    });
+    // The extraction runs in a child process. Show a busy/indeterminate state
+    // (progress = -1) instead of recursively scanning the growing extraction
+    // tree on the UI thread, which froze the launcher on large clients.
+    emit progressChanged(-1, tr("Extraction des fichiers HD en cours..."));
 
     process->start("powershell", SylvaniaConstants::extractArchiveArgs());
 
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, process, extractPath, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {
-        progressTimer->stop();
-        progressTimer->deleteLater();
+            this, [this, process, extractPath, zipPath](int exitCode, QProcess::ExitStatus exitStatus) {
         process->deleteLater();
 
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
