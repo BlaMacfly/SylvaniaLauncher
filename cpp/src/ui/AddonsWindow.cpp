@@ -392,9 +392,5 @@ void AddonsWindow::extractZip(const QString& zipPath, const QString& destination
         }
     });
 
-    process->start("powershell", QStringList()
-        << "-NoProfile"
-        << "-ExecutionPolicy" << "Bypass"
-        << "-Command"
-        << "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
+    process->start("powershell", SylvaniaConstants::extractArchiveArgs());
 }

@@ -180,11 +180,7 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         emit progressChanged(progress, tr("Extraction des fichiers HD... %1%").arg(progress));
     });
 
-    process->start("powershell", QStringList()
-        << "-NoProfile"
-        << "-ExecutionPolicy" << "Bypass"
-        << "-Command"
-        << "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
+    process->start("powershell", SylvaniaConstants::extractArchiveArgs());
 
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, process, extractPath, zipPath, progressTimer](int exitCode, QProcess::ExitStatus exitStatus) {

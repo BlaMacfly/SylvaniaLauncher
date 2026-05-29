@@ -1,4 +1,5 @@
 #include "DownloadDialog.h"
+#include "Constants.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -391,11 +392,7 @@ void DownloadDialog::extractZip(const QString& zipPath) {
         reject();
     });
     
-    process->start("powershell", QStringList()
-        << "-NoProfile"
-        << "-ExecutionPolicy" << "Bypass"
-        << "-Command"
-        << "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
+    process->start("powershell", SylvaniaConstants::extractArchiveArgs());
 }
 
 void DownloadDialog::onDownloadError(QNetworkReply::NetworkError error) {
