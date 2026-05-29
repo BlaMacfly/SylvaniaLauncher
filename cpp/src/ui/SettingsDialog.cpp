@@ -70,6 +70,10 @@ SettingsDialog::SettingsDialog(ConfigManager* config, SoundManager* soundManager
         {mop,                                      {"j"},       {"j"},     false, true,  false, sl},
         {tr("Cartes des mini-donjons"),            {},          {"n"},     false, true,  false, ""},
         {tr("Sang"),                               {"b"},       {},        false, true,  false, ""},
+        // ARAC = All Races All Classes (root patch-a.mpq). Independent of the HD
+        // pack; modifies race/class .dbc tables. Distinct from the locale "-a"
+        // used by "Mort-vivant sans os" (patch-<loc>-a).
+        {tr("ARAC (toutes races / classes)"),      {"a"},       {},        false, true,  false, ""},
     };
 
     setupUi();

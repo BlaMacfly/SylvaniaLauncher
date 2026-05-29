@@ -1327,5 +1327,10 @@ DISABLED: turns off all patches (original client).</translation>
         <source>Veuillez d&apos;abord configurer le dossier WoW (Wow.exe)</source>
         <translation>Please configure the WoW folder first (Wow.exe)</translation>
     </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="71"/>
+        <source>ARAC (toutes races / classes)</source>
+        <translation>ARAC (all races / classes)</translation>
+    </message>
 </context>
 </TS>
