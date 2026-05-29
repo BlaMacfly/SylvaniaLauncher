@@ -43,11 +43,12 @@ inline QStringList extractArchiveArgs() {
         << "-Command"
         << "$ErrorActionPreference='Stop';"
            "$src=$env:SYL_SRC; $dst=$env:SYL_DST;"
-           "New-Item -ItemType Directory -Force -Path $dst | Out-Null;"
+           "if (-not (Test-Path -LiteralPath $dst)) {"
+           " New-Item -ItemType Directory -Force -Path $dst | Out-Null };"
            "$ok=$false;"
            "if (Get-Command tar.exe -ErrorAction SilentlyContinue) {"
            " & tar.exe -xf $src -C $dst 2>$null;"
-           " if ($LASTEXITCODE -eq 0) { $ok=$true } }"
+           " if ($LASTEXITCODE -eq 0) { $ok=$true } };"
            "if (-not $ok) { Expand-Archive -LiteralPath $src -DestinationPath $dst -Force }";
 }
 
