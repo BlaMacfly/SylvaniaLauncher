@@ -164,17 +164,53 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
             emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
 
-            // Look for "Le Client WoW HD" inside the extraction folder
-            QString sourceDir = extractPath + "/Le Client WoW HD";
-            if (QDir(sourceDir).exists()) {
+            // Locate the client root inside the extracted tree. The archive may
+            // wrap "Le Client WoW HD" in extra folders (e.g. "Patch-HD/...") or
+            // ship its contents directly, so search rather than assume a path.
+            QString sourceDir = findExtractedRoot(extractPath);
+            if (!sourceDir.isEmpty()) {
                 migrateFiles(sourceDir);
             } else {
-                emit finished(false, tr("Dossier 'Le Client WoW HD' non trouvé dans l'archive"));
+                emit finished(false, tr("Contenu du Patch HD introuvable dans l'archive."));
             }
         } else {
             emit finished(false, tr("Échec de l'extraction: ") + process->readAllStandardError());
         }
     });
+}
+
+QString HdPatchManager::findExtractedRoot(const QString& extractPath) const {
+    auto looksLikeRoot = [](const QString& dir) {
+        return QDir(dir + "/Data").exists()
+            || QFile::exists(dir + "/WoW.exe")
+            || QFile::exists(dir + "/wow.exe");
+    };
+
+    // Breadth-first, depth-limited search. The canonical root is the folder
+    // "Le Client WoW HD", but the archive may wrap it (e.g. "Patch-HD/Le
+    // Client WoW HD/") or ship its contents directly. We stop as soon as we
+    // find the marker, so we never descend into the multi-GB Data tree.
+    const int maxDepth = 4;
+    QList<QPair<QString, int>> queue;
+    queue.append(qMakePair(extractPath, 0));
+
+    while (!queue.isEmpty()) {
+        const QString dir = queue.first().first;
+        const int depth = queue.first().second;
+        queue.removeFirst();
+
+        if (QDir(dir + "/Le Client WoW HD").exists())
+            return dir + "/Le Client WoW HD";
+        if (looksLikeRoot(dir))
+            return dir;
+
+        if (depth >= maxDepth)
+            continue;
+        const QStringList subs = QDir(dir).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString& sub : subs)
+            queue.append(qMakePair(dir + "/" + sub, depth + 1));
+    }
+    return QString();
 }
 
 void HdPatchManager::migrateFiles(const QString& sourcePath) {

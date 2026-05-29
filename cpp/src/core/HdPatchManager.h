@@ -41,6 +41,7 @@ private slots:
 
 private:
     void extractPatch(const QString& zipPath);
+    QString findExtractedRoot(const QString& extractPath) const;
     void migrateFiles(const QString& sourcePath);
     void generateConfigWtf();
     void cleanup();
