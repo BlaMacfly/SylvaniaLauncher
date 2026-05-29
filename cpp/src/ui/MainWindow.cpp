@@ -67,10 +67,15 @@ MainWindow::MainWindow(QWidget* parent)
     if (currentLang.isEmpty()) currentLang = "fr";
     changeLanguage(currentLang, true); // true means initial, so we DON'T check for enUS yet
     
-    // Pick a fresh random background on every launch (different from last time)
-    QString launchBg = pickRandomBackground(m_config->getBackground());
-    m_config->setBackground(launchBg);
-    applyTheme(launchBg);
+    // Background on launch: if the random toggle is ON, pick a fresh one
+    // (different from last time); otherwise keep the saved background.
+    if (m_config->isRandomBackgroundEnabled()) {
+        QString launchBg = pickRandomBackground(m_config->getBackground());
+        m_config->setBackground(launchBg);
+        applyTheme(launchBg);
+    } else {
+        applyTheme(m_config->getBackground());
+    }
 }
 
 MainWindow::~MainWindow() = default;

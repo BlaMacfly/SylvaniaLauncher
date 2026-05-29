@@ -222,6 +222,14 @@ void ConfigManager::setBackground(const QString& bgName) {
     set("background", bgName);
 }
 
+bool ConfigManager::isRandomBackgroundEnabled() const {
+    return get("random_bg_on_launch", true).toBool();
+}
+
+void ConfigManager::setRandomBackgroundEnabled(bool enabled) {
+    set("random_bg_on_launch", enabled);
+}
+
 std::vector<RealmlistEntry> ConfigManager::getRealmlistEntries() const {
     std::vector<RealmlistEntry> entries;
     

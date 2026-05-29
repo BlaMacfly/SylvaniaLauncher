@@ -227,24 +227,32 @@ void SettingsDialog::setupUi() {
     )");
     m_backgroundCombo->installEventFilter(new WheelEventFilter(m_backgroundCombo));
 
-    // Random background picker (next to the selector)
-    m_randomBgButton = new QPushButton(tr("🎲 Aléatoire"), this);
+    // Random background toggle: ON = a new random background on each launch,
+    // OFF = always keep the selected background.
+    m_randomBgButton = new QPushButton(this);
+    m_randomBgButton->setCheckable(true);
     m_randomBgButton->setCursor(Qt::PointingHandCursor);
-    m_randomBgButton->setToolTip(tr("Choisir un arrière-plan au hasard"));
+    m_randomBgButton->setToolTip(tr(
+        "ON : change l'arrière-plan à chaque ouverture du launcher.\n"
+        "OFF : garde toujours le même arrière-plan."));
     m_randomBgButton->setStyleSheet(R"(
         QPushButton {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #5a4a2d, stop:0.5 #3a2a1d, stop:1 #2a1a0d);
-            color: #d4af37;
-            border: 1px solid #7a6a4d;
             border-radius: 4px;
             padding: 5px 12px;
             font-weight: bold;
             font-size: 11px;
         }
-        QPushButton:hover {
+        QPushButton:checked {
             background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #6a5a3d, stop:0.5 #4a3a2d, stop:1 #3a2a1d);
+                stop:0 #4a7c3f, stop:1 #2a5a1f);
+            color: #ffffff;
+            border: 1px solid #5a8c4f;
+        }
+        QPushButton:!checked {
+            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #5a4a2d, stop:1 #2a1a0d);
+            color: #d4af37;
+            border: 1px solid #7a6a4d;
         }
     )");
 
@@ -338,7 +346,7 @@ void SettingsDialog::setupUi() {
     connect(m_clearCacheButton, &QPushButton::clicked, this, &SettingsDialog::onClearCacheClicked);
     connect(m_openAddonsButton, &QPushButton::clicked, this, &SettingsDialog::onOpenAddonsClicked);
     connect(m_downloadEnUsButton, &QPushButton::clicked, this, &SettingsDialog::onDownloadEnUsClicked);
-    connect(m_randomBgButton, &QPushButton::clicked, this, &SettingsDialog::onRandomBackgroundClicked);
+    connect(m_randomBgButton, &QPushButton::toggled, this, &SettingsDialog::onRandomBgToggled);
     connect(m_pathEdit, &QLineEdit::textChanged, this, &SettingsDialog::updateButtonsState);
     connect(m_okButton, &QPushButton::clicked, this, &SettingsDialog::onOkClicked);
     connect(m_cancelButton, &QPushButton::clicked, this, &SettingsDialog::onCancelClicked);
@@ -365,7 +373,7 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
     m_masterToggle->setCursor(Qt::PointingHandCursor);
     m_masterToggle->setMinimumHeight(40);
     m_masterToggle->setToolTip(tr(
-        "ACTIVÉ : applique la configuration HD recommandée.\n"
+        "ACTIVÉ : active tous les patchs présents.\n"
         "DÉSACTIVÉ : éteint tous les patchs (client d'origine)."));
     m_masterToggle->setStyleSheet(R"(
         QPushButton {
@@ -494,11 +502,18 @@ void SettingsDialog::updateMasterButton() {
 
 void SettingsDialog::onMasterToggled(bool enabled) {
     m_soundManager->play("button");
-    // ON  -> apply recommended defaults; OFF -> disable everything.
+    // ON -> enable every present patch; OFF -> disable everything.
+    // Only exception: mutually-exclusive features (MoP vs SL character
+    // creation) cannot both be active, so on "ON" we keep only the
+    // preferred side (defaultOn) and leave the other off.
     for (const auto& feature : m_features) {
         QPushButton* toggle = m_featureToggles.value(feature.label, nullptr);
         if (!toggle || !toggle->isEnabled()) continue;
-        setToggleState(toggle, enabled ? feature.defaultOn : false);
+        bool target = enabled;
+        if (enabled && !feature.exclusiveWith.isEmpty() && !feature.defaultOn) {
+            target = false;
+        }
+        setToggleState(toggle, target);
     }
     updateMasterButton();
 }
@@ -513,6 +528,15 @@ void SettingsDialog::loadSettings() {
         m_backgroundCombo->setCurrentIndex(bgIndex);
         m_backgroundCombo->blockSignals(false);
     }
+
+    // Random-background-on-launch toggle
+    bool randomBg = m_config->isRandomBackgroundEnabled();
+    m_randomBgButton->blockSignals(true);
+    m_randomBgButton->setChecked(randomBg);
+    m_randomBgButton->blockSignals(false);
+    m_randomBgButton->setText(randomBg ? tr("🎲 Aléatoire : ON")
+                                       : tr("🎲 Aléatoire : OFF"));
+    m_backgroundCombo->setEnabled(!randomBg);
 
     // Load patch states from the real files on disk.
     bool anyEnabled = false;
@@ -562,6 +586,7 @@ void SettingsDialog::saveSettings() {
     m_config->setWowPath(m_pathEdit->text());
     m_soundManager->setMuted(!m_soundCheckbox->isChecked());
     m_config->setBackground(m_backgroundCombo->currentData().toString());
+    m_config->setRandomBackgroundEnabled(m_randomBgButton->isChecked());
 
     // Apply each feature's toggle to its real file set (root + all locales).
     for (const auto& feature : m_features) {
@@ -653,18 +678,12 @@ void SettingsDialog::applyFeatureToggle(const PatchFeature& f, bool enabled) {
     }
 }
 
-void SettingsDialog::onRandomBackgroundClicked() {
+void SettingsDialog::onRandomBgToggled(bool enabled) {
     m_soundManager->play("button");
-    int count = m_backgroundCombo->count();
-    if (count <= 1) return;
-
-    int current = m_backgroundCombo->currentIndex();
-    int idx = current;
-    while (idx == current) {
-        idx = QRandomGenerator::global()->bounded(count);
-    }
-    // Triggers currentIndexChanged -> live preview via backgroundChanged.
-    m_backgroundCombo->setCurrentIndex(idx);
+    m_randomBgButton->setText(enabled ? tr("🎲 Aléatoire : ON")
+                                      : tr("🎲 Aléatoire : OFF"));
+    // When random-on-launch is ON, the fixed selector no longer applies.
+    m_backgroundCombo->setEnabled(!enabled);
 }
 
 void SettingsDialog::onBrowseClicked() {

@@ -42,7 +42,7 @@ signals:
 private slots:
   void onBrowseClicked();
   void onBackgroundChanged(const QString &bgName);
-  void onRandomBackgroundClicked();
+  void onRandomBgToggled(bool enabled);
   void onClearCacheClicked();
   void onOpenAddonsClicked();
   void onDownloadEnUsClicked();

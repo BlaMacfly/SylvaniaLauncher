@@ -1267,19 +1267,26 @@ This will delete the Cache folder.</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="262"/>
-        <source>🎲 Aléatoire</source>
-        <translation>🎲 Random</translation>
+        <source>🎲 Aléatoire : ON</source>
+        <translation>🎲 Random: ON</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="264"/>
-        <source>Choisir un arrière-plan au hasard</source>
-        <translation>Pick a random background</translation>
+        <source>🎲 Aléatoire : OFF</source>
+        <translation>🎲 Random: OFF</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="233"/>
+        <source>ON : change l'arrière-plan à chaque ouverture du launcher.
+OFF : garde toujours le même arrière-plan.</source>
+        <translation>ON: picks a new background every time the launcher starts.
+OFF: always keeps the same background.</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="431"/>
-        <source>ACTIVÉ : applique la configuration HD recommandée.
+        <source>ACTIVÉ : active tous les patchs présents.
 DÉSACTIVÉ : éteint tous les patchs (client d&apos;origine).</source>
-        <translation>ENABLED: applies the recommended HD configuration.
+        <translation>ENABLED: turns on every installed patch.
 DISABLED: turns off all patches (original client).</translation>
     </message>
     <message>

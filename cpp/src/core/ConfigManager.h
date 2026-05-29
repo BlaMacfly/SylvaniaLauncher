@@ -53,6 +53,9 @@ public:
     QString getBackground() const;
     void setBackground(const QString& bgName);
 
+    bool isRandomBackgroundEnabled() const;
+    void setRandomBackgroundEnabled(bool enabled);
+
     // Realmlist management
     std::vector<RealmlistEntry> getRealmlistEntries() const;
     void setRealmlistEntries(const std::vector<RealmlistEntry>& entries);
