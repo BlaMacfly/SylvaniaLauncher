@@ -1,19 +1,28 @@
-# Build
+# --- Build / IDE ---
 .gradle/
 build/
 app/build/
 *.apk
 *.aab
-
-# Android Studio / IntelliJ
 .idea/
 *.iml
 local.properties
 .cxx/
+.externalNativeBuild/
 
-# Runtime reference clones (upstream repos, not part of our source)
+# --- Runtime binary payloads (large redistributables — fetched separately, NOT in git) ---
+# Base rootfs + Wine/Proton builds + component archives (imagefs, proton, box64,
+# dxvk, turnip, wincomponents, ...). See docs/RUNTIME_INTEGRATION.md for sources.
+app/src/main/assets/*.txz
+app/src/main/assets/*.tzst
+app/src/main/assets/**/*.tzst
+app/src/main/assets/*.wcp
+app/src/main/assets/**/*.wcp
+app/src/main/assets/default_music.mp3
+
+# --- Upstream reference clones (not part of our source) ---
 _runtime_reference/
 
-# OS
+# --- OS ---
 .DS_Store
 Thumbs.db

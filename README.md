@@ -1,58 +1,43 @@
-# Sylvania Launcher — Android
+<p align="center">
+	<img src="logo.png" width="376" height="128" alt="Winlator Logo" />  
+</p>
 
-Port Android natif du launcher C++/Qt « Sylvania Launcher » pour World of
-Warcraft 3.3.5a. La logique du launcher (realmlist, patch HD, intégrité,
-config) est réécrite en Kotlin ; le client `Wow.exe` s'exécutera via une pile
-**Wine-bionic + Box64 (WoW64)** sur GPU Adreno, sans root.
+# Winlator
 
-Voir **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** pour la conception complète
-(pile runtime, versions épinglées, risques) et la cartographie portable/à-réécrire.
+Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.
 
-## État
+# Installation
 
-| Phase | Statut |
-|---|---|
-| 0 — Analyse du projet C++ source | ✅ |
-| 1 — État de l'art runtime (sourcé) | ✅ |
-| 2.0 — Cartographie de la recette (Winlator-Bionic / XaW64) | ✅ |
-| B — Squelette APK + logique launcher Kotlin | ✅ build vérifié (`test` 6/6, `assembleDebug` OK) |
-| A — Runtime du jeu (Wine-bionic, serveur X) | 🚧 A1–A3 faits : rootfs extrait + **`wine-9.0` tourne sur l'AYN Thor** (wineboot OK). Reste serveur X (A4) |
+1. Download and install the APK (Winlator_7.1.apk) from [GitHub Releases](https://github.com/brunodev85/winlator/releases)
+2. Launch the app and wait for the installation process to finish
 
-## Structure
+----
 
-```
-app/src/main/java/com/sylvania/launcher/
-  core/            logique métier portée du C++ (testable hors jeu)
-    config/        ConfigManager + modèle config.json
-    realmlist/     écriture realmlist.wtf + migration legacy
-    patch/         HdPatchManager, Config.wtf, toggle HD modulaire
-    io/            extraction ZIP
-    launch/        GameLauncher + interface GameRuntime (couture vers Chantier A)
-  ui/              MainActivity (Compose) + ViewModel
-app/src/test/      tests unitaires JVM de la logique pure
-docs/ARCHITECTURE.md
-_runtime_reference/  clones upstream (Winlator-Bionic, XaW64) — non versionnés
-```
+[![Play on Youtube](https://img.youtube.com/vi/8PKhmT7B3Xo/1.jpg)](https://www.youtube.com/watch?v=8PKhmT7B3Xo)
+[![Play on Youtube](https://img.youtube.com/vi/9E4wnKf2OsI/2.jpg)](https://www.youtube.com/watch?v=9E4wnKf2OsI)
+[![Play on Youtube](https://img.youtube.com/vi/czEn4uT3Ja8/2.jpg)](https://www.youtube.com/watch?v=czEn4uT3Ja8)
+[![Play on Youtube](https://img.youtube.com/vi/eD36nxfT_Z0/2.jpg)](https://www.youtube.com/watch?v=eD36nxfT_Z0)
 
-## Build
+----
 
-Prérequis : JDK 17, Android SDK (platform 34, NDK r27.0.12077973). Android Studio
-génère le wrapper Gradle automatiquement à l'import.
+# Useful Tips
 
-```bash
-./gradlew test            # tests logique (sans device) — 6/6 OK
-./gradlew assembleDebug   # APK debug → app/build/outputs/apk/debug/app-debug.apk (~11 Mo)
-```
+- If you are experiencing performance issues, try changing the Box86/Box64 preset in Container Settings -> Advanced Tab.
+- For applications that use .NET Framework, try installing Wine Mono found in Start Menu -> System Tools.
+- If some older games don't open, try adding the environment variable MESA_EXTENSION_MAX_YEAR=2003 in Container Settings -> Environment Variables.
+- Try running the games using the shortcut on the Winlator home screen, there you can define individual settings for each game.
+- To speed up the installers, try changing the Box86/Box64 preset to Intermediate in Container Settings -> Advanced Tab.
 
-Build **vérifié** le 2026-05-31 (JDK 17.0.19, Android SDK platform-34 /
-build-tools 34.0.0 / NDK r27.0.12077973, Gradle 8.9, AGP 8.5.2, Kotlin 2.0.20).
+# Credits and Third-party apps
+- Ubuntu RootFs ([Focal Fossa](https://releases.ubuntu.com/focal))
+- Wine ([winehq.org](https://www.winehq.org/))
+- Box86/Box64 by [ptitseb](https://github.com/ptitSeb)
+- PRoot ([proot-me.github.io](https://proot-me.github.io))
+- Mesa (Turnip/Zink/VirGL) ([mesa3d.org](https://www.mesa3d.org))
+- DXVK ([github.com/doitsujin/dxvk](https://github.com/doitsujin/dxvk))
+- VKD3D ([gitlab.winehq.org/wine/vkd3d](https://gitlab.winehq.org/wine/vkd3d))
+- D8VK ([github.com/AlpyneDreams/d8vk](https://github.com/AlpyneDreams/d8vk))
+- CNC DDraw ([github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw))
 
-> ⚠️ **Piège Windows** : si le build échoue avec `ClassNotFoundException: Files`,
-> c'est qu'une entrée du `PATH` système contient un guillemet parasite
-> (ex. `C:\Program Files\nodejs"`), que Gradle injecte non échappé dans le
-> `-Djava.library.path` du test worker. Corriger le `PATH` (retirer le `"`) ou
-> lancer Gradle avec un PATH nettoyé. Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Licence
-
-GPL v3 (héritée du projet source). © Sylvania — sylvania-servergame.com
+Many thanks to [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) and others.
+Thank you to all the people who believe in this project.

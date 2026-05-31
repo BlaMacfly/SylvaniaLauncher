@@ -1,8 +1,0 @@
-<resources>
-    <!-- Compose drives the real theming; the activity only needs a no-action-bar
-         shell. Using a built-in Material theme avoids a material-components dep. -->
-    <style name="Theme.SylvaniaLauncher" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/ic_launcher_background</item>
-        <item name="android:statusBarColor">@color/ic_launcher_background</item>
-    </style>
-</resources>
