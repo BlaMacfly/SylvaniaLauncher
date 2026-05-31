@@ -1,0 +1,19 @@
+# Build
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+local.properties
+.cxx/
+
+# Runtime reference clones (upstream repos, not part of our source)
+_runtime_reference/
+
+# OS
+.DS_Store
+Thumbs.db
