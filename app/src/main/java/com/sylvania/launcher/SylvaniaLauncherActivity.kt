@@ -78,6 +78,11 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         ) {
             requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
         }
+
+        // Auto-start the prepare+launch flow on a fresh launch (avoids relying on
+        // a tap, which the device screensaver intercepts unreliably). Temporary
+        // for bring-up; a real home screen comes later.
+        if (savedInstanceState == null) launchButton.post { onLaunchClicked() }
     }
 
     private fun lp() = LinearLayout.LayoutParams(
@@ -152,6 +157,14 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
             put("emulator", "wowbox64")
             put("box64Version", "0.3.7")
             put("fexcoreVersion", "2507")
+            // Provide valid wrapper/driver configs — Container.loadData() overwrites
+            // these fields with "" when the keys are absent, which later crashes
+            // XServerDisplayActivity.compareVersion (NumberFormatException on "").
+            put("dxwrapper", Container.DEFAULT_DXWRAPPER)
+            put("dxwrapperConfig", Container.DEFAULT_DXWRAPPERCONFIG)
+            put("graphicsDriver", Container.DEFAULT_GRAPHICS_DRIVER)
+            put("graphicsDriverConfig", Container.DEFAULT_GRAPHICSDRIVERCONFIG)
+            put("ddrawrapper", Container.DEFAULT_DDRAWRAPPER)
         }
         manager.createContainerAsync(data, contents) { container ->
             if (container != null) {
@@ -165,6 +178,17 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
     }
 
     private fun launchContainer(container: Container) {
+        // Workaround: Winlator's Container.loadData() has a switch fall-through
+        // (case "ddrawrapper" → "dxwrapperConfig") that corrupts dxwrapperConfig
+        // to "wined3d". An empty DXVK version then crashes
+        // XServerDisplayActivity.compareVersion (NumberFormatException on "").
+        // Force a valid DXVK config before launching.
+        val cfg = container.dxWrapperConfig
+        if (cfg == null || !cfg.contains("version=")) {
+            container.dxWrapperConfig = Container.DEFAULT_DXWRAPPERCONFIG
+            container.saveData()
+            log("dxwrapperConfig réparé.")
+        }
         setStatus("Lancement de l'environnement Wine (conteneur ${container.id})…")
         val intent = Intent(this, XServerDisplayActivity::class.java).apply {
             putExtra("container_id", container.id)
