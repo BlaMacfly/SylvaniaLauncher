@@ -108,11 +108,9 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (sessionStart > 0L) {
-            totalPlayTime += (System.currentTimeMillis() - sessionStart) / 1000
-            sessionStart = 0L
-            saveStats()
-        }
+        // Returning from the game (even after the activity was killed: sessionStart
+        // is reloaded from stats.json in onCreate) → bank the session's play time.
+        finalizePendingSession()
         updateStatsUi()
         updateServerUi()
         refreshClientState()
@@ -644,12 +642,30 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         try {
             val f = statsFile(); if (!f.exists()) return
             val o = JSONObject(f.readText())
-            launchCount = o.optInt("launch_count", 0); totalPlayTime = o.optLong("total_play_time", 0L); lastSession = o.optLong("last_session", 0L)
+            launchCount = o.optInt("launch_count", 0); totalPlayTime = o.optLong("total_play_time", 0L)
+            lastSession = o.optLong("last_session", 0L)
+            // session_start persists the in-progress session start so play time is
+            // still counted if Android kills the launcher activity while WoW runs.
+            sessionStart = o.optLong("session_start", 0L)
         } catch (e: Exception) { Log.w(TAG, "loadStats", e) }
     }
     private fun saveStats() {
-        try { statsFile().writeText(JSONObject().apply { put("launch_count", launchCount); put("total_play_time", totalPlayTime); put("last_session", lastSession) }.toString()) }
+        try { statsFile().writeText(JSONObject().apply {
+            put("launch_count", launchCount); put("total_play_time", totalPlayTime)
+            put("last_session", lastSession); put("session_start", sessionStart)
+        }.toString()) }
         catch (e: Exception) { Log.w(TAG, "saveStats", e) }
+    }
+
+    /** Finalize an in-progress session (called when we return to the launcher).
+     *  Wall-clock based: Android can't reliably detect WoW.exe exit, so a single
+     *  session is clamped to 24 h to avoid absurd totals from a stale start. */
+    private fun finalizePendingSession() {
+        if (sessionStart <= 0L) return
+        val elapsed = ((System.currentTimeMillis() - sessionStart) / 1000).coerceIn(0L, 24 * 3600L)
+        totalPlayTime += elapsed
+        sessionStart = 0L
+        saveStats()
     }
     private fun updateStatsUi() {
         val h = totalPlayTime / 3600; val m = (totalPlayTime % 3600) / 60
