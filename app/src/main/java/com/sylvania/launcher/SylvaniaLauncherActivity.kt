@@ -436,6 +436,7 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
             WowConfigWriter.writeConfigWtf(clientRoot)
             RealmlistWriter.updateRealmlist(clientRoot, activeEntry().address)
             if (clientRoot.absolutePath != configMgr.wowPath) configMgr.setWowPath(clientRoot.absolutePath)
+            Thread { ensureConsolePort(clientRoot) }.start() // pre-install the controller addon
             Toast.makeText(this, getString(R.string.syl_download_installed), Toast.LENGTH_LONG).show()
             refreshClientState()
         }
@@ -602,6 +603,7 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
                 val imageFs = ImageFs.find(this)
                 if (!isImageFsInstalled(imageFs)) installImageFs(imageFs) else log(getString(R.string.syl_status_runtime_installed))
                 ensureControlsProfile()
+                ensureConsolePort(clientDir())
                 val contents = ContentsManager(this).apply { syncContents() }
                 val manager = ContainerManager(this)
                 runOnUiThread { ensureContainerAndLaunch(manager, contents) }
@@ -613,6 +615,22 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         val dest = File(filesDir, "profiles/controls-$CONTROLS_PROFILE_ID.icp"); if (dest.exists()) return
         try { dest.parentFile?.mkdirs(); assets.open("profiles/controls-$CONTROLS_PROFILE_ID.icp").use { input -> dest.outputStream().use { input.copyTo(it) } } }
         catch (e: Exception) { Log.w(TAG, "controls profile install failed", e) }
+    }
+
+    /**
+     * Install the bundled ConsolePortLK gamepad addon into the client's
+     * Interface/AddOns if absent (a freshly downloaded client doesn't include it).
+     * Idempotent: skips if the ConsolePort folder is already present.
+     */
+    private fun ensureConsolePort(client: File) {
+        if (!File(client, "Wow.exe").exists()) return
+        val addonsDir = File(client, "Interface/AddOns")
+        if (File(addonsDir, "ConsolePort").isDirectory) return
+        try {
+            addonsDir.mkdirs()
+            assets.open("consoleport.zip").use { ZipExtractor.extract(it, addonsDir) { } }
+            log("ConsolePort installé.")
+        } catch (e: Exception) { Log.w(TAG, "ConsolePort install failed", e) }
     }
 
     private fun isImageFsInstalled(imageFs: ImageFs): Boolean = imageFs.isValid && imageFs.version >= ImageFsInstaller.LATEST_VERSION && File(imageFs.rootDir, "opt/$ARM64EC/bin/wine").exists()
