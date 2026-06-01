@@ -6,6 +6,7 @@
 #include <QVariant>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QTimer>
 #include <vector>
 
 /**
@@ -28,12 +29,13 @@ class ConfigManager : public QObject {
 
 public:
     explicit ConfigManager(QObject* parent = nullptr);
-    ~ConfigManager() override = default;
+    ~ConfigManager() override;
 
     // Generic config access
     QVariant get(const QString& key, const QVariant& defaultValue = QVariant()) const;
     void set(const QString& key, const QVariant& value);
-    bool save();
+    bool save();             // synchronous write
+    void scheduleSave();     // H4: coalesce bursts of setter calls into one disk write
 
     // Specific getters
     QString getWowPath() const;
@@ -51,6 +53,9 @@ public:
     QString getBackground() const;
     void setBackground(const QString& bgName);
 
+    bool isRandomBackgroundEnabled() const;
+    void setRandomBackgroundEnabled(bool enabled);
+
     // Realmlist management
     std::vector<RealmlistEntry> getRealmlistEntries() const;
     void setRealmlistEntries(const std::vector<RealmlistEntry>& entries);
@@ -67,8 +72,15 @@ signals:
 private:
     void loadConfig();
     void createDefaultConfig();
+    // Rewrites stale realmlist entries inherited from earlier launcher
+    // versions (logon.sylvania-wow.com, sylvania-wow.com, etc.) to the
+    // current canonical address. Returns true if at least one entry was
+    // rewritten. Runs once on construction and is idempotent on subsequent
+    // launches.
+    bool migrateLegacyRealmlist();
     QString getConfigPath() const;
 
     QJsonObject m_config;
     QString m_configDir;
+    QTimer m_saveTimer;
 };

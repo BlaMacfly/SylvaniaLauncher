@@ -9,6 +9,7 @@
 #include "NotesManager.h"
 #include "PathUtils.h"
 #include "HdPatchManager.h"
+#include "Constants.h"
 #include <QProgressBar>
 
 #ifdef Q_OS_LINUX
@@ -29,6 +30,7 @@
 #include <QCloseEvent>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRandomGenerator>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -37,7 +39,8 @@ MainWindow::MainWindow(QWidget* parent)
     , m_notesManager(std::make_unique<NotesManager>(this))
 {
     setWindowTitle("Sylvania Launcher - World of Warcraft 3.3.5");
-    setFixedSize(920, 580);
+    setFixedSize(SylvaniaConstants::kMainWindowWidth,
+                 SylvaniaConstants::kMainWindowHeight);
     
     // Load logo
     QString logoPath = PathUtils::getAssetsDir() + "/sylvania_logo.png";
@@ -56,10 +59,10 @@ MainWindow::MainWindow(QWidget* parent)
     checkWowInstalled();
     updateServerInfo();
     
-    // Setup play time tracking timer (checks every 5 seconds)
+    // Setup play time tracking timer
     m_playTimeTimer = new QTimer(this);
     connect(m_playTimeTimer, &QTimer::timeout, this, &MainWindow::checkWowProcess);
-    m_playTimeTimer->start(5000);
+    m_playTimeTimer->start(SylvaniaConstants::kPlayTimeCheckMs);
 
     loadStats();
 
@@ -68,10 +71,31 @@ MainWindow::MainWindow(QWidget* parent)
     if (currentLang.isEmpty()) currentLang = "fr";
     changeLanguage(currentLang, true); // true means initial, so we DON'T check for enUS yet
     
-    applyTheme(m_config->getBackground());
+    // Background on launch: if the random toggle is ON, pick a fresh one
+    // (different from last time); otherwise keep the saved background.
+    if (m_config->isRandomBackgroundEnabled()) {
+        QString launchBg = pickRandomBackground(m_config->getBackground());
+        m_config->setBackground(launchBg);
+        applyTheme(launchBg);
+    } else {
+        applyTheme(m_config->getBackground());
+    }
 }
 
 MainWindow::~MainWindow() = default;
+
+QString MainWindow::pickRandomBackground(const QString& exclude) const {
+    static const QStringList backgrounds = {
+        "Alliance", "Arbre de Vie", "Azeroth", "Horde",
+        "Ilidan", "Lich King", "Ragnaros", "Taverne"
+    };
+    if (backgrounds.size() <= 1) return backgrounds.value(0);
+    QString chosen = exclude;
+    while (chosen == exclude) {
+        chosen = backgrounds.at(QRandomGenerator::global()->bounded(backgrounds.size()));
+    }
+    return chosen;
+}
 
 void MainWindow::applyTheme(const QString& bgName) {
     // Load background image (try .jpg first, then .png)
@@ -204,31 +228,40 @@ void MainWindow::applyTheme(const QString& bgName) {
     // Footer - adapt color to theme
     if (m_footerLabel) m_footerLabel->setStyleSheet(QString("color: %1; font-size: 11px;").arg(textSecondary));
 
-    // Apply to Buttons
-    auto applyBtnStyle = [](QPushButton* btn, QString c1, QString c2, QString c3, QString border, QString textCol = "#ffffff", int fontSize = 14) {
-        if (!btn) return;
-        btn->setStyleSheet(QString(R"(
-            QPushButton {
-                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %1, stop:0.5 %2, stop:1 %3);
-                color: %5; border: 2px solid %4; border-radius: 8px; padding: 10px 20px; font-size: %6px; font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %4, stop:0.5 %1, stop:1 %2);
-            }
-            QPushButton:pressed { background-color: %3; }
-        )").arg(c1, c2, c3, border, textCol).arg(fontSize));
-    };
+    // H7: per-button styles delegate to a single helper. Used to be 8 inlined
+    // lambda calls duplicating the same QSS template.
+    const QString downloadText = QStringLiteral("#d4af37");
+    const QString secondaryText = (bgName == "Azeroth") ? QStringLiteral("#ffffff") : QStringLiteral("#d4af37");
+    const QString langText = (bgName == "Azeroth") ? QStringLiteral("#d4af37") : QStringLiteral("#ffffff");
 
-    applyBtnStyle(m_playButton, btnGreen1, btnGreen2, btnGreen3, btnGreenBorder);
-    applyBtnStyle(m_downloadButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, bgName == "Azeroth" ? "#d4af37" : "#d4af37", 12);
-    applyBtnStyle(m_hdButton, btnBlue1, btnBlue2, btnBlue3, btnBlueBorder);
-    
-    applyBtnStyle(m_settingsButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, bgName == "Azeroth" ? "#ffffff" : "#d4af37", 11);
-    applyBtnStyle(m_notesButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, bgName == "Azeroth" ? "#ffffff" : "#d4af37", 11);
-    applyBtnStyle(m_quitButton, btnPink1, btnPink2, btnPink3, btnPinkBorder, "#ffffff", 11);
-    applyBtnStyle(m_addonsButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, "#ffffff", 12);
-    applyBtnStyle(m_changeServerButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, "#ffffff", 12);
-    applyBtnStyle(m_langButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, bgName == "Azeroth" ? "#d4af37" : "#ffffff", 10);
+    styleButton(m_playButton, btnGreen1, btnGreen2, btnGreen3, btnGreenBorder);
+    styleButton(m_downloadButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, downloadText, 12);
+    styleButton(m_hdButton, btnBlue1, btnBlue2, btnBlue3, btnBlueBorder);
+
+    styleButton(m_settingsButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, secondaryText, 11);
+    styleButton(m_notesButton, btnBrown1, btnBrown2, btnBrown3, btnBrownBorder, secondaryText, 11);
+    styleButton(m_quitButton, btnPink1, btnPink2, btnPink3, btnPinkBorder, QStringLiteral("#ffffff"), 11);
+    styleButton(m_addonsButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, QStringLiteral("#ffffff"), 12);
+    styleButton(m_changeServerButton, btnTeal1, btnTeal2, btnTeal3, btnTealBorder, QStringLiteral("#ffffff"), 12);
+    styleButton(m_langButton, btnGold1, btnGold2, btnGold3, btnGoldBorder, langText, 10);
+}
+
+void MainWindow::styleButton(QPushButton* btn,
+                             const QString& c1, const QString& c2, const QString& c3,
+                             const QString& border,
+                             const QString& textColor,
+                             int fontSize) {
+    if (!btn) return;
+    btn->setStyleSheet(QString(R"(
+        QPushButton {
+            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %1, stop:0.5 %2, stop:1 %3);
+            color: %5; border: 2px solid %4; border-radius: 8px; padding: 10px 20px; font-size: %6px; font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %4, stop:0.5 %1, stop:1 %2);
+        }
+        QPushButton:pressed { background-color: %3; }
+    )").arg(c1, c2, c3, border, textColor).arg(fontSize));
 }
 
 void MainWindow::loadStats() {
@@ -276,7 +309,8 @@ void MainWindow::paintEvent(QPaintEvent* event) {
     
     // Draw logo top-left
     if (!m_logoImage.isNull()) {
-        QPixmap scaledLogo = m_logoImage.scaled(140, 140, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        const int sz = SylvaniaConstants::kLogoSizePx;
+        QPixmap scaledLogo = m_logoImage.scaled(sz, sz, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         painter.drawPixmap(15, 15, scaledLogo);
     }
 }
@@ -311,7 +345,7 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version", this);
+    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5 - Linux Version", this);
     m_footerLabel->setAlignment(Qt::AlignCenter);
     m_footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
     mainLayout->addWidget(m_footerLabel);
@@ -808,7 +842,12 @@ void MainWindow::onHdButtonClicked() {
         connect(m_hdPatchManager.get(), &HdPatchManager::progressChanged, this, [this](int progress, const QString& status) {
             m_hdProgressBar->show();
             m_hdStatusLabel->show();
-            m_hdProgressBar->setValue(progress);
+            if (progress < 0) {
+                m_hdProgressBar->setRange(0, 0); // indeterminate / busy
+            } else {
+                m_hdProgressBar->setRange(0, 100);
+                m_hdProgressBar->setValue(progress);
+            }
             m_hdStatusLabel->setText(status);
         });
         
@@ -965,26 +1004,37 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     QMainWindow::closeEvent(event);
 }
 
-bool MainWindow::isWowRunning() {
+void MainWindow::checkWowProcess() {
 #ifdef Q_OS_WIN
-    // Use Windows API to check if Wow.exe is running
-    QProcess process;
-    process.start("tasklist", QStringList() << "/FI" << "IMAGENAME eq Wow.exe" << "/NH");
-    process.waitForFinished(3000);
-    QString output = process.readAllStandardOutput();
-    return output.contains("Wow.exe", Qt::CaseInsensitive);
+    // Query tasklist ASYNCHRONOUSLY. The previous waitForFinished(3000) ran on
+    // the UI thread every 5 s and could freeze the launcher for up to 3 s each
+    // tick. Skip this tick if a previous check is still running.
+    if (m_wowCheckProcess) return;
+
+    m_wowCheckProcess = new QProcess(this);
+    connect(m_wowCheckProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this](int, QProcess::ExitStatus) {
+        const bool running = QString::fromLocal8Bit(m_wowCheckProcess->readAllStandardOutput())
+                                 .contains("Wow.exe", Qt::CaseInsensitive);
+        m_wowCheckProcess->deleteLater();
+        m_wowCheckProcess = nullptr;
+        handleWowRunningState(running);
+    });
+    connect(m_wowCheckProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+        m_wowCheckProcess->deleteLater();
+        m_wowCheckProcess = nullptr;
+    });
+    m_wowCheckProcess->start("tasklist",
+        QStringList() << "/FI" << "IMAGENAME eq Wow.exe" << "/NH");
 #elif defined(Q_OS_LINUX)
-    // On Linux, scan /proc for Wine processes running Wow.exe
+    // On Linux, scan /proc for Wine processes running Wow.exe. This is a fast,
+    // local, synchronous scan so we can report the result immediately.
     WineManager wineManager;
-    return wineManager.isProcessRunning("Wow.exe");
-#else
-    return false;
+    handleWowRunningState(wineManager.isProcessRunning("Wow.exe"));
 #endif
 }
 
-void MainWindow::checkWowProcess() {
-    bool running = isWowRunning();
-    
+void MainWindow::handleWowRunningState(bool running) {
     if (running && !m_wowRunning) {
         // WoW just started
         m_wowRunning = true;
@@ -1082,7 +1132,7 @@ void MainWindow::retranslateUi() {
     if (m_statsTitleLabel) m_statsTitleLabel->setText(tr("Statistiques de Jeu"));
     // Note: m_serverNameLabel is updated via updateServerInfo below
     
-    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version"));
+    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5 - Linux Version"));
     
     checkWowInstalled();
     updateStats();

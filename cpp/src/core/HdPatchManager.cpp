@@ -1,19 +1,19 @@
 #include "HdPatchManager.h"
 #include "ZipExtractor.h"
+#include "Constants.h"
 
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QMessageBox>
 #include <QDir>
 #include <QDirIterator>
 #include <QTimer>
 #include <QFileInfo>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QCoreApplication>
 #include <QStandardPaths>
 #include <QTextStream>
 #include <QStringList>
 #include <QFile>
+#include <QSaveFile>
 #include <QtConcurrent>
 #include <QCryptographicHash>
 #include <QFutureWatcher>
@@ -23,7 +23,7 @@ HdPatchManager::HdPatchManager(const QString& wowPath, QObject* parent)
     , m_wowPath(wowPath)
     , m_networkManager(std::make_unique<QNetworkAccessManager>(this))
 {
-    m_downloadUrl = "https://sylvania-servergame.com/patch-hd-download.php";
+    m_downloadUrl = SylvaniaConstants::kHdPatchUrl;
     m_tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/SylvaniaLauncher_HD";
 }
 
@@ -65,9 +65,9 @@ void HdPatchManager::startInstallation() {
     }
     
     QNetworkRequest request{QUrl(m_downloadUrl)};
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, 
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
-    
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::SameOriginRedirectPolicy);
+
     m_reply = m_networkManager->get(request);
     
     connect(m_reply, &QNetworkReply::downloadProgress,
@@ -119,7 +119,7 @@ void HdPatchManager::verifyHash(const QString& filePath) {
         emit progressChanged(100, tr("Vérification terminée. Extraction..."));
         
         // Slight delay to ensure file handle is released before PowerShell extracts
-        QTimer::singleShot(500, this, [this, filePath]() {
+        QTimer::singleShot(SylvaniaConstants::kHashVerifyDelayMs, this, [this, filePath]() {
             extractPatch(filePath);
         });
     });
@@ -141,6 +141,10 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
     QString extractPath = m_tempDir + "/extracted";
     QDir().mkpath(extractPath);
 
+#ifdef Q_OS_LINUX
+    // Linux: extract with the bundled libzip-based extractor (PowerShell is not
+    // available). Progress is reported asynchronously by ZipExtractor.
+    emit progressChanged(-1, tr("Extraction des fichiers HD en cours..."));
     ZipExtractor::extractAsync(zipPath, extractPath, this,
         [this](int progress, const QString& status) {
             emit progressChanged(progress, status);
@@ -148,32 +152,61 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
         [this, extractPath](bool success, const QString& error) {
             if (success) {
                 emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
-                
-                // Look for "Le Client WoW HD" inside the extraction folder (case-insensitive)
-                QDir rootDir(extractPath);
-                QString sourceDir;
-                QStringList entries = rootDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-                for (const QString& entry : entries) {
-                    if (entry.contains("Client WoW HD", Qt::CaseInsensitive)) {
-                        sourceDir = extractPath + "/" + entry;
-                        break;
-                    }
-                }
-
-                if (!sourceDir.isEmpty() && QDir(sourceDir).exists()) {
+                // Locate the client root inside the extracted tree. The archive
+                // may wrap "Le Client WoW HD" in extra folders or ship its
+                // contents directly, so search rather than assume a path.
+                QString sourceDir = findExtractedRoot(extractPath);
+                if (!sourceDir.isEmpty()) {
                     migrateFiles(sourceDir);
                 } else {
-                    // If not found in a subfolder, maybe it's at the root of the ZIP
-                    migrateFiles(extractPath);
+                    emit finished(false, tr("Contenu du Patch HD introuvable dans l'archive."));
                 }
             } else {
                 emit finished(false, tr("Échec de l'extraction: ") + error);
             }
         });
+#else
+    QProcess* process = new QProcess(this);
+
+    // Safe extraction: paths flow via environment variables, never interpolated
+    // into the PowerShell command string -> no command-injection surface.
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SYL_SRC", QDir::toNativeSeparators(zipPath));
+    env.insert("SYL_DST", QDir::toNativeSeparators(extractPath));
+    process->setProcessEnvironment(env);
+
+    // The extraction runs in a child process. Show a busy/indeterminate state
+    // (progress = -1) instead of recursively scanning the growing extraction
+    // tree on the UI thread, which froze the launcher on large clients.
+    emit progressChanged(-1, tr("Extraction des fichiers HD en cours..."));
+
+    process->start("powershell", SylvaniaConstants::extractArchiveArgs());
+
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, process, extractPath, zipPath](int exitCode, QProcess::ExitStatus exitStatus) {
+        process->deleteLater();
+
+        if (exitStatus == QProcess::NormalExit && exitCode == 0) {
+            emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
+
+            // Locate the client root inside the extracted tree. The archive may
+            // wrap "Le Client WoW HD" in extra folders (e.g. "Patch-HD/...") or
+            // ship its contents directly, so search rather than assume a path.
+            QString sourceDir = findExtractedRoot(extractPath);
+            if (!sourceDir.isEmpty()) {
+                migrateFiles(sourceDir);
+            } else {
+                emit finished(false, tr("Contenu du Patch HD introuvable dans l'archive."));
+            }
+        } else {
+            emit finished(false, tr("Échec de l'extraction: ") + process->readAllStandardError());
+        }
+    });
+#endif
 }
 
 /**
- * @brief Recursively copy a directory, overwriting existing files
+ * @brief Recursively copy a directory, overwriting existing files (case-insensitive)
  */
 static bool copyDirectoryRecursively(const QString& srcPath, const QString& destPath) {
     QDir srcDir(srcPath);
@@ -189,7 +222,7 @@ static bool copyDirectoryRecursively(const QString& srcPath, const QString& dest
     for (const QString& file : files) {
         QString srcFile = srcPath + "/" + file;
         QString destFile = destPath + "/" + file;
-        
+
         // Case-insensitive removal of existing file in destination
         QDir targetDir(destPath);
         QStringList existingFiles = targetDir.entryList(QDir::Files | QDir::Hidden);
@@ -223,6 +256,40 @@ static bool copyDirectoryRecursively(const QString& srcPath, const QString& dest
     return true;
 }
 
+QString HdPatchManager::findExtractedRoot(const QString& extractPath) const {
+    auto looksLikeRoot = [](const QString& dir) {
+        return QDir(dir + "/Data").exists()
+            || QFile::exists(dir + "/WoW.exe")
+            || QFile::exists(dir + "/wow.exe");
+    };
+
+    // Breadth-first, depth-limited search. The canonical root is the folder
+    // "Le Client WoW HD", but the archive may wrap it (e.g. "Patch-HD/Le
+    // Client WoW HD/") or ship its contents directly. We stop as soon as we
+    // find the marker, so we never descend into the multi-GB Data tree.
+    const int maxDepth = 4;
+    QList<QPair<QString, int>> queue;
+    queue.append(qMakePair(extractPath, 0));
+
+    while (!queue.isEmpty()) {
+        const QString dir = queue.first().first;
+        const int depth = queue.first().second;
+        queue.removeFirst();
+
+        if (QDir(dir + "/Le Client WoW HD").exists())
+            return dir + "/Le Client WoW HD";
+        if (looksLikeRoot(dir))
+            return dir;
+
+        if (depth >= maxDepth)
+            continue;
+        const QStringList subs = QDir(dir).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString& sub : subs)
+            queue.append(qMakePair(dir + "/" + sub, depth + 1));
+    }
+    return QString();
+}
+
 void HdPatchManager::migrateFiles(const QString& sourcePath) {
     // Supprimer PatchMenu.exe s'il existe déjà (nettoyage)
     QString oldPatchMenu = m_wowPath + "/PatchMenu.exe";
@@ -231,8 +298,8 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
     }
 
     QStringList itemsToMigrate = {
-        "Data", "Interface", "PatchMenu",                         // Folders
-        "World of Warcraft.app", "d3d9.dll", 
+        "Data", "Interface",                                      // Folders
+        "World of Warcraft.app", "d3d9.dll",
         "dxvk.conf", "WoW.exe"           // Files
     };
     
@@ -316,7 +383,7 @@ void HdPatchManager::generateConfigWtf() {
         dir.mkpath(".");
     }
 
-    QFile configFile(wtfPath + "/Config.wtf");
+    QSaveFile configFile(wtfPath + "/Config.wtf");
     if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&configFile);
         out << "SET locale \"frFR\"\n";
@@ -375,7 +442,8 @@ void HdPatchManager::generateConfigWtf() {
         out << "SET gxMultisample \"8\"\n";
         out << "SET shadowLevel \"0\"\n";
         out << "SET extShadowQuality \"5\"\n";
-        configFile.close();
+        out.flush();
+        configFile.commit();  // atomic rename, avoid half-written Config.wtf
     }
 }
 

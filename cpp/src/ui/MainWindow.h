@@ -19,6 +19,7 @@ class RealmlistWindow;
 class DownloadDialog;
 class HdPatchManager;
 class QProgressBar;
+class QProcess;
 class AddonsWindow;
 
 /**
@@ -63,18 +64,27 @@ private:
     void setupUi();
     void connectSignals();
     void applyTheme(const QString& bgName);
+    QString pickRandomBackground(const QString& exclude = QString()) const;
     void checkWowInstalled();
     void playGame();
     void browseWowDirectory();
     void loadStats();
     void saveStats();
-    bool isWowRunning();
+    void handleWowRunningState(bool running);
     void changeLanguage(const QString& lang, bool initial = false);
     void retranslateUi();
     
     QWidget* createServerPanel();
     QWidget* createStatsPanel();
     QPushButton* createStyledButton(const QString& text, const QString& style);
+
+    // H7: applies a gradient/border style sheet to a button. Used 8+ times by
+    // applyTheme(); extracted from a duplicated lambda for clarity & reuse.
+    static void styleButton(QPushButton* btn,
+                            const QString& c1, const QString& c2, const QString& c3,
+                            const QString& border,
+                            const QString& textColor = QStringLiteral("#ffffff"),
+                            int fontSize = 14);
 
     // Managers
     std::unique_ptr<ConfigManager> m_config;
@@ -133,6 +143,7 @@ private:
     QTimer* m_playTimeTimer = nullptr;
     QDateTime m_sessionStartTime;
     bool m_wowRunning = false;
+    QProcess* m_wowCheckProcess = nullptr; // async Wow.exe presence check
     
     QTranslator m_translator;
 };

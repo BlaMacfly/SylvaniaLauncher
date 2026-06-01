@@ -1,7 +1,9 @@
 #include "NotesManager.h"
 #include "PathUtils.h"
+#include "Constants.h"
 
 #include <QFile>
+#include <QSaveFile>
 #include <QJsonDocument>
 #include <QDir>
 #include <QUuid>
@@ -129,29 +131,51 @@ void NotesManager::migrateOldNotes() {
 
 void NotesManager::loadNotes() {
     m_notes.clear();
-    
+
     QFile file(getNotesFilePath());
     if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        rebuildSearchIndex();
         return;
     }
-    
+
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
     file.close();
-    
+
     if (error.error != QJsonParseError::NoError || !doc.isArray()) {
         qWarning() << "Erreur de chargement des notes:" << error.errorString();
+        rebuildSearchIndex();
         return;
     }
-    
+
     QJsonArray array = doc.array();
     for (const QJsonValue& val : array) {
         if (val.isObject()) {
             m_notes.push_back(Note::fromJson(val.toObject()));
         }
     }
-    
+
+    rebuildSearchIndex();
     qDebug() << "Chargé" << m_notes.size() << "notes";
+}
+
+void NotesManager::appendSearchIndexFor(const Note& note) {
+    SearchIndexEntry entry;
+    entry.titleLower = note.title.toLower();
+    entry.contentLower = note.content.toLower();
+    entry.tagsLower.reserve(note.tags.size());
+    for (const QString& tag : note.tags) {
+        entry.tagsLower.append(tag.toLower());
+    }
+    m_searchIndex.push_back(std::move(entry));
+}
+
+void NotesManager::rebuildSearchIndex() {
+    m_searchIndex.clear();
+    m_searchIndex.reserve(m_notes.size());
+    for (const Note& note : m_notes) {
+        appendSearchIndexFor(note);
+    }
 }
 
 bool NotesManager::saveNotes() {
@@ -159,20 +183,23 @@ bool NotesManager::saveNotes() {
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-    
+
     QJsonArray array;
     for (const Note& note : m_notes) {
         array.append(note.toJson());
     }
-    
-    QFile file(getNotesFilePath());
+
+    QSaveFile file(getNotesFilePath());
     if (!file.open(QIODevice::WriteOnly)) {
         qWarning() << "Impossible de sauvegarder les notes";
         return false;
     }
-    
-    file.write(QJsonDocument(array).toJson(QJsonDocument::Indented));
-    file.close();
+
+    file.write(QJsonDocument(array).toJson(QJsonDocument::Compact));
+    if (!file.commit()) {
+        qWarning() << "Échec du commit atomique des notes";
+        return false;
+    }
     return true;
 }
 
@@ -205,15 +232,14 @@ bool NotesManager::saveCategories() {
     for (const NoteCategory& cat : m_categories) {
         array.append(cat.toJson());
     }
-    
-    QFile file(getCategoriesFilePath());
+
+    QSaveFile file(getCategoriesFilePath());
     if (!file.open(QIODevice::WriteOnly)) {
         return false;
     }
-    
-    file.write(QJsonDocument(array).toJson(QJsonDocument::Indented));
-    file.close();
-    return true;
+
+    file.write(QJsonDocument(array).toJson(QJsonDocument::Compact));
+    return file.commit();
 }
 
 std::optional<QString> NotesManager::createNote(const QString& title, const QString& content,
@@ -234,14 +260,16 @@ std::optional<QString> NotesManager::createNote(const QString& title, const QStr
     note.isArchived = false;
     
     m_notes.push_back(note);
-    
+    appendSearchIndexFor(note);
+
     if (saveNotes()) {
         emit noteCreated(note.id);
         emit notesChanged();
         return note.id;
     }
-    
+
     m_notes.pop_back();
+    m_searchIndex.pop_back();
     return std::nullopt;
 }
 
@@ -260,7 +288,18 @@ bool NotesManager::updateNote(const QString& noteId, const QString& title,
     if (!category.isNull()) it->category = category;
     if (!tags.isEmpty()) it->tags = tags;
     it->updatedAt = QDateTime::currentDateTime();
-    
+
+    // Refresh the corresponding search-index entry in place.
+    const size_t idx = static_cast<size_t>(std::distance(m_notes.begin(), it));
+    SearchIndexEntry& entry = m_searchIndex[idx];
+    entry.titleLower = it->title.toLower();
+    entry.contentLower = it->content.toLower();
+    entry.tagsLower.clear();
+    entry.tagsLower.reserve(it->tags.size());
+    for (const QString& tag : it->tags) {
+        entry.tagsLower.append(tag.toLower());
+    }
+
     if (saveNotes()) {
         emit noteUpdated(noteId);
         emit notesChanged();
@@ -276,9 +315,11 @@ bool NotesManager::deleteNote(const QString& noteId) {
     if (it == m_notes.end()) {
         return false;
     }
-    
+
+    const size_t idx = static_cast<size_t>(std::distance(m_notes.begin(), it));
     m_notes.erase(it);
-    
+    m_searchIndex.erase(m_searchIndex.begin() + idx);
+
     if (saveNotes()) {
         emit noteDeleted(noteId);
         emit notesChanged();
@@ -329,27 +370,33 @@ std::vector<Note> NotesManager::searchNotes(const QString& query, bool includeAr
     if (query.isEmpty()) {
         return getAllNotes(includeArchived);
     }
-    
-    QString lowerQuery = query.toLower();
+
+    const QString lowerQuery = query.toLower();
     std::vector<Note> result;
-    
-    for (const Note& note : m_notes) {
+
+    // H2: the search index holds pre-lowercased title/content/tags, so each
+    // comparison is a single contains() rather than a toLower()+contains() pair.
+    // Index size is always in sync with m_notes (rebuilt on every mutation).
+    const size_t n = m_notes.size();
+    for (size_t i = 0; i < n; ++i) {
+        const Note& note = m_notes[i];
         if (!includeArchived && note.isArchived) continue;
-        
-        if (note.title.toLower().contains(lowerQuery) ||
-            note.content.toLower().contains(lowerQuery)) {
+
+        const SearchIndexEntry& idx = m_searchIndex[i];
+        if (idx.titleLower.contains(lowerQuery) ||
+            idx.contentLower.contains(lowerQuery)) {
             result.push_back(note);
             continue;
         }
-        
-        for (const QString& tag : note.tags) {
-            if (tag.toLower().contains(lowerQuery)) {
+
+        for (const QString& tag : idx.tagsLower) {
+            if (tag.contains(lowerQuery)) {
                 result.push_back(note);
                 break;
             }
         }
     }
-    
+
     return result;
 }
 
@@ -377,7 +424,7 @@ bool NotesManager::toggleArchive(const QString& noteId) {
     return saveNotes();
 }
 
-std::vector<NoteCategory> NotesManager::getCategories() const {
+const std::vector<NoteCategory>& NotesManager::getCategories() const {
     return m_categories;
 }
 
@@ -432,13 +479,15 @@ QString NotesManager::exportNotes(const QString& exportPath) {
     }
     exportData["categories"] = catsArray;
     
-    QFile file(path);
+    QSaveFile file(path);
     if (file.open(QIODevice::WriteOnly)) {
+        // Indented kept here: this is a user-facing export and readability matters.
         file.write(QJsonDocument(exportData).toJson(QJsonDocument::Indented));
-        file.close();
-        return path;
+        if (file.commit()) {
+            return path;
+        }
     }
-    
+
     return QString();
 }
 
@@ -447,44 +496,64 @@ bool NotesManager::importNotes(const QString& importPath, bool merge) {
     if (!file.open(QIODevice::ReadOnly)) {
         return false;
     }
-    
+
+    // C6: reject oversized imports before reading them into memory.
+    if (file.size() <= 0 || file.size() > SylvaniaConstants::kMaxImportBytes) {
+        qWarning() << "Import rejeté: taille hors limites (" << file.size() << ")";
+        return false;
+    }
+
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
     file.close();
-    
+
     if (error.error != QJsonParseError::NoError || !doc.isObject()) {
         return false;
     }
-    
+
     QJsonObject importData = doc.object();
-    
+
+    // C6: schema check — both arrays must be present, otherwise refuse the import
+    // rather than silently importing nothing or partial data.
+    if (!importData.value("notes").isArray() || !importData.value("categories").isArray()) {
+        qWarning() << "Import rejeté: schéma invalide (notes/categories manquants)";
+        return false;
+    }
+
     if (!merge) {
         m_notes.clear();
         m_categories.clear();
     }
-    
+
     // Import categories
-    QJsonArray catsArray = importData.value("categories").toArray();
+    const QJsonArray catsArray = importData.value("categories").toArray();
     for (const QJsonValue& val : catsArray) {
+        if (!val.isObject()) continue;
         NoteCategory cat = NoteCategory::fromJson(val.toObject());
+        if (cat.id.isEmpty()) continue;
         bool exists = std::any_of(m_categories.begin(), m_categories.end(),
                                   [&cat](const NoteCategory& c) { return c.id == cat.id; });
         if (!exists) {
             m_categories.push_back(cat);
         }
     }
-    
+
     // Import notes
-    QJsonArray notesArray = importData.value("notes").toArray();
+    const QJsonArray notesArray = importData.value("notes").toArray();
     for (const QJsonValue& val : notesArray) {
+        if (!val.isObject()) continue;
         Note note = Note::fromJson(val.toObject());
+        if (note.id.isEmpty() || note.title.isEmpty()) continue;
         if (merge) {
             // Generate new ID to avoid conflicts
             note.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
         }
         m_notes.push_back(note);
     }
-    
+
+    // Bulk import → rebuild the cache once rather than appending per note.
+    rebuildSearchIndex();
+
     bool success = saveNotes() && saveCategories();
     if (success) {
         emit notesChanged();

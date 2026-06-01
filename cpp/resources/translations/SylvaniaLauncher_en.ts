@@ -70,6 +70,16 @@
     </message>
     <message>
         <location filename="../../src/ui/AddonsWindow.cpp" line="52"/>
+        <source>Détecte les créatures rares à proximité et vous alerte avec un signal sonore.</source>
+        <translation>Detects nearby rare creatures and alerts you with a sound signal.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/AddonsWindow.cpp" line="53"/>
+        <source>Affiche les trajets et zones d'apparition des créatures rares sur la carte.</source>
+        <translation>Displays paths and spawn areas of rare creatures on the map.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/AddonsWindow.cpp" line="52"/>
         <source>Améliore radicalement la gestion de la boîte aux lettres.</source>
         <translation>Radically improves mailbox management.</translation>
     </message>
@@ -687,8 +697,8 @@ Do you want to download it now?</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="1011"/>
-        <source>© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version</source>
-        <translation>© 2025 Sylvania Launcher v2.7 - World of Warcraft 3.3.5 - Linux Version</translation>
+        <source>© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5 - Linux Version</source>
+        <translation>© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5 - Linux Version</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="686"/>
@@ -994,11 +1004,6 @@ Please check the installation path.</translation>
         <translation>New trees</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="43"/>
-        <source>Nouvelles Icônes</source>
-        <translation>New icons</translation>
-    </message>
-    <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="44"/>
         <source>Nouvelle eau</source>
         <translation>New water</translation>
@@ -1019,19 +1024,9 @@ Please check the installation path.</translation>
         <translation>Dungeon maps</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="48"/>
-        <source>Nouvelle musique</source>
-        <translation>New music</translation>
-    </message>
-    <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="49"/>
         <source>Écrans de chargement</source>
         <translation>Loading screens</translation>
-    </message>
-    <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="50"/>
-        <source>Polices</source>
-        <translation>Fonts</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="51"/>
@@ -1067,16 +1062,6 @@ Please check the installation path.</translation>
         <location filename="../../src/ui/SettingsDialog.cpp" line="57"/>
         <source>Armes HD</source>
         <translation>HD Weapons</translation>
-    </message>
-    <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="58"/>
-        <source>Fenêtres d&apos;Interface</source>
-        <translation>UI Windows</translation>
-    </message>
-    <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="59"/>
-        <source>Curseur et Interface</source>
-        <translation>Cursor and UI</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="60"/>
@@ -1164,16 +1149,6 @@ Please check the installation path.</translation>
         <translation>HD Patch Management</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="340"/>
-        <source>Inclus</source>
-        <translation>Enabled</translation>
-    </message>
-    <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="341"/>
-        <source>Eteindre</source>
-        <translation>Disabled</translation>
-    </message>
-    <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="487"/>
         <source>Sélectionner le dossier World of Warcraft</source>
         <translation>Select World of Warcraft folder</translation>
@@ -1188,7 +1163,9 @@ Please check the installation path.</translation>
         <source>Wow.exe n&apos;a pas été trouvé dans ce dossier.
 
 Voulez-vous utiliser cet emplacement (par exemple pour une nouvelle installation) ?</source>
-        <translation></translation>
+        <translation>Wow.exe was not found in this folder.
+
+Do you want to use this location anyway (for example for a new installation)?</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="513"/>
@@ -1218,7 +1195,7 @@ Voulez-vous utiliser cet emplacement (par exemple pour une nouvelle installation
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="525"/>
         <source>Confirmer</source>
-        <translation type="unfinished">Confirm</translation>
+        <translation>Confirm</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="526"/>
@@ -1252,6 +1229,115 @@ This will delete the Cache folder.</translation>
         <location filename="../../src/ui/SettingsDialog.cpp" line="574"/>
         <source>Pack Anglais installé avec succès !</source>
         <translation>English Pack installed successfully!</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="50"/>
+        <source>Création de perso (Mists of Pandaria)</source>
+        <translation>Character Creation (Mists of Pandaria)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="51"/>
+        <source>Création de perso (Shadowlands)</source>
+        <translation>Character Creation (Shadowlands)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="62"/>
+        <source>Écrans, serveurs, comptes</source>
+        <translation>Screens, servers, accounts</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="64"/>
+        <source>Curseur et Fenêtres d&apos;interface</source>
+        <translation>Cursor and UI Windows</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="65"/>
+        <source>Addons (ACP)</source>
+        <translation>Addons (ACP)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="70"/>
+        <source>Nouvelles icônes</source>
+        <translation>New icons</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="73"/>
+        <source>Cartes des mini-donjons</source>
+        <translation>Mini-dungeon maps</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="262"/>
+        <source>🎲 Aléatoire : ON</source>
+        <translation>🎲 Random: ON</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="264"/>
+        <source>🎲 Aléatoire : OFF</source>
+        <translation>🎲 Random: OFF</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="233"/>
+        <source>ON : change l'arrière-plan à chaque ouverture du launcher.
+OFF : garde toujours le même arrière-plan.</source>
+        <translation>ON: picks a new background every time the launcher starts.
+OFF: always keeps the same background.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="431"/>
+        <source>ACTIVÉ : active tous les patchs présents.
+DÉSACTIVÉ : éteint tous les patchs (client d&apos;origine).</source>
+        <translation>ENABLED: turns on every installed patch.
+DISABLED: turns off all patches (original client).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="456"/>
+        <source>Videz le cache après tout changement de patch (certains modifient des tables .dbc).</source>
+        <translation>Clear the cache after any patch change (some modify .dbc tables).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="494"/>
+        <source>Patch « Dangereux » : il remplace une table .dbc (risque de détection « unlike check » ou de crash selon le serveur).</source>
+        <translation>&quot;Dangerous&quot; patch: it replaces a .dbc table (risk of &quot;unlike check&quot; detection or a crash depending on the server).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="470"/>
+        <source>Patch HD : ACTIVÉ</source>
+        <translation>HD Patch: ON</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="472"/>
+        <source>Patch HD : DÉSACTIVÉ</source>
+        <translation>HD Patch: OFF</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="514"/>
+        <source>ACTIVÉ</source>
+        <translation>ON</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="505"/>
+        <source>ÉTEINT</source>
+        <translation>OFF</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="558"/>
+        <source>Absent</source>
+        <translation>Absent</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="559"/>
+        <source>Ce patch n&apos;est pas présent dans votre installation.</source>
+        <translation>This patch is not present in your installation.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="585"/>
+        <source>Veuillez d&apos;abord configurer le dossier WoW (Wow.exe)</source>
+        <translation>Please configure the WoW folder first (Wow.exe)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="71"/>
+        <source>ARAC (toutes races / classes)</source>
+        <translation>ARAC (all races / classes)</translation>
     </message>
 </context>
 </TS>

@@ -9,8 +9,10 @@
 #include <QTimer>
 #include <QFileInfo>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QCoreApplication>
 #include <QDir>
+#include <QSaveFile>
 #include <QTextStream>
 #include <QtConcurrent>
 #include <QCryptographicHash>
@@ -173,8 +175,8 @@ void DownloadDialog::startDownload(const QString& directory) {
     m_statusLabel->setText(tr("Connexion au serveur..."));
     
     QNetworkRequest request{QUrl(m_downloadUrl)};
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, 
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::SameOriginRedirectPolicy);
     
     m_reply = m_networkManager->get(request);
     
@@ -299,7 +301,7 @@ void DownloadDialog::extractZip(const QString& zipPath) {
     m_speedLabel->setText(tr("Veuillez patienter..."));
     m_sizeLabel->setText("");
     m_etaLabel->setText("");
-    
+
     // Set progress bar to determinate mode
     m_progressBar->setMinimum(0);
     m_progressBar->setMaximum(100);
@@ -424,7 +426,8 @@ void DownloadDialog::generateConfigWtf() {
         dir.mkpath(".");
     }
 
-    QFile configFile(wtfPath + "/Config.wtf");
+    // C3: atomic write so a crash mid-write can't leave a half-written Config.wtf.
+    QSaveFile configFile(wtfPath + "/Config.wtf");
     if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&configFile);
         QString locale = (m_language == "en") ? "enUS" : "frFR";
@@ -484,6 +487,7 @@ void DownloadDialog::generateConfigWtf() {
         out << "SET gxMultisample \"8\"\n";
         out << "SET shadowLevel \"0\"\n";
         out << "SET extShadowQuality \"5\"\n";
-        configFile.close();
+        out.flush();
+        configFile.commit();
     }
 }

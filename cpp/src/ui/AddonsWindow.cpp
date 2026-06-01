@@ -1,6 +1,7 @@
 #include "AddonsWindow.h"
 #include "ConfigManager.h"
 #include "ZipExtractor.h"
+#include "Constants.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -8,10 +9,13 @@
 #include <QMessageBox>
 #include <QDir>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QFile>
 #include <QCoreApplication>
 #include <QTimer>
 #include <QNetworkRequest>
+#include <QUrlQuery>
+#include <QRegularExpression>
 #include <QFrame>
 
 AddonsWindow::AddonsWindow(ConfigManager* config, QWidget* parent)
@@ -50,6 +54,8 @@ void AddonsWindow::populateAddons() {
         {"Healium", tr("Interface de soin avec boutons d'accès rapide aux sorts."), "Healium.zip", "Healium"},
         {"Immersion", tr("Modernise l'affichage des textes de quêtes et dialogues."), "Immersion.zip", "Immersion"},
         {"Mapster", tr("Améliore la visibilité et les fonctions de la carte du monde."), "Mapster.zip", "Mapster"},
+        {"NPCScan", tr("Détecte les créatures rares à proximité et vous alerte avec un signal sonore."), "NPCScan.zip", "_NPCScan"},
+        {"NPCScan-Overlay", tr("Affiche les trajets et zones d'apparition des créatures rares sur la carte."), "NPCScan-Overlay.zip", "_NPCScan-Overlay"},
         {"Postal", tr("Améliore radicalement la gestion de la boîte aux lettres."), "Postal.zip", "Postal"},
         {"Prat", tr("Personnalisation poussée de la fenêtre de discussion."), "Prat-3.0.zip", "Prat-3.0"},
         {"Quartz", tr("Barres d'incantation modulaires et ultra-précises."), "Quartz.zip", "Quartz"},
@@ -220,6 +226,13 @@ void AddonsWindow::updateButtonStyle(QPushButton* btn, bool installed) {
 }
 
 void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* installBtn, QProgressBar* progressBar, QLabel* statusLabel) {
+    // C2: whitelist addon filenames to prevent path traversal / parameter injection.
+    static const QRegularExpression kValidAddonName(QStringLiteral("^[A-Za-z0-9_\\-.]+\\.zip$"));
+    if (!kValidAddonName.match(fileName).hasMatch()) {
+        QMessageBox::warning(this, tr("Erreur"), tr("Nom de fichier d'addon invalide."));
+        return;
+    }
+
     QString wowPath = m_config->getWowPath();
     bool wowExists = false;
     if (!wowPath.isEmpty()) {
@@ -232,24 +245,24 @@ void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* instal
         QMessageBox::warning(this, "Erreur", "Veuillez d'abord configurer le chemin d'installation de World of Warcraft dans les réglages.");
         return;
     }
-    
+
     if (m_currentReply) {
         QMessageBox::information(this, "Information", "Un téléchargement est déjà en cours. Veuillez patienter.");
         return;
     }
-    
+
     QString addonsDir = wowPath + "/Interface/AddOns";
     QDir dir(addonsDir);
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-    
+
     m_currentZipPath = addonsDir + "/" + fileName;
     m_currentDestination = addonsDir;
     m_currentInstallBtn = installBtn;
     m_currentProgressBar = progressBar;
     m_currentStatusLabel = statusLabel;
-    
+
     // Create file
     QFile* file = new QFile(m_currentZipPath, this);
     if (!file->open(QIODevice::WriteOnly)) {
@@ -257,7 +270,7 @@ void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* instal
         file->deleteLater();
         return;
     }
-    
+
     // Setup UI
     installBtn->setEnabled(false);
     installBtn->setText("Patientez...");
@@ -265,10 +278,14 @@ void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* instal
     progressBar->show();
     statusLabel->setText("Téléchargement...");
     statusLabel->show();
-    
-    QString urlStr = "https://sylvania-servergame.com/download_addon.php?file=" + fileName;
-    QNetworkRequest request{QUrl(urlStr)};
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    QUrl url(QString::fromUtf8(SylvaniaConstants::kAddonDownloadEndpoint));
+    QUrlQuery query;
+    query.addQueryItem("file", fileName);
+    url.setQuery(query);
+    QNetworkRequest request(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::SameOriginRedirectPolicy);
     
     m_currentReply = m_networkManager->get(request);
     
