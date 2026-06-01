@@ -12,9 +12,43 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QEventLoop>
+#include <QTimer>
+#include <QTextStream>
 #include <QDebug>
 #include <QStandardPaths>
 #include <QCoreApplication>
+
+namespace {
+// Wait for a process to finish while keeping the UI event loop responsive, but
+// never longer than timeoutMs. Returns true if the process exited on its own;
+// on timeout the process is killed and false is returned. This replaces a bare
+// QEventLoop (which could hang the launcher forever if e.g. wineboot stalls).
+bool waitForProcess(QProcess& proc, int timeoutMs) {
+    if (proc.state() == QProcess::NotRunning)
+        return proc.exitStatus() == QProcess::NormalExit;
+
+    QEventLoop loop;
+    QObject::connect(&proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     &loop, &QEventLoop::quit);
+    bool timedOut = false;
+    QTimer timer;
+    timer.setSingleShot(true);
+    QObject::connect(&timer, &QTimer::timeout, &loop, [&]() {
+        timedOut = true;
+        loop.quit();
+    });
+    timer.start(timeoutMs);
+    loop.exec();
+
+    if (timedOut) {
+        qWarning() << "WineManager: process timed out after" << timeoutMs << "ms, killing";
+        proc.kill();
+        proc.waitForFinished(2000);
+        return false;
+    }
+    return true;
+}
+} // namespace
 
 WineManager::WineManager(QObject* parent)
     : QObject(parent)
@@ -86,6 +120,8 @@ void WineManager::downloadAndInstall()
     QNetworkRequest request{QUrl(downloadUrl)};
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setRawHeader("User-Agent", "SylvaniaLauncher/2.8");
+    request.setTransferTimeout(120000); // abort if the transfer stalls for 2 min
 
     QNetworkReply* reply = m_networkManager->get(request);
     QFile archiveFile(archivePath);
@@ -151,7 +187,8 @@ QString WineManager::getLatestReleaseUrl()
 {
     QNetworkRequest request{QUrl("https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases/latest")};
     request.setRawHeader("Accept", "application/vnd.github.v3+json");
-    request.setRawHeader("User-Agent", "SylvaniaLauncher/2.7");
+    request.setRawHeader("User-Agent", "SylvaniaLauncher/2.8");
+    request.setTransferTimeout(30000); // abort if the API stalls for 30s
 
     QNetworkReply* reply = m_networkManager->get(request);
     
@@ -187,11 +224,11 @@ bool WineManager::extractArchive(const QString& archivePath)
     // Use tar to extract .tar.xz
     QProcess process;
     process.setWorkingDirectory(m_wineDir);
-    process.start("tar", QStringList() << "xJf" << archivePath << "--strip-components=0");
-    
-    QEventLoop loop;
-    connect(&process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), &loop, &QEventLoop::quit);
-    loop.exec();
+    process.start("tar", QStringList() << "xJf" << archivePath);
+
+    if (!waitForProcess(process, 300000)) { // 5 min cap for large archives
+        return false;
+    }
 
     if (process.exitCode() != 0) {
         qWarning() << "WineManager: tar extraction failed:" << process.readAllStandardError();
@@ -223,10 +260,11 @@ void WineManager::createPrefix()
     QProcess process;
     process.setProcessEnvironment(env);
     process.start(wineboot, QStringList() << "--init");
-    
-    QEventLoop loop;
-    connect(&process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), &loop, &QEventLoop::quit);
-    loop.exec();
+
+    if (!waitForProcess(process, 120000)) { // 2 min cap
+        qWarning() << "WineManager: wineboot timed out";
+        return;
+    }
 
     if (process.exitCode() != 0) {
         qWarning() << "WineManager: wineboot failed:" << process.readAllStandardError();
@@ -259,10 +297,8 @@ void WineManager::configurePrefix()
     regProcess.start(wineRegPath, QStringList() 
         << "reg" << "add" << "HKEY_CURRENT_USER\\Software\\Wine" 
         << "/v" << "Version" << "/d" << "win7" << "/f");
-    
-    QEventLoop loop;
-    connect(&regProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), &loop, &QEventLoop::quit);
-    loop.exec();
+
+    waitForProcess(regProcess, 30000); // 30 s cap
 
     qDebug() << "WineManager: Prefix configured for WoW 3.3.5";
 }
@@ -275,60 +311,52 @@ bool WineManager::launchExe(const QString& exePath, const QString& workDir)
         return false;
     }
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX", m_prefixDir);
-    env.insert("WINEDEBUG", "-all");
-    env.insert("WINE_LARGE_ADDRESS_AWARE", "1");
-    env.insert("STAGING_SHARED_MEMORY", "1");
-    
-    // DXVK support: if d3d9.dll exists in the game folder, use native override
-    if (QFile::exists(workDir + "/d3d9.dll")) {
-        env.insert("WINEDLLOVERRIDES", "d3d9=n,b");
+    // IMPORTANT: QProcess::startDetached() does NOT carry a process environment
+    // set via setProcessEnvironment(). Launching Wine directly would therefore
+    // run against the *default* ~/.wine prefix instead of our isolated one,
+    // breaking the whole sandbox. We must export the variables ourselves, so we
+    // always launch through a small wrapper script.
+    const bool hasDxvk = QFile::exists(workDir + "/d3d9.dll");
+
+    auto shellQuote = [](const QString& s) -> QString {
+        // Wrap in single quotes and escape any embedded single quote so paths
+        // containing spaces, $, quotes, etc. cannot break out of the command.
+        QString q = s;
+        q.replace('\'', "'\\''");
+        return '\'' + q + '\'';
+    };
+
+    QString scriptPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation)
+                         + "/sylvania_launch.sh";
+    QFile script(scriptPath);
+    if (!script.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "WineManager: cannot create launch script at" << scriptPath;
+        return false;
     }
 
-    // Use MESA_GL_VERSION_OVERRIDE if needed for older GPU drivers
-    if (!env.contains("MESA_GL_VERSION_OVERRIDE")) {
-        env.insert("MESA_GL_VERSION_OVERRIDE", "4.5");
+    QTextStream out(&script);
+    out << "#!/bin/bash\n";
+    out << "export WINEPREFIX=" << shellQuote(m_prefixDir) << "\n";
+    out << "export WINEDEBUG=-all\n";
+    out << "export WINE_LARGE_ADDRESS_AWARE=1\n";
+    out << "export STAGING_SHARED_MEMORY=1\n";
+    if (hasDxvk) {
+        out << "export WINEDLLOVERRIDES=" << shellQuote("d3d9=n,b") << "\n";
     }
+    // Respect a user-provided override; otherwise help older Mesa drivers.
+    out << "export MESA_GL_VERSION_OVERRIDE=\"${MESA_GL_VERSION_OVERRIDE:-4.5}\"\n";
+    out << "cd " << shellQuote(workDir) << "\n";
+    // exec so the detached PID becomes Wine itself (clean process tree).
+    out << "exec " << shellQuote(wineBin) << " " << shellQuote(exePath) << "\n";
+    script.close();
+    script.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
 
-    QProcess* process = new QProcess();
-    process->setProcessEnvironment(env);
-    process->setWorkingDirectory(workDir);
-
-    // Start detached so the launcher can close independently
-    qint64 pid;
-    bool started = QProcess::startDetached(wineBin, QStringList() << exePath, workDir, &pid);
-
-    // The detached process doesn't use the environment we set above,
-    // so we need to use a wrapper script approach instead
-    if (!started) {
-        // Fallback: create a temporary script
-        QString scriptPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) 
-                             + "/sylvania_launch.sh";
-        QFile script(scriptPath);
-        if (script.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream out(&script);
-            out << "#!/bin/bash\n";
-            out << "export WINEPREFIX=\"" << m_prefixDir << "\"\n";
-            out << "export WINEDEBUG=\"-all\"\n";
-            out << "export WINE_LARGE_ADDRESS_AWARE=1\n";
-            out << "export STAGING_SHARED_MEMORY=1\n";
-            if (QFile::exists(workDir + "/d3d9.dll")) {
-                out << "export WINEDLLOVERRIDES=\"d3d9=n,b\"\n";
-            }
-            out << "cd \"" << workDir << "\"\n";
-            out << "\"" << wineBin << "\" \"" << exePath << "\" &\n";
-            script.close();
-            script.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
-            
-            started = QProcess::startDetached("/bin/bash", QStringList() << scriptPath);
-        }
-    }
-
-    delete process;
+    // Start detached so the launcher can be closed independently of the game.
+    qint64 pid = 0;
+    bool started = QProcess::startDetached("/bin/bash", QStringList() << scriptPath, workDir, &pid);
 
     if (started) {
-        qDebug() << "WineManager: Launched" << exePath << "via Wine";
+        qDebug() << "WineManager: Launched" << exePath << "via Wine (pid" << pid << ")";
     } else {
         qWarning() << "WineManager: Failed to launch" << exePath;
     }
