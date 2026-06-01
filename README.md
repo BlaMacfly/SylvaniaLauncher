@@ -1,8 +1,13 @@
-# Sylvania Launcher
+# Sylvania Launcher — Édition Linux 🐧
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
+![Platform: Linux x86_64](https://img.shields.io/badge/Platform-Linux%20x86__64-informational)
+![Version](https://img.shields.io/badge/version-v2.8-success)
 
-🎮 **Launcher officiel pour le serveur World of Warcraft - Sylvania**
+🎮 **Launcher officiel pour le serveur World of Warcraft 3.3.5 — Sylvania**, version native Linux distribuée en **AppImage**.
+
+> 🪟 **Vous êtes sous Windows ?** La version Windows se trouve sur la branche [`master`](https://github.com/BlaMacfly/SylvaniaLauncher/tree/master).
+> Cette branche `linux` ne concerne que l'édition Linux.
 
 ## Aperçu
 
@@ -18,67 +23,114 @@
 ### Notes (Style Post-it)
 ![Notes](screenshots/notes.png)
 
+## Spécificités de l'édition Linux
+
+- 📦 **Format AppImage** : un seul fichier, aucune installation système requise.
+- 🍷 **Wine-GE intégré et automatique** : au premier lancement du jeu, le launcher télécharge
+  [Wine-GE](https://github.com/GloriousEggroll/wine-ge-custom) et l'installe dans un **préfixe Wine isolé**
+  (aucun `wine` système requis, votre `~/.wine` n'est pas touché).
+- 🎮 **DXVK** activé automatiquement si le patch HD fournit `d3d9.dll` (rendu Direct3D 9 → Vulkan).
+- 🗂️ **Gestion des chemins insensible à la casse** (le système de fichiers Linux est sensible à la casse) :
+  `Wow.exe` / `WoW.exe` / `wow.exe`, dossier `Data`/`data`, etc.
+- 📚 **Extraction native via libzip** (pas de dépendance à PowerShell).
+- 🔊 **Sons** via `QSoundEffect` (backend Qt Multimedia embarqué dans l'AppImage).
+
 ## Fonctionnalités
 
-- 🎮 **Lancement du jeu** avec configuration automatique du realmlist
-- 📥 **Téléchargement du client WoW** 3.3.5 avec progression en temps réel
-- 💎 **Patch HD Sylvania** : Installation automatique du patch haute définition (Data, Interface, PatchMenu)
-- ⚙️ **Auto-Configuration** : Génération automatique du fichier `Config.wtf` optimal
+- 🎮 **Lancement du jeu** via Wine-GE, avec configuration automatique du realmlist
+- 📥 **Téléchargement du client WoW 3.3.5** avec progression en temps réel
+- 💎 **Patch HD Sylvania** : installation automatique (dossiers `Data`, `Interface` + DXVK)
+- 🧩 **Gestion modulaire des patchs HD** : activez/désactivez chaque élément (arbres, eau, sorts…)
+- 🧬 **ARAC** (All Races All Classes) : activable/désactivable
+- 🖼️ **Fond d'écran aléatoire** : option ON/OFF
+- ⚙️ **Auto-configuration** : génération du `Config.wtf` optimal
 - 📊 **Statistiques de jeu** : temps de jeu, nombre de lancements
 - 📝 **Notes personnelles** style post-it avec couleurs
-- ⚙️ **Réglages** : chemin WoW (sélection libre), cache, AddOns, sons
-- 🔄 **Gestion des serveurs** : ajouter, modifier, supprimer
+- 🌐 **Internationalisation** (Français / Anglais)
+- 🔄 **Gestion des serveurs** + migration automatique des anciens realmlist
+- 🧱 **Gestionnaire d'AddOns**
 
 ## Version actuelle
 
-**v2.7** - Application native C++ / Qt6
+**v2.8** — application native C++ / Qt 6, alignée sur les fonctionnalités de la version Windows.
 
-### Nouveautés v2.7
-- 🌐 Internationalisation (i18n) complète (Français/Anglais).
-- 🎨 Personnalisation : Nouveaux thèmes dynamiques interchangeables.
-- 📥 Nouveau bouton d'installation du pack de langue WoW (enUS).
-- 🛠️ Gestion HD Correction de bugs
-- 🚀 Performance : Optimisation majeure avec Qt 6.8.
+### Nouveautés v2.8
+- 💎 Refonte du gestionnaire de Patch HD (localisation robuste de la racine du client dans l'archive)
+- 🧬 Nouveau bouton ARAC (All Races All Classes)
+- 🖼️ Fond d'écran aléatoire en option ON/OFF
+- 🔄 Migration automatique des anciens hôtes de realmlist au démarrage
+- ⚡ Surveillance du processus de jeu non bloquante, extraction durcie
 
-### Nouveautés v2.5
-- 🛠️ **Gestion modulaire HD** : Activez ou désactivez les éléments du patch HD (Arbres, Eau, Sorts, etc.) directement depuis les réglages.
-- 🔍 **Détection intelligente** : Le launcher détecte maintenant si le patch HD est déjà installé pour éviter les erreurs de manipulation.
-- ⚙️ **Stabilité du Build** : Amélioration du système de compilation sur Windows pour une meilleure robustesse.
+## Installation
 
-## Téléchargement
+1. **Téléchargez** l'AppImage depuis la [release v2.8](https://github.com/BlaMacfly/SylvaniaLauncher/releases/tag/v2.8) :
+   [`SylvaniaLauncher-v2.8-x86_64.AppImage`](https://github.com/BlaMacfly/SylvaniaLauncher/releases/download/v2.8/SylvaniaLauncher-v2.8-x86_64.AppImage)
 
-[Télécharger le launcher](https://sylvania-servergame.com/launcher)
+2. **Rendez-la exécutable** :
+   ```bash
+   chmod +x SylvaniaLauncher-v2.8-x86_64.AppImage
+   ```
+   *(ou : clic droit → Propriétés → Permissions → « Autoriser l'exécution du fichier comme un programme »)*
+
+3. **Lancez-la** :
+   ```bash
+   ./SylvaniaLauncher-v2.8-x86_64.AppImage
+   ```
+
+Au premier lancement de WoW, Wine-GE est téléchargé et configuré automatiquement (prévoir quelques centaines de Mo).
 
 ## Configuration requise
 
-- Windows 10/11 (64-bit)
-- 100 MB d'espace disque (launcher uniquement)
-- Connexion Internet
+- Linux **x86_64**, distribution récente (**2024+**, glibc ≥ 2.39 — l'AppImage est compilée sur Ubuntu 24.04 / Qt 6.4)
+- GPU avec pilotes OpenGL/Vulkan à jour (Mesa, NVIDIA…)
+- Connexion Internet (téléchargement de Wine-GE et du client)
+- Permissions d'écriture sur le dossier du jeu (patchs, mises à jour)
 
-### Build (Windows)
-```bash
-# Se placer dans le dossier source
-cd cpp
+## Emplacement des données
 
-# Créer un dossier de build
-mkdir build
-cd build
+Toutes les données du launcher sont regroupées sous **un seul dossier** :
 
-# Configurer avec CMake (Qt 6.8 recommandé)
-cmake .. -G "MinGW Makefiles"
-
-# Compiler
-mingw32-make -j8
+```
+~/.local/share/Sylvania/Sylvania Launcher/
+├── config.json     # préférences
+├── data/           # données internes
+├── wine-ge/        # moteur Wine
+└── wineprefix/     # préfixe Wine isolé
 ```
 
-### Déploiement
-Pour créer un package exécutable avec toutes ses dépendances :
+## Désinstallation
+
+Supprimez l'AppImage, puis (pour tout nettoyer, Wine et préfixe compris) :
+
 ```bash
-windeployqt --compiler-runtime --multimedia SylvaniaLauncher.exe
+rm -rf ~/.local/share/Sylvania/Sylvania\ Launcher/
 ```
 
-> [!TIP]
-> Pour réduire la taille du package (environ -15 Mo), vous pouvez supprimer manuellement les DLL FFmpeg (`avcodec-*.dll`, `avformat-*.dll`, etc.) après le déploiement. Le launcher est configuré pour utiliser le moteur natif Windows Media si ces fichiers sont absents.
+## Compilation depuis les sources
+
+### Méthode recommandée : Docker (reproductible)
+
+L'image de build (Ubuntu 24.04 + Qt 6.4 + libzip) est versionnée dans le dépôt.
+
+```bash
+# 1) Construire l'image de build
+docker build -t sylvania-appimage -f linux/Dockerfile linux
+
+# 2) Produire l'AppImage (depuis la racine du dépôt) -> ./build-appimage/
+docker run --rm -v "${PWD}:/src" sylvania-appimage
+```
+
+Résultat : `build-appimage/Sylvania_Launcher-x86_64.AppImage`.
+
+### Méthode native (Debian/Ubuntu 24.04+)
+
+```bash
+sudo apt install qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools \
+                 qt6-l10n-tools libzip-dev cmake g++ libgl-dev libxkbcommon-dev \
+                 libgstreamer-plugins-base1.0-dev file
+
+./linux/build-appimage.sh
+```
 
 ## Licence
 
@@ -88,12 +140,12 @@ Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ## Contribuer
 
-Les contributions sont les bienvenues ! 
+Les contributions sont les bienvenues !
 1. Forkez le projet
 2. Créez votre branche (`git checkout -b feature/AmazingFeature`)
 3. Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. Pushez vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrez une Pull Request
+4. Poussez vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrez une Pull Request **vers la branche `linux`**
 
 ## Auteur
 
