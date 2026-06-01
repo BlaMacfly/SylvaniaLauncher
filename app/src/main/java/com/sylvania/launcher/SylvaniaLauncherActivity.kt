@@ -17,7 +17,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.preference.PreferenceManager
 import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
@@ -82,13 +81,6 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         ) {
             requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
         }
-
-        // Bring-up diagnostics: enable Wine err+seh logging so we can see why
-        // Wow.exe exits (Winlator otherwise forces WINEDEBUG=-all).
-        PreferenceManager.getDefaultSharedPreferences(this).edit()
-            .putBoolean("enable_wine_debug", true)
-            .putString("wine_debug_channels", "err")
-            .apply()
 
         // Auto-start the prepare+launch flow on a fresh launch (avoids relying on
         // a tap, which the device screensaver intercepts unreliably). Temporary
@@ -204,6 +196,17 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         // (1920x1080); a windowed 1920x1080 inside a 1280x720 desktop made
         // Wow.exe exit on its black surface.
         container.screenSize = "1920x1080"
+
+        // Use Turnip (Mesa) via AdrenoTools instead of the proprietary Adreno
+        // driver. The proprietary Qualcomm driver fails a DXVK Vulkan memory
+        // allocation (4 MiB, ~11 GB free) right after swapchain creation, which
+        // stalls WoW's render thread → WoW hangs at the login screen → its
+        // watchdog aborts (~10 s, no crash dump). Turnip allocates correctly and
+        // exposes VK_KHR_surface via the wrapper ICD → the login screen renders.
+        // The turnip25.1.0 driver ships as an APK asset (adrenotools-turnip25.1.0.tzst).
+        container.graphicsDriver = "wrapper"
+        container.graphicsDriverConfig =
+            "version=turnip25.1.0;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal"
 
         val client = clientDir()
         val wowExe = client.listFiles { f -> f.isFile && f.name.equals("Wow.exe", ignoreCase = true) }?.firstOrNull()
