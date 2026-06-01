@@ -32,8 +32,11 @@ import com.sylvania.launcher.core.Constants
 import com.sylvania.launcher.core.config.ConfigManager
 import com.sylvania.launcher.core.config.RealmlistEntry
 import com.sylvania.launcher.core.io.ZipExtractor
+import com.sylvania.launcher.core.patch.HdPatchManager
+import com.sylvania.launcher.core.patch.PatchResult
 import com.sylvania.launcher.core.patch.WowConfigWriter
 import com.sylvania.launcher.core.realmlist.RealmlistWriter
+import kotlinx.coroutines.runBlocking
 import java.net.HttpURLConnection
 import java.net.URL
 import com.winlator.cmod.XServerDisplayActivity
@@ -192,7 +195,7 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         playButton = wowButton("JOUER", "#4a7c3f", "#2a5a1f", "#5a8c4f", "#ffffff", 15f).also { it.setOnClickListener { onPlayClicked() } }
         row1.addView(playButton, lin(0, WRAP, 2f).apply { marginEnd = dp(6) })
         row1.addView(wowButton("TÉLÉCHARGER", "#4a3a20", "#2a1a0a", GOLD, GOLD, 11f).also { it.setOnClickListener { onDownloadClicked() } }, lin(0, WRAP, 2f).apply { marginEnd = dp(6) })
-        row1.addView(wowButton("HD", "#2a6dd4", "#15479a", "#3a7de4", "#ffffff", 13f).also { it.setOnClickListener { comingSoon("Patch HD") } }, lin(0, WRAP, 1f))
+        row1.addView(wowButton("HD", "#2a6dd4", "#15479a", "#3a7de4", "#ffffff", 13f).also { it.setOnClickListener { onHdClicked() } }, lin(0, WRAP, 1f))
         panel.addView(row1, topMargin(wrap(), 14))
 
         val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -475,16 +478,135 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         }.start()
     }
 
+    // ----------------------------------------------------------- HD patch
+
+    private fun onHdClicked() {
+        val client = clientDir()
+        if (!File(client, "Wow.exe").exists()) {
+            AlertDialog.Builder(this).setTitle("Patch HD")
+                .setMessage("Téléchargez d'abord le client (TÉLÉCHARGER) avant d'installer le Patch HD.")
+                .setPositiveButton("OK", null).show()
+            return
+        }
+        val msg = if (HdPatchManager.isInstalled(client))
+            "Le Patch HD semble déjà installé. Le réinstaller / mettre à jour ?"
+        else "Télécharger et installer le Patch HD (textures/UI haute définition) ?"
+        AlertDialog.Builder(this).setTitle("Patch HD").setMessage(msg)
+            .setPositiveButton("Installer") { _, _ -> startHdPatch(client) }
+            .setNegativeButton("Annuler", null).show()
+    }
+
+    private fun startHdPatch(client: File) {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(16), dp(20), dp(8)) }
+        val st = TextView(this).apply { text = "Démarrage…"; setTextColor(Color.parseColor(GOLD)); textSize = 14f }
+        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100 }
+        box.addView(st); box.addView(bar, topMargin(wrap(), 8))
+        val dlg = AlertDialog.Builder(this).setTitle("Patch HD").setView(box).setCancelable(false).create()
+        dlg.show()
+        Thread {
+            val result = runBlocking {
+                HdPatchManager(client, File(cacheDir, "SylvaniaLauncher_HD")).install { p ->
+                    runOnUiThread {
+                        st.text = p.status
+                        bar.isIndeterminate = p.percent < 0
+                        if (p.percent >= 0) bar.progress = p.percent
+                    }
+                }
+            }
+            runOnUiThread {
+                dlg.dismiss()
+                val ok = result is PatchResult.Success
+                val text = when (result) { is PatchResult.Success -> result.message; is PatchResult.Failure -> result.message }
+                AlertDialog.Builder(this).setTitle("Patch HD").setMessage(text).setPositiveButton("OK", null).show()
+                if (ok) refreshClientState()
+            }
+        }.start()
+    }
+
+    // ------------------------------------------------------------- Addons
+
+    private data class AddonInfo(val name: String, val file: String, val folder: String)
+
+    /** Curated Sylvania addon set (ported from the Windows AddonsWindow). */
+    private val ADDONS = listOf(
+        AddonInfo("ArkInventory", "ArkInventory.zip", "ArkInventory"),
+        AddonInfo("AtlasLoot", "AtlasLoot.zip", "AtlasLoot"),
+        AddonInfo("Auctionator", "Auctionator.zip", "Auctionator"),
+        AddonInfo("Bagnon", "Bagnon.zip", "Bagnon"),
+        AddonInfo("Bartender4", "Bartender4.zip", "Bartender4"),
+        AddonInfo("Deadly Boss Mods (DBM)", "DBM.zip", "DBM-Core"),
+        AddonInfo("GatherMate2", "GatherMate2.zip", "GatherMate2"),
+        AddonInfo("GearScore", "GearScore.zip", "GearScore"),
+        AddonInfo("HandyNotes", "HandyNotes.zip", "HandyNotes"),
+        AddonInfo("Immersion", "Immersion.zip", "Immersion"),
+        AddonInfo("Mapster", "Mapster.zip", "Mapster"),
+        AddonInfo("Postal", "Postal.zip", "Postal"),
+        AddonInfo("Prat 3.0", "Prat-3.0.zip", "Prat-3.0"),
+        AddonInfo("Quartz", "Quartz.zip", "Quartz"),
+        AddonInfo("QuestHelper", "QuestHelper.zip", "QuestHelper"),
+        AddonInfo("TomTom", "TomTom.zip", "TomTom"),
+        AddonInfo("WeakAuras", "WeakAuras.zip", "WeakAuras2"),
+        AddonInfo("XPerl", "XPerl.zip", "XPerl"),
+        AddonInfo("Details!", "details.zip", "Details"),
+        AddonInfo("ElvUI", "elvui.zip", "ElvUI"),
+        AddonInfo("TotalRP3", "totalRP3.zip", "TotalRP3"),
+        AddonInfo("VuhDo", "vuhdo.zip", "VuhDo"),
+    )
+
     private fun onAddonsClicked() {
         val addonsDir = File(clientDir(), "Interface/AddOns")
-        val count = addonsDir.listFiles { f -> f.isDirectory }?.size ?: 0
-        val hasConsolePort = File(addonsDir, "ConsolePort").isDirectory
-        AlertDialog.Builder(this)
-            .setTitle("Addons")
-            .setMessage("$count addon(s) installé(s) dans le client.\n" +
-                (if (hasConsolePort) "✓ ConsolePort (manette) installé." else "ConsolePort non détecté.") +
-                "\n\nGestion complète des addons en cours d'implémentation.")
-            .setPositiveButton("OK", null).show()
+        if (!File(clientDir(), "Wow.exe").exists()) {
+            AlertDialog.Builder(this).setTitle("Addons")
+                .setMessage("Téléchargez d'abord le client (TÉLÉCHARGER) pour gérer les addons.")
+                .setPositiveButton("OK", null).show()
+            return
+        }
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
+        list.addView(TextView(this).apply {
+            text = if (File(addonsDir, "ConsolePort").isDirectory) "✓ ConsolePort (manette) installé\n" else ""
+            setTextColor(Color.parseColor("#7ec8e3")); textSize = 12f
+        })
+        for (a in ADDONS) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(6)) }
+            val installed = File(addonsDir, a.folder).isDirectory
+            row.addView(TextView(this).apply { text = a.name; setTextColor(Color.WHITE); textSize = 14f }, lin(0, WRAP, 1f))
+            val btn = wowButton(if (installed) "Réinstaller" else "Installer",
+                if (installed) "#2a4a1f" else "#4a7c3f", if (installed) "#0a2a1f" else "#2a5a1f",
+                if (installed) "#3a5c2f" else "#5a8c4f", "#ffffff", 11f)
+            val statusTv = TextView(this).apply { textSize = 10f; setTextColor(Color.parseColor("#7ec8e3")) }
+            btn.setOnClickListener { installAddon(a, addonsDir, btn, statusTv) }
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
+            col.addView(btn); col.addView(statusTv)
+            row.addView(col, wrap())
+            list.addView(row)
+        }
+        AlertDialog.Builder(this).setTitle("Addons recommandés")
+            .setView(ScrollView(this).apply { addView(list) })
+            .setPositiveButton("Fermer", null).show()
+    }
+
+    private fun installAddon(a: AddonInfo, addonsDir: File, btn: Button, statusTv: TextView) {
+        btn.isEnabled = false; btn.text = "Patientez…"; statusTv.text = "Téléchargement…"
+        addonsDir.mkdirs()
+        Thread {
+            val zip = File(addonsDir, a.file)
+            var ok = false
+            try {
+                val url = Constants.ADDON_DOWNLOAD_ENDPOINT + "?file=" + a.file
+                val conn = (URL(url).openConnection() as HttpURLConnection).apply { instanceFollowRedirects = true; connectTimeout = 30000; readTimeout = 60000 }
+                if (conn.responseCode in 200..299) {
+                    conn.inputStream.use { i -> zip.outputStream().buffered().use { o -> i.copyTo(o) } }
+                    runOnUiThread { statusTv.text = "Extraction…" }
+                    ok = ZipExtractor.extract(zip, addonsDir) { }
+                }
+                zip.delete()
+            } catch (e: Exception) { Log.w(TAG, "addon ${a.name}", e); if (zip.exists()) zip.delete() }
+            runOnUiThread {
+                btn.isEnabled = true
+                if (ok) { btn.text = "Réinstaller"; statusTv.text = "Installé ✓" }
+                else { btn.text = "Réessayer"; statusTv.text = "Échec" }
+            }
+        }.start()
     }
 
     // ------------------------------------------------------------- Stats
