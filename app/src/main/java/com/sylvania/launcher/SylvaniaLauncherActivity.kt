@@ -247,15 +247,15 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         addView(child, FrameLayout.LayoutParams(MATCH, WRAP))
     }
 
-    private fun wowButton(text: String, top: String, bottom: String, border: String, txt: String, size: Float): Button {
-        val b = Button(this)
+    private fun styleButton(b: Button, text: String, top: String, bottom: String, border: String, txt: String, size: Float) {
         b.text = text; b.isAllCaps = false; b.textSize = size; b.setTextColor(Color.parseColor(txt))
         b.setTypeface(b.typeface, android.graphics.Typeface.BOLD); b.stateListAnimator = null
         b.setPadding(dp(6), dp(10), dp(6), dp(10))
         b.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.parseColor(top), Color.parseColor(bottom)))
             .apply { cornerRadius = dp(8).toFloat(); setStroke(dp(2), Color.parseColor(border)) }
-        return b
     }
+    private fun wowButton(text: String, top: String, bottom: String, border: String, txt: String, size: Float): Button =
+        Button(this).also { styleButton(it, text, top, bottom, border, txt, size) }
 
     private fun log(msg: String) { Log.i(TAG, msg); runOnUiThread { status.append("\n$msg") } }
     private fun setStatus(msg: String) { Log.i(TAG, msg); runOnUiThread { status.text = msg } }
@@ -575,13 +575,10 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         })
         for (a in ADDONS) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(6)) }
-            val installed = File(addonsDir, a.folder).isDirectory
             row.addView(TextView(this).apply { text = a.name; setTextColor(Color.WHITE); textSize = 14f }, lin(0, WRAP, 1f))
-            val btn = wowButton(if (installed) "Réinstaller" else "Installer",
-                if (installed) "#2a4a1f" else "#4a7c3f", if (installed) "#0a2a1f" else "#2a5a1f",
-                if (installed) "#3a5c2f" else "#5a8c4f", "#ffffff", 11f)
+            val btn = Button(this)
             val statusTv = TextView(this).apply { textSize = 10f; setTextColor(Color.parseColor("#7ec8e3")) }
-            btn.setOnClickListener { installAddon(a, addonsDir, btn, statusTv) }
+            configAddonButton(btn, a, addonsDir, statusTv)
             val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
             col.addView(btn); col.addView(statusTv)
             row.addView(col, LinearLayout.LayoutParams(WRAP, WRAP))
@@ -590,6 +587,30 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle("Addons recommandés")
             .setView(scrollOf(list))
             .setPositiveButton("Fermer", null).show()
+    }
+
+    /** Sets the row button to Installer (green) or Supprimer (red) per install state. */
+    private fun configAddonButton(btn: Button, a: AddonInfo, addonsDir: File, statusTv: TextView) {
+        if (File(addonsDir, a.folder).isDirectory) {
+            styleButton(btn, "Supprimer", "#8a4a5a", "#6a2a3a", "#9a5a6a", "#ffffff", 11f)
+            btn.setOnClickListener { confirmDeleteAddon(a, addonsDir, btn, statusTv) }
+        } else {
+            styleButton(btn, "Installer", "#4a7c3f", "#2a5a1f", "#5a8c4f", "#ffffff", 11f)
+            btn.setOnClickListener { installAddon(a, addonsDir, btn, statusTv) }
+        }
+    }
+
+    private fun confirmDeleteAddon(a: AddonInfo, addonsDir: File, btn: Button, statusTv: TextView) {
+        AlertDialog.Builder(this)
+            .setTitle("Supprimer ${a.name} ?")
+            .setMessage("Le dossier de l'addon sera supprimé du client.")
+            .setPositiveButton("Supprimer") { _, _ ->
+                val ok = File(addonsDir, a.folder).deleteRecursively()
+                statusTv.text = if (ok) "Supprimé" else "Échec"
+                configAddonButton(btn, a, addonsDir, statusTv)
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
     }
 
     private fun installAddon(a: AddonInfo, addonsDir: File, btn: Button, statusTv: TextView) {
@@ -610,8 +631,8 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
             } catch (e: Exception) { Log.w(TAG, "addon ${a.name}", e); if (zip.exists()) zip.delete() }
             runOnUiThread {
                 btn.isEnabled = true
-                if (ok) { btn.text = "Réinstaller"; statusTv.text = "Installé ✓" }
-                else { btn.text = "Réessayer"; statusTv.text = "Échec" }
+                configAddonButton(btn, a, addonsDir, statusTv) // → Supprimer if now installed, else Installer
+                statusTv.text = if (ok) "Installé ✓" else "Échec"
             }
         }.start()
     }
