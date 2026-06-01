@@ -17,6 +17,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.preference.PreferenceManager
 import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
@@ -81,6 +82,13 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         ) {
             requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
         }
+
+        // Bring-up diagnostics: enable Wine err+seh logging so we can see why
+        // Wow.exe exits (Winlator otherwise forces WINEDEBUG=-all).
+        PreferenceManager.getDefaultSharedPreferences(this).edit()
+            .putBoolean("enable_wine_debug", true)
+            .putString("wine_debug_channels", "err")
+            .apply()
 
         // Auto-start the prepare+launch flow on a fresh launch (avoids relying on
         // a tap, which the device screensaver intercepts unreliably). Temporary
@@ -192,6 +200,10 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         if (cfg == null || !cfg.contains("version=")) {
             container.dxWrapperConfig = Container.DEFAULT_DXWRAPPERCONFIG
         }
+        // Match the Wine desktop to the device + the client's Config.wtf
+        // (1920x1080); a windowed 1920x1080 inside a 1280x720 desktop made
+        // Wow.exe exit on its black surface.
+        container.screenSize = "1920x1080"
 
         val client = clientDir()
         val wowExe = client.listFiles { f -> f.isFile && f.name.equals("Wow.exe", ignoreCase = true) }?.firstOrNull()
