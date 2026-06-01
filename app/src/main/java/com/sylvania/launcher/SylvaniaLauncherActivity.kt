@@ -19,6 +19,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
@@ -30,7 +31,11 @@ import androidx.core.content.ContextCompat
 import com.sylvania.launcher.core.Constants
 import com.sylvania.launcher.core.config.ConfigManager
 import com.sylvania.launcher.core.config.RealmlistEntry
+import com.sylvania.launcher.core.io.ZipExtractor
+import com.sylvania.launcher.core.patch.WowConfigWriter
 import com.sylvania.launcher.core.realmlist.RealmlistWriter
+import java.net.HttpURLConnection
+import java.net.URL
 import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
@@ -377,11 +382,97 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
             .show()
     }
 
+    @Volatile private var downloadCancel = false
+
     private fun onDownloadClicked() {
         AlertDialog.Builder(this)
             .setTitle("Télécharger le client")
-            .setMessage("Le client WoW 3.3.5 (~19 Go) sera téléchargé depuis ${Constants.SERVER_HOST} puis extrait dans ${clientDir().absolutePath}.\n\nTéléchargement intégré en cours d'implémentation.")
-            .setPositiveButton("OK", null).show()
+            .setMessage("Télécharger le client WoW 3.3.5 (~19 Go) depuis ${Constants.SERVER_HOST} et l'extraire dans ${clientDir().absolutePath} ?\n\nPrévois ~40 Go libres et une connexion Wi-Fi stable. Le téléchargement peut être long.")
+            .setPositiveButton("Télécharger") { _, _ -> startClientDownload() }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun fmt(bytes: Long): String {
+        var s = bytes.toDouble(); val u = arrayOf("o", "Ko", "Mo", "Go"); var i = 0
+        while (s >= 1024 && i < 3) { s /= 1024; i++ }
+        return String.format(Locale.FRANCE, "%.1f %s", s, u[i])
+    }
+
+    /** Find the directory actually containing Wow.exe under [root] (the zip may nest it). */
+    private fun findClientRoot(root: File): File {
+        if (File(root, "Wow.exe").exists()) return root
+        root.walkTopDown().maxDepth(3).forEach { if (it.isFile && it.name.equals("Wow.exe", true)) return it.parentFile!! }
+        return root
+    }
+
+    private fun startClientDownload() {
+        val dest = clientDir().apply { mkdirs() }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(16), dp(20), dp(8)) }
+        val st = TextView(this).apply { text = "Connexion…"; setTextColor(Color.parseColor(GOLD)); textSize = 14f }
+        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100 }
+        val info = TextView(this).apply { textSize = 11f; setTextColor(Color.LTGRAY); setPadding(0, dp(6), 0, 0) }
+        box.addView(st); box.addView(bar, topMargin(wrap(), 8)); box.addView(info)
+
+        downloadCancel = false
+        val dlg = AlertDialog.Builder(this).setTitle("Téléchargement du client").setView(box).setCancelable(false)
+            .setNegativeButton("Annuler") { _, _ -> downloadCancel = true }.create()
+        dlg.show()
+
+        Thread {
+            val zip = File(dest, "WoWClient_temp.zip")
+            var ok = false; var err = ""
+            try {
+                val conn = (URL(Constants.CLIENT_DOWNLOAD_URL).openConnection() as HttpURLConnection).apply {
+                    instanceFollowRedirects = true; connectTimeout = 30000; readTimeout = 60000
+                }
+                if (conn.responseCode !in 200..299) throw RuntimeException("HTTP ${conn.responseCode}")
+                val total = conn.contentLengthLong
+                conn.inputStream.use { input ->
+                    zip.outputStream().buffered(1 shl 16).use { out ->
+                        val buf = ByteArray(1 shl 16); var done = 0L; var lastT = System.currentTimeMillis(); var lastB = 0L
+                        while (true) {
+                            if (downloadCancel) throw InterruptedException("Annulé")
+                            val n = input.read(buf); if (n < 0) break
+                            out.write(buf, 0, n); done += n
+                            val now = System.currentTimeMillis()
+                            if (now - lastT >= 500) {
+                                val pct = if (total > 0) (done * 100 / total).toInt() else 0
+                                val spd = (done - lastB) * 1000 / (now - lastT).coerceAtLeast(1)
+                                lastT = now; lastB = done
+                                runOnUiThread {
+                                    st.text = if (total > 0) "Téléchargement… $pct%" else "Téléchargement…"
+                                    bar.isIndeterminate = total <= 0; if (total > 0) bar.progress = pct
+                                    info.text = "${fmt(done)}${if (total > 0) " / " + fmt(total) else ""}  •  ${fmt(spd)}/s"
+                                }
+                            }
+                        }
+                    }
+                }
+                runOnUiThread { st.text = "Extraction…"; bar.isIndeterminate = true; info.text = "Veuillez patienter (peut prendre plusieurs minutes)" }
+                ok = ZipExtractor.extract(zip, dest) { }
+                zip.delete()
+                if (ok) {
+                    val clientRoot = findClientRoot(dest)
+                    WowConfigWriter.writeConfigWtf(clientRoot)
+                    RealmlistWriter.updateRealmlist(clientRoot, activeEntry().address)
+                    if (clientRoot.absolutePath != configMgr.wowPath) configMgr.setWowPath(clientRoot.absolutePath)
+                }
+            } catch (e: Exception) {
+                err = e.message ?: "erreur"; if (zip.exists()) zip.delete()
+            }
+            runOnUiThread {
+                dlg.dismiss()
+                if (ok) {
+                    Toast.makeText(this, "Client installé ✓", Toast.LENGTH_LONG).show()
+                    refreshClientState()
+                } else {
+                    AlertDialog.Builder(this).setTitle("Téléchargement")
+                        .setMessage(if (downloadCancel) "Téléchargement annulé." else "Échec : $err")
+                        .setPositiveButton("OK", null).show()
+                }
+            }
+        }.start()
     }
 
     private fun onAddonsClicked() {
