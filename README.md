@@ -1,43 +1,97 @@
-<p align="center">
-	<img src="logo.png" width="376" height="128" alt="Winlator Logo" />  
-</p>
+# Sylvania Launcher (Android)
 
-# Winlator
+Portage Android natif du launcher **Sylvania** : il permet de jouer à **World of Warcraft 3.3.5a (Wrath of the Lich King)** sur le serveur privé Sylvania directement depuis un smartphone ou une console portable Android, sans PC.
 
-Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.
+Le launcher installe le runtime, configure le client et lance `Wow.exe` jusqu'à l'écran de connexion puis en jeu.
 
-# Installation
+---
 
-1. Download and install the APK (Winlator_7.1.apk) from [GitHub Releases](https://github.com/brunodev85/winlator/releases)
-2. Launch the app and wait for the installation process to finish
+## ✅ Statut
 
-----
+**WoW 3.3.5a tourne en jeu (in-world)** — vérifié sur **AYN Thor** (Snapdragon 8 Gen 2 / Adreno 740, Android 13) :
+connexion au realm → authentification → sélection du personnage → entrée dans le monde, UI complète, **~78 FPS** au démarrage avec le pilote **Turnip**.
 
-[![Play on Youtube](https://img.youtube.com/vi/8PKhmT7B3Xo/1.jpg)](https://www.youtube.com/watch?v=8PKhmT7B3Xo)
-[![Play on Youtube](https://img.youtube.com/vi/9E4wnKf2OsI/2.jpg)](https://www.youtube.com/watch?v=9E4wnKf2OsI)
-[![Play on Youtube](https://img.youtube.com/vi/czEn4uT3Ja8/2.jpg)](https://www.youtube.com/watch?v=czEn4uT3Ja8)
-[![Play on Youtube](https://img.youtube.com/vi/eD36nxfT_Z0/2.jpg)](https://www.youtube.com/watch?v=eD36nxfT_Z0)
+> Point technique clé : sur GPU Adreno, il **faut** le pilote **Turnip (Mesa) via AdrenoTools**. Le pilote Qualcomm propriétaire fait échouer une allocation mémoire DXVK et bloque le rendu à l'écran de login. Le launcher force désormais Turnip automatiquement.
 
-----
+---
 
-# Useful Tips
+## 🧱 Comment ça marche
 
-- If you are experiencing performance issues, try changing the Box86/Box64 preset in Container Settings -> Advanced Tab.
-- For applications that use .NET Framework, try installing Wine Mono found in Start Menu -> System Tools.
-- If some older games don't open, try adding the environment variable MESA_EXTENSION_MAX_YEAR=2003 in Container Settings -> Environment Variables.
-- Try running the games using the shortcut on the Winlator home screen, there you can define individual settings for each game.
-- To speed up the installers, try changing the Box86/Box64 preset to Intermediate in Container Settings -> Advanced Tab.
+Le projet est bâti sur une base **Winlator-bionic** dans laquelle est greffée la logique du launcher Sylvania. La pile d'exécution :
 
-# Credits and Third-party apps
-- Ubuntu RootFs ([Focal Fossa](https://releases.ubuntu.com/focal))
-- Wine ([winehq.org](https://www.winehq.org/))
-- Box86/Box64 by [ptitseb](https://github.com/ptitSeb)
-- PRoot ([proot-me.github.io](https://proot-me.github.io))
-- Mesa (Turnip/Zink/VirGL) ([mesa3d.org](https://www.mesa3d.org))
-- DXVK ([github.com/doitsujin/dxvk](https://github.com/doitsujin/dxvk))
-- VKD3D ([gitlab.winehq.org/wine/vkd3d](https://gitlab.winehq.org/wine/vkd3d))
-- D8VK ([github.com/AlpyneDreams/d8vk](https://github.com/AlpyneDreams/d8vk))
-- CNC DDraw ([github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw))
+- **Wine (Proton 9.0 arm64ec, mode WoW64)** — pas d'émulation x86 du host, Wine tourne en natif ARM64.
+- **wowbox64 (box64)** — émule uniquement le code i386 de `Wow.exe`.
+- **DXVK** — traduit Direct3D 9 → Vulkan.
+- **Turnip (Mesa) via AdrenoTools** — pilote Vulkan open source pour Adreno.
+- **Serveur X embarqué** rendu dans une `SurfaceView`.
 
-Many thanks to [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) and others.
-Thank you to all the people who believe in this project.
+---
+
+## 🎮 Matériel recommandé
+
+### Appareil
+
+| | Recommandé |
+|---|---|
+| **SoC / GPU** | Snapdragon avec **Adreno 6xx ou 7xx** (compatible Turnip) |
+| **Testé** | AYN Thor — Snapdragon 8 Gen 2, Adreno 740 |
+| **Android** | 11+ (ARM64) |
+| **Vulkan** | 1.1+ |
+| **RAM** | 8 Go minimum, 12 Go confortable |
+| **Stockage** | ~30 Go libres pour le client WoW |
+
+> ⚠️ Certains SoC très récents (ex. Snapdragon 8 Elite) ou les Adreno 7xx « allégés » (735, 732, 720, 710…) ne sont pas pris en charge par Turnip — dans ce cas, un autre pilote (VirGL/Vortek) est nécessaire et les performances varient.
+
+### Périphériques Bluetooth (fortement conseillés)
+
+WoW est un jeu PC : la saisie des identifiants et le contrôle souris/clavier rendent un **clavier + souris Bluetooth** bien plus confortables que le tactile (qui reste fonctionnel via le touchpad émulé et le clavier Android).
+
+- **Clavier** : **Logitech K380** (ou son successeur **Pebble Keys 2 K380s**)
+  *Compact, multi-appareils (jusqu'à 3 en Bluetooth), excellent support Android, autonomie longue.*
+- **Souris** : **Logitech Pebble Mouse 2 M350s**
+  *Fine, silencieuse, nomade, appairage Bluetooth multi-appareils.*
+- **Option ultra-nomade** : **clavier sans fil pliable avec pavé tactile intégré**
+  *Clavier + souris en un seul accessoire pliable — idéal pour jouer en déplacement sans rien d'autre à transporter.*
+
+---
+
+## ⌨️ Contrôles (sans périphérique externe)
+
+- **Souris** : l'écran fait office de **touchpad** — un doigt déplace le curseur, un tap = clic gauche.
+- **Menu** : bouton **Retour** (ou **tap à 4 doigts**) ouvre le menu latéral.
+- **Clavier** : dans ce menu, **« Keyboard »** affiche le clavier Android pour taper (identifiants, chat…).
+
+Avec un clavier/souris Bluetooth appairés, le contrôle est direct, comme sur PC.
+
+---
+
+## 🚀 Premier lancement
+
+1. Installer l'APK et l'ouvrir.
+2. Le launcher extrait le runtime (imagefs + Proton) au premier démarrage (quelques minutes).
+3. Placer le client **WoW 3.3.5a** dans `Téléchargements/SylvaniaLauncher/wotlk` (ou utiliser le téléchargement intégré à venir).
+4. Le realmlist est écrit automatiquement vers `sylvania-servergame.com`.
+5. Le jeu se lance jusqu'à l'écran de connexion.
+
+---
+
+## 🛠️ Build (développeurs)
+
+- JDK 17, Android SDK (build-tools 35), NDK r27.
+- Placer les assets runtime (`imagefs.txz`, `proton-9.0-arm64ec.txz`, pilotes graphiques `.tzst`, etc.) dans `app/src/main/assets/` (gros binaires non versionnés).
+- Compiler : `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`.
+
+---
+
+## 🙏 Crédits
+
+Construit au-dessus d'un travail open source remarquable :
+
+- **Winlator** — [brunodev85/winlator](https://github.com/brunodev85/winlator)
+- **Wine / Proton** — [winehq.org](https://www.winehq.org/)
+- **Box64 / wowbox64** — [ptitSeb/box64](https://github.com/ptitSeb/box64)
+- **Mesa (Turnip / Zink)** — [mesa3d.org](https://www.mesa3d.org)
+- **DXVK** — [doitsujin/dxvk](https://github.com/doitsujin/dxvk)
+- **AdrenoTools** — [bylaws/adrenotools](https://github.com/bylaws/adrenotools)
+
+World of Warcraft est une marque de Blizzard Entertainment. Ce projet n'est ni affilié ni approuvé par Blizzard. À usage avec un serveur privé dont vous possédez les droits/accès.
