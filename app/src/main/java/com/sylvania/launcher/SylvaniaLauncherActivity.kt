@@ -177,7 +177,7 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         status = TextView(this).apply { setTextColor(Color.parseColor("#7ec8e3")); textSize = 12f; setPadding(0, dp(6), 0, dp(2)) }
         content.addView(status, wrap())
         content.addView(TextView(this).apply {
-            text = "© 2025 Sylvania Launcher — World of Warcraft 3.3.5"
+            text = "© 2025 Sylvania Launcher Android Edition — World of Warcraft 3.3.5"
             setTextColor(Color.parseColor(GOLD)); textSize = 10f; gravity = Gravity.CENTER
         }, wrap())
 
