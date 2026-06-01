@@ -240,6 +240,13 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         text = t; setTextColor(Color.WHITE); textSize = 13f; gravity = Gravity.CENTER; setPadding(dp(10), dp(10), dp(10), dp(10))
         background = GradientDrawable().apply { setColor(Color.argb(150, 50, 38, 20)); setStroke(dp(2), Color.parseColor(GOLD)); cornerRadius = dp(8).toFloat() }
     }
+    /** ScrollView whose child is WRAP_CONTENT height so it actually scrolls
+     *  (the FrameLayout default of MATCH_PARENT clips long content to one screen). */
+    private fun scrollOf(child: View): ScrollView = ScrollView(this).apply {
+        isFillViewport = false
+        addView(child, FrameLayout.LayoutParams(MATCH, WRAP))
+    }
+
     private fun wowButton(text: String, top: String, bottom: String, border: String, txt: String, size: Float): Button {
         val b = Button(this)
         b.text = text; b.isAllCaps = false; b.textSize = size; b.setTextColor(Color.parseColor(txt))
@@ -298,7 +305,7 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Réglages")
-            .setView(ScrollView(this).apply { addView(box) })
+            .setView(scrollOf(box))
             .setPositiveButton("Enregistrer") { _, _ ->
                 val newPath = pathField.text.toString().trim()
                 val newLang = if (rbEn.isChecked) "en" else "fr"
@@ -348,7 +355,7 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Changer de serveur")
-            .setView(ScrollView(this).apply { addView(box) })
+            .setView(scrollOf(box))
             .setPositiveButton("Sélectionner") { _, _ ->
                 val idx = group.checkedRadioButtonId
                 if (idx in entries.indices) {
@@ -577,11 +584,11 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
             btn.setOnClickListener { installAddon(a, addonsDir, btn, statusTv) }
             val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
             col.addView(btn); col.addView(statusTv)
-            row.addView(col, wrap())
-            list.addView(row)
+            row.addView(col, LinearLayout.LayoutParams(WRAP, WRAP))
+            list.addView(row, LinearLayout.LayoutParams(MATCH, WRAP))
         }
         AlertDialog.Builder(this).setTitle("Addons recommandés")
-            .setView(ScrollView(this).apply { addView(list) })
+            .setView(scrollOf(list))
             .setPositiveButton("Fermer", null).show()
     }
 
