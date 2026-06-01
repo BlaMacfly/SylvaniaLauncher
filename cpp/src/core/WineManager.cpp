@@ -188,7 +188,10 @@ bool WineManager::extractArchive(const QString& archivePath)
     QProcess process;
     process.setWorkingDirectory(m_wineDir);
     process.start("tar", QStringList() << "xJf" << archivePath << "--strip-components=0");
-    process.waitForFinished(300000); // 5 min timeout for large archives
+    
+    QEventLoop loop;
+    connect(&process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), &loop, &QEventLoop::quit);
+    loop.exec();
 
     if (process.exitCode() != 0) {
         qWarning() << "WineManager: tar extraction failed:" << process.readAllStandardError();
@@ -220,7 +223,10 @@ void WineManager::createPrefix()
     QProcess process;
     process.setProcessEnvironment(env);
     process.start(wineboot, QStringList() << "--init");
-    process.waitForFinished(120000); // 2 min timeout
+    
+    QEventLoop loop;
+    connect(&process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), &loop, &QEventLoop::quit);
+    loop.exec();
 
     if (process.exitCode() != 0) {
         qWarning() << "WineManager: wineboot failed:" << process.readAllStandardError();
@@ -253,7 +259,10 @@ void WineManager::configurePrefix()
     regProcess.start(wineRegPath, QStringList() 
         << "reg" << "add" << "HKEY_CURRENT_USER\\Software\\Wine" 
         << "/v" << "Version" << "/d" << "win7" << "/f");
-    regProcess.waitForFinished(30000);
+    
+    QEventLoop loop;
+    connect(&regProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), &loop, &QEventLoop::quit);
+    loop.exec();
 
     qDebug() << "WineManager: Prefix configured for WoW 3.3.5";
 }

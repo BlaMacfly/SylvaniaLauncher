@@ -413,7 +413,7 @@ void DownloadDialog::generateConfigWtf() {
     QString targetPath = m_destination;
     
     // Search for the actual WoW directory (containing Wow.exe)
-    QDirIterator it(m_destination, QStringList() << "Wow.exe", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it(m_destination, QStringList() << "Wow.exe" << "WoW.exe" << "wow.exe", QDir::Files, QDirIterator::Subdirectories);
     if (it.hasNext()) {
         targetPath = QFileInfo(it.next()).absolutePath();
     }

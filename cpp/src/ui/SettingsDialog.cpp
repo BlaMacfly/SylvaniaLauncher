@@ -209,6 +209,11 @@ void SettingsDialog::setupUi() {
             min-width: 150px;
         }
         QComboBox::drop-down { border: none; }
+        QComboBox QAbstractItemView {
+            background-color: #2a2a2a;
+            color: #ffffff;
+            selection-background-color: #5a4a2d;
+        }
     )");
     m_backgroundCombo->installEventFilter(new WheelEventFilter(m_backgroundCombo));
     
@@ -327,6 +332,7 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
     scrollArea->setMaximumHeight(350);
 
     QWidget* scrollContent = new QWidget();
+    scrollContent->setStyleSheet("background-color: transparent;");
     QGridLayout* gridLayout = new QGridLayout(scrollContent);
     gridLayout->setSpacing(15);
 
@@ -351,6 +357,11 @@ void SettingsDialog::setupPatchUI(QVBoxLayout* mainLayout) {
                 min-width: 100px;
             }
             QComboBox::drop-down { border: none; }
+            QComboBox QAbstractItemView {
+                background-color: #2a2a2a;
+                color: #ffffff;
+                selection-background-color: #5a4a2d;
+            }
         )");
         
         combo->installEventFilter(new WheelEventFilter(combo));
@@ -402,7 +413,12 @@ void SettingsDialog::loadSettings() {
 
 void SettingsDialog::updateButtonsState() {
     QString wowPath = m_pathEdit->text();
-    bool exists = !wowPath.isEmpty() && QFile::exists(wowPath + "/Wow.exe");
+    bool exists = false;
+    if (!wowPath.isEmpty()) {
+        exists = QFile::exists(wowPath + "/Wow.exe") || 
+                 QFile::exists(wowPath + "/WoW.exe") || 
+                 QFile::exists(wowPath + "/wow.exe");
+    }
     
     m_downloadEnUsButton->setEnabled(exists);
     m_clearCacheButton->setEnabled(exists);
@@ -411,8 +427,12 @@ void SettingsDialog::updateButtonsState() {
     // Optional: add a tooltip to explain why it's disabled
     if (!exists) {
         m_downloadEnUsButton->setToolTip(tr("Veuillez d'abord configurer le dossier WoW (Wow.exe)"));
+        m_clearCacheButton->setToolTip(tr("Veuillez d'abord configurer le dossier WoW (Wow.exe)"));
+        m_openAddonsButton->setToolTip(tr("Veuillez d'abord configurer le dossier WoW (Wow.exe)"));
     } else {
         m_downloadEnUsButton->setToolTip("");
+        m_clearCacheButton->setToolTip("");
+        m_openAddonsButton->setToolTip("");
     }
 }
 
@@ -451,45 +471,98 @@ bool SettingsDialog::isHdPatchInstalled() const {
 
 bool SettingsDialog::isPatchEnabled(const QString& fileName, const QString& subDir) const {
     QString wowPath = m_config->getWowPath();
-    QString fullPath = wowPath;
+    if (wowPath.isEmpty()) return false;
+
+    QString basePath = wowPath;
     if (fileName == "d3d9.dll") {
-        fullPath += "/" + fileName;
+        // Root files
     } else {
-        fullPath += "/Data/";
-        if (!subDir.isEmpty()) fullPath += subDir + "/";
-        fullPath += fileName;
+        // Data files
+        QDir dataDir(wowPath + "/Data");
+        if (!dataDir.exists()) {
+            dataDir.setPath(wowPath + "/data");
+            if (!dataDir.exists()) return false;
+        }
+        basePath = dataDir.absolutePath();
+        if (!subDir.isEmpty()) {
+            QDir subDirObj(basePath + "/" + subDir);
+            if (!subDirObj.exists()) {
+                // Try case-insensitive subDir search
+                QStringList entries = QDir(basePath).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+                bool found = false;
+                for (const QString& entry : entries) {
+                    if (entry.compare(subDir, Qt::CaseInsensitive) == 0) {
+                        basePath += "/" + entry;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) return false;
+            } else {
+                basePath += "/" + subDir;
+            }
+        }
     }
-    return QFile::exists(fullPath);
+
+    // Check for file existence case-insensitively
+    QDir finalDir(basePath);
+    QStringList files = finalDir.entryList(QDir::Files);
+    for (const QString& file : files) {
+        if (file.compare(fileName, Qt::CaseInsensitive) == 0) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void SettingsDialog::togglePatch(const QString& fileName, bool enabled, const QString& subDir) {
     QString wowPath = m_config->getWowPath();
+    if (wowPath.isEmpty()) return;
+
     QString basePath = wowPath;
     bool isRootFile = (fileName == "d3d9.dll");
     
-    if (isRootFile) {
-        // Handle DXVK specially (dll and conf)
-        QStringList files = {"d3d9.dll", "dxvk.conf"};
-        for (const QString& f : files) {
-            QString activePath = basePath + "/" + f;
-            QString disabledPath = activePath + ".disabled";
-            
-            if (enabled && !QFile::exists(activePath) && QFile::exists(disabledPath)) {
-                QFile::rename(disabledPath, activePath);
-            } else if (!enabled && QFile::exists(activePath)) {
-                if (QFile::exists(disabledPath)) QFile::remove(disabledPath);
-                QFile::rename(activePath, disabledPath);
+    if (!isRootFile) {
+        QDir dataDir(wowPath + "/Data");
+        if (!dataDir.exists()) {
+            dataDir.setPath(wowPath + "/data");
+            if (!dataDir.exists()) return;
+        }
+        basePath = dataDir.absolutePath();
+        
+        if (!subDir.isEmpty()) {
+            QDir subDirObj(basePath + "/" + subDir);
+            if (!subDirObj.exists()) {
+                QStringList entries = QDir(basePath).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QString& entry : entries) {
+                    if (entry.compare(subDir, Qt::CaseInsensitive) == 0) {
+                        basePath += "/" + entry;
+                        break;
+                    }
+                }
+            } else {
+                basePath += "/" + subDir;
             }
         }
-        return;
     }
 
-    // Normal MPQ patch
-    basePath += "/Data/";
-    if (!subDir.isEmpty()) basePath += subDir + "/";
+    QDir targetDir(basePath);
+    QString activeName = fileName;
+    QString disabledName = fileName + ".disabled";
     
-    QString activePath = basePath + fileName;
-    QString disabledPath = activePath + ".disabled";
+    // Find actual casing of existing files
+    QStringList entries = targetDir.entryList(QDir::Files | QDir::Hidden);
+    for (const QString& entry : entries) {
+        if (entry.compare(fileName, Qt::CaseInsensitive) == 0) {
+            activeName = entry;
+        } else if (entry.compare(fileName + ".disabled", Qt::CaseInsensitive) == 0) {
+            disabledName = entry;
+        }
+    }
+
+    QString activePath = basePath + "/" + activeName;
+    QString disabledPath = basePath + "/" + disabledName;
 
     if (enabled) {
         if (!QFile::exists(activePath) && QFile::exists(disabledPath)) {
@@ -497,10 +570,32 @@ void SettingsDialog::togglePatch(const QString& fileName, bool enabled, const QS
         }
     } else {
         if (QFile::exists(activePath)) {
-            // Check if another option shares this file and is still enabled
-            // (Simpler: if user set it to disabled, we disable it)
             if (QFile::exists(disabledPath)) QFile::remove(disabledPath);
             QFile::rename(activePath, disabledPath);
+        }
+    }
+
+    // Special case for DXVK: handle dxvk.conf as well
+    if (isRootFile) {
+        QString confName = "dxvk.conf";
+        QString confDisabledName = "dxvk.conf.disabled";
+        for (const QString& entry : entries) {
+            if (entry.compare("dxvk.conf", Qt::CaseInsensitive) == 0) confName = entry;
+            else if (entry.compare("dxvk.conf.disabled", Qt::CaseInsensitive) == 0) confDisabledName = entry;
+        }
+        
+        QString confActivePath = basePath + "/" + confName;
+        QString confDisabledPath = basePath + "/" + confDisabledName;
+        
+        if (enabled) {
+            if (!QFile::exists(confActivePath) && QFile::exists(confDisabledPath)) {
+                QFile::rename(confDisabledPath, confActivePath);
+            }
+        } else {
+            if (QFile::exists(confActivePath)) {
+                if (QFile::exists(confDisabledPath)) QFile::remove(confDisabledPath);
+                QFile::rename(confActivePath, confDisabledPath);
+            }
         }
     }
 }

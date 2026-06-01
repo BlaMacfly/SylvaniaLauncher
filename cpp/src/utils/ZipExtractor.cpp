@@ -201,8 +201,15 @@ void ZipExtractor::extractAsync(const QString& zipPath, const QString& destPath,
         }
     });
 
-    QFuture<bool> future = QtConcurrent::run([zipPath, destPath, onProgress]() {
-        return extractWithLibzip(zipPath, destPath, onProgress);
+    QFuture<bool> future = QtConcurrent::run([zipPath, destPath, parent, onProgress]() {
+        auto threadSafeOnProgress = [parent, onProgress](int percent, const QString& status) {
+            if (onProgress && parent) {
+                QMetaObject::invokeMethod(parent, [onProgress, percent, status]() {
+                    onProgress(percent, status);
+                }, Qt::QueuedConnection);
+            }
+        };
+        return extractWithLibzip(zipPath, destPath, threadSafeOnProgress);
     });
 
     watcher->setFuture(future);

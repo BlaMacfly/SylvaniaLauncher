@@ -3,8 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QMap>
-#include <QMediaPlayer>
-#include <QAudioOutput>
+#include <QSoundEffect>
 #include <memory>
 
 /**
@@ -67,10 +66,9 @@ private:
     void addSound(const QString& name, const QString& path);
     QString findSoundsDir() const;
 
-    std::unique_ptr<QMediaPlayer> m_player;
-    std::unique_ptr<QAudioOutput> m_audioOutput;
-    QMap<QString, QString> m_sounds;
+    QMap<QString, std::shared_ptr<QSoundEffect>> m_effects;
     QString m_soundsDir;
     bool m_muted = false;
     float m_volume = 0.5f;
 };
+

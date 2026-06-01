@@ -221,7 +221,14 @@ void AddonsWindow::updateButtonStyle(QPushButton* btn, bool installed) {
 
 void AddonsWindow::onInstallClicked(const QString& fileName, QPushButton* installBtn, QProgressBar* progressBar, QLabel* statusLabel) {
     QString wowPath = m_config->getWowPath();
-    if (wowPath.isEmpty() || !QFile::exists(wowPath + "/Wow.exe")) {
+    bool wowExists = false;
+    if (!wowPath.isEmpty()) {
+        wowExists = QFile::exists(wowPath + "/Wow.exe") || 
+                    QFile::exists(wowPath + "/WoW.exe") || 
+                    QFile::exists(wowPath + "/wow.exe");
+    }
+
+    if (!wowExists) {
         QMessageBox::warning(this, "Erreur", "Veuillez d'abord configurer le chemin d'installation de World of Warcraft dans les réglages.");
         return;
     }

@@ -9,17 +9,6 @@
 SoundManager::SoundManager(QObject* parent)
     : QObject(parent)
 {
-#ifdef Q_OS_WIN
-    // Force native backend (WMF) to avoid heavy FFmpeg DLLs
-    qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "windowsmedia");
-#endif
-    
-    m_player = std::make_unique<QMediaPlayer>();
-    m_audioOutput = std::make_unique<QAudioOutput>();
-    
-    m_player->setAudioOutput(m_audioOutput.get());
-    m_audioOutput->setVolume(m_volume);
-    
     initializeSounds();
 }
 
@@ -31,12 +20,12 @@ void SoundManager::initializeSounds() {
         return;
     }
     
-    // Try WAV files first, then MP3 as fallback
+    // For QSoundEffect we only need WAV files
     QMap<QString, QStringList> soundFiles = {
-        {"play", {"launch.wav", "launch.mp3"}},
-        {"button", {"toggle.wav", "toggle.mp3"}},
-        {"toggle", {"toggle.wav", "toggle.mp3"}},
-        {"notification", {"Notification.wav", "Notification.mp3"}}
+        {"play", {"launch.wav"}},
+        {"button", {"toggle.wav"}},
+        {"toggle", {"toggle.wav"}},
+        {"notification", {"Notification.wav"}}
     };
     
     for (auto it = soundFiles.begin(); it != soundFiles.end(); ++it) {
@@ -60,7 +49,10 @@ QString SoundManager::findSoundsDir() const {
 
 void SoundManager::addSound(const QString& name, const QString& path) {
     if (QFile::exists(path)) {
-        m_sounds[name] = path;
+        auto effect = std::make_shared<QSoundEffect>();
+        effect->setSource(QUrl::fromLocalFile(path));
+        effect->setVolume(m_volume);
+        m_effects[name] = effect;
     } else {
         qWarning() << "Fichier son non trouvé:" << path;
     }
@@ -71,23 +63,13 @@ void SoundManager::play(const QString& soundName) {
         return;
     }
     
-    if (!m_sounds.contains(soundName)) {
+    if (!m_effects.contains(soundName)) {
         qWarning() << "Son non trouvé:" << soundName;
         return;
     }
     
-    QString soundPath = m_sounds[soundName];
-    
-    if (!QFile::exists(soundPath)) {
-        qWarning() << "Fichier son introuvable:" << soundPath;
-        return;
-    }
-    
     try {
-        // Stop current playback before starting new
-        m_player->stop();
-        m_player->setSource(QUrl::fromLocalFile(soundPath));
-        m_player->play();
+        m_effects[soundName]->play();
     } catch (...) {
         qWarning() << "Erreur lors de la lecture du son:" << soundName;
     }
@@ -95,15 +77,18 @@ void SoundManager::play(const QString& soundName) {
 
 void SoundManager::setVolume(float volume) {
     m_volume = qBound(0.0f, volume, 1.0f);
-    m_audioOutput->setVolume(m_volume);
+    for (auto& effect : m_effects) {
+        effect->setVolume(m_volume);
+    }
 }
 
 float SoundManager::getVolume() const {
-    return m_audioOutput->volume();
+    return m_volume;
 }
 
 void SoundManager::setMuted(bool muted) {
     m_muted = muted;
+    // We don't stop currently playing sounds on mute, just prevent new ones
 }
 
 bool SoundManager::isMuted() const {

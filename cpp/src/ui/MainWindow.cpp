@@ -670,6 +670,13 @@ void MainWindow::checkWowInstalled() {
     
     QString exePath = wowPath + "/Wow.exe";
     if (!QFile::exists(exePath)) {
+        exePath = wowPath + "/WoW.exe";
+        if (!QFile::exists(exePath)) {
+            exePath = wowPath + "/wow.exe";
+        }
+    }
+
+    if (!QFile::exists(exePath)) {
         m_playButton->setEnabled(false);
         m_statusLabel->setText(tr("Client non trouvé - Cliquez sur TÉLÉCHARGER pour installer WoW ici"));
         return;
@@ -695,9 +702,15 @@ void MainWindow::onPlayButtonClicked() {
 void MainWindow::playGame() {
     QString wowPath = m_config->getWowPath();
     QString exePath = wowPath + "/Wow.exe";
+    if (!QFile::exists(exePath)) {
+        exePath = wowPath + "/WoW.exe";
+        if (!QFile::exists(exePath)) {
+            exePath = wowPath + "/wow.exe";
+        }
+    }
     
     if (!QFile::exists(exePath)) {
-        QMessageBox::warning(this, tr("Erreur"), 
+        QMessageBox::critical(this, tr("Erreur"), 
             tr("Wow.exe non trouvé!\nVeuillez vérifier le chemin d'installation."));
         return;
     }
@@ -757,7 +770,14 @@ void MainWindow::onHdButtonClicked() {
     m_soundManager->play("button");
     
     QString wowPath = m_config->getWowPath();
-    if (wowPath.isEmpty() || !QFile::exists(wowPath + "/Wow.exe")) {
+    bool wowExists = false;
+    if (!wowPath.isEmpty()) {
+        wowExists = QFile::exists(wowPath + "/Wow.exe") || 
+                    QFile::exists(wowPath + "/WoW.exe") || 
+                    QFile::exists(wowPath + "/wow.exe");
+    }
+
+    if (!wowExists) {
         QMessageBox::warning(this, tr("Patch HD"), 
             tr("Vous devez d'abord télécharger ou configurer l'emplacement du client World of Warcraft "
                "avant d'installer le Patch HD."));
@@ -849,7 +869,7 @@ void MainWindow::onDownloadComplete(bool success, const QString& message) {
             QString downloadPath = m_downloadDialog->getDestination();
             
             // Search recursively for Wow.exe (to handle subfolders in ZIP)
-            QDirIterator it(downloadPath, QStringList() << "Wow.exe", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it(downloadPath, QStringList() << "Wow.exe" << "WoW.exe" << "wow.exe", QDir::Files, QDirIterator::Subdirectories);
             if (it.hasNext()) {
                 QString foundExe = it.next();
                 QString finalPath = QFileInfo(foundExe).absolutePath();

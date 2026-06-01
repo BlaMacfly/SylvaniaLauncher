@@ -137,7 +137,6 @@ void HdPatchManager::verifyHash(const QString& filePath) {
     
     watcher->setFuture(future);
 }
-
 void HdPatchManager::extractPatch(const QString& zipPath) {
     QString extractPath = m_tempDir + "/extracted";
     QDir().mkpath(extractPath);
@@ -150,12 +149,22 @@ void HdPatchManager::extractPatch(const QString& zipPath) {
             if (success) {
                 emit progressChanged(100, tr("Extraction terminée. Migration des fichiers..."));
                 
-                // Look for "Le Client WoW HD" inside the extraction folder
-                QString sourceDir = extractPath + "/Le Client WoW HD";
-                if (QDir(sourceDir).exists()) {
+                // Look for "Le Client WoW HD" inside the extraction folder (case-insensitive)
+                QDir rootDir(extractPath);
+                QString sourceDir;
+                QStringList entries = rootDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QString& entry : entries) {
+                    if (entry.contains("Client WoW HD", Qt::CaseInsensitive)) {
+                        sourceDir = extractPath + "/" + entry;
+                        break;
+                    }
+                }
+
+                if (!sourceDir.isEmpty() && QDir(sourceDir).exists()) {
                     migrateFiles(sourceDir);
                 } else {
-                    emit finished(false, tr("Dossier 'Le Client WoW HD' non trouvé dans l'archive"));
+                    // If not found in a subfolder, maybe it's at the root of the ZIP
+                    migrateFiles(extractPath);
                 }
             } else {
                 emit finished(false, tr("Échec de l'extraction: ") + error);
@@ -180,6 +189,16 @@ static bool copyDirectoryRecursively(const QString& srcPath, const QString& dest
     for (const QString& file : files) {
         QString srcFile = srcPath + "/" + file;
         QString destFile = destPath + "/" + file;
+        
+        // Case-insensitive removal of existing file in destination
+        QDir targetDir(destPath);
+        QStringList existingFiles = targetDir.entryList(QDir::Files | QDir::Hidden);
+        for (const QString& existing : existingFiles) {
+            if (existing.compare(file, Qt::CaseInsensitive) == 0) {
+                targetDir.remove(existing);
+            }
+        }
+
         if (QFile::exists(destFile)) {
             QFile::remove(destFile);
         }
@@ -189,7 +208,16 @@ static bool copyDirectoryRecursively(const QString& srcPath, const QString& dest
     // Recurse into subdirectories
     QStringList dirs = srcDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden);
     for (const QString& dir : dirs) {
-        copyDirectoryRecursively(srcPath + "/" + dir, destPath + "/" + dir);
+        // Find existing directory with same name but maybe different casing
+        QString targetSubDir = dir;
+        QStringList existingDirs = destDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden);
+        for (const QString& existing : existingDirs) {
+            if (existing.compare(dir, Qt::CaseInsensitive) == 0) {
+                targetSubDir = existing;
+                break;
+            }
+        }
+        copyDirectoryRecursively(srcPath + "/" + dir, destPath + "/" + targetSubDir);
     }
 
     return true;
@@ -215,17 +243,37 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
     int current = 0;
     
     for (const QString& item : itemsToMigrate) {
-        QString srcName = item;
-        QString destName = item;
+        // Find item in source with case insensitivity
+        QString srcName;
+        QStringList sourceEntries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden);
+        for (const QString& entry : sourceEntries) {
+            if (entry.compare(item, Qt::CaseInsensitive) == 0) {
+                srcName = entry;
+                break;
+            }
+        }
 
-        // Force enable DXVK during migration
-        if (item == "d3d9.dll" || item == "dxvk.conf") {
-            srcName = item + ".disabled";
-            destName = item;
-            
-            // If the source .disabled doesn't exist, try the enabled name as fallback
-            if (!QFile::exists(sourcePath + "/" + srcName)) {
-                srcName = item;
+        if (srcName.isEmpty()) {
+            // Check for DXVK specials
+            if (item == "d3d9.dll" || item == "dxvk.conf") {
+                for (const QString& entry : sourceEntries) {
+                    if (entry.compare(item + ".disabled", Qt::CaseInsensitive) == 0) {
+                        srcName = entry;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (srcName.isEmpty()) continue;
+
+        // Find existing item in destination with case insensitivity
+        QString destName = item;
+        QStringList destEntries = destDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden);
+        for (const QString& entry : destEntries) {
+            if (entry.compare(item, Qt::CaseInsensitive) == 0) {
+                destName = entry;
+                break;
             }
         }
 
@@ -233,12 +281,7 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
         QString destItemPath = m_wowPath + "/" + destName;
         
         QFileInfo info(srcItemPath);
-        if (!info.exists()) {
-            continue;
-        }
-
         if (info.isDir()) {
-            // Cross-platform recursive copy with overwrite
             copyDirectoryRecursively(srcItemPath, destItemPath);
         } else if (info.isFile()) {
             if (QFile::exists(destItemPath)) {
@@ -248,7 +291,7 @@ void HdPatchManager::migrateFiles(const QString& sourcePath) {
         }
         
         current++;
-        QCoreApplication::processEvents(); // Prevent freeze during migration
+        QCoreApplication::processEvents();
         emit progressChanged(static_cast<int>((current * 100) / total), tr("Migration: ") + item);
     }
     
@@ -360,17 +403,22 @@ bool HdPatchManager::isInstalled(const QString& wowPath) {
     if (wowPath.isEmpty()) return false;
 
     // Détection basée sur la présence de fichiers clés du Patch HD
-    // patch-w.mpq (arbres) et patch-5.mpq (eau/ciel/sorts) sont les plus représentatifs
-    QStringList checks = {
-        "/Data/patch-w.mpq", 
-        "/Data/patch-w.mpq.disabled",
-        "/Data/patch-5.mpq", 
-        "/Data/patch-5.mpq.disabled"
-    };
+    // On doit chercher de manière insensible à la casse sur Linux
+    QDir dataDir(wowPath + "/Data");
+    if (!dataDir.exists()) {
+        // Essayer en minuscule
+        dataDir.setPath(wowPath + "/data");
+        if (!dataDir.exists()) return false;
+    }
 
-    for (const QString& file : checks) {
-        if (QFile::exists(wowPath + file)) {
-            return true;
+    QStringList existingFiles = dataDir.entryList(QDir::Files);
+    QStringList targets = {"patch-w.mpq", "patch-5.mpq"};
+
+    for (const QString& target : targets) {
+        for (const QString& existing : existingFiles) {
+            if (existing.startsWith(target, Qt::CaseInsensitive)) {
+                return true;
+            }
         }
     }
 
