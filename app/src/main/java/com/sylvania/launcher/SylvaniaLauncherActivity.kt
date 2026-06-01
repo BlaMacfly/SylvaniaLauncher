@@ -115,6 +115,8 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
 
                 // Container + contents on background, then launch on UI thread
                 // (createContainerAsync needs a main-thread Looper for its Handler).
+                ensureControlsProfile()
+
                 val contents = ContentsManager(this).apply { syncContents() }
                 val manager = ContainerManager(this)
                 runOnUiThread { ensureContainerAndLaunch(manager, contents) }
@@ -124,6 +126,26 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
                 runOnUiThread { launchButton.isEnabled = true }
             }
         }.start()
+    }
+
+    /**
+     * Install the pre-built gamepad mapping profile ("WoW ConsolePort") from APK
+     * assets into the Winlator profiles dir if absent, so the controller is mapped
+     * for ConsolePortLK out of the box (the shortcut's controlsProfile extra then
+     * auto-activates it). Maps the gamepad to the WoWmapper key scheme.
+     */
+    private fun ensureControlsProfile() {
+        val dest = File(filesDir, "profiles/controls-$CONTROLS_PROFILE_ID.icp")
+        if (dest.exists()) return
+        try {
+            dest.parentFile?.mkdirs()
+            assets.open("profiles/controls-$CONTROLS_PROFILE_ID.icp").use { input ->
+                dest.outputStream().use { input.copyTo(it) }
+            }
+            log("Profil manette installé (WoW ConsolePort).")
+        } catch (e: Exception) {
+            Log.w(TAG, "controls profile install failed", e)
+        }
     }
 
     private fun isImageFsInstalled(imageFs: ImageFs): Boolean =
@@ -235,6 +257,14 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
                 // D: is the client root; forward slashes survive Winlator's
                 // Shortcut path unescape() (backslashes get stripped).
                 appendLine("Exec=wine D:/${wowExe.name}")
+                // Auto-activate the gamepad mapping for ConsolePort. XServerDisplayActivity
+                // reads shortcut.getExtra("controlsProfile") (= profile id) and calls
+                // showInputControls(profile), so the controller works without the user
+                // having to pick the profile in-game. Profile id $CONTROLS_PROFILE_ID =
+                // "WoW ConsolePort" (gamepad → WoWmapper key scheme F9/F11/…).
+                appendLine("")
+                appendLine("[Extra Data]")
+                appendLine("controlsProfile=$CONTROLS_PROFILE_ID")
             },
         )
 
@@ -250,5 +280,9 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "SylvaniaLauncher"
+        /** Id of the pre-provisioned Winlator controls profile "WoW ConsolePort"
+         *  (files/profiles/controls-10.icp): maps the gamepad to the key scheme
+         *  ConsolePortLK expects. Activated via the shortcut's controlsProfile extra. */
+        private const val CONTROLS_PROFILE_ID = 10
     }
 }
