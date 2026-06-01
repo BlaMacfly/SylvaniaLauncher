@@ -99,6 +99,10 @@ fi
 
 # Run linuxdeploy to bundle all dependencies
 export QMAKE=$(which qmake6 2>/dev/null || which qmake 2>/dev/null)
+# Force-bundle the multimedia module so QSoundEffect has its backend plugin.
+# (EXTRA_QT_PLUGINS was the old name; current linuxdeploy-plugin-qt uses
+# EXTRA_QT_MODULES. We export both so either version behaves.)
+export EXTRA_QT_MODULES="multimedia"
 export EXTRA_QT_PLUGINS="multimedia"
 
 "${LINUXDEPLOY}" \

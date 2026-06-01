@@ -1,7 +1,9 @@
 # Build environment for the SylvaniaLauncher AppImage.
 #
-# Ubuntu 22.04 = Qt 6.2 + glibc 2.35: broad compatibility while still
-# providing Qt6 from the distro repos (20.04 only ships Qt5).
+# Ubuntu 24.04 = Qt 6.4 + glibc 2.39. We need 24.04 (not 22.04) because its
+# libqt6multimedia6 actually ships a working multimedia BACKEND plugin
+# (plugins/multimedia/libgstreamermediaplugin.so + libffmpegmediaplugin.so);
+# 22.04's Qt 6.2 ships the library with no backend, so QSoundEffect is silent.
 #
 # Build the image:
 #   docker build -t sylvania-appimage -f linux/Dockerfile linux
@@ -9,10 +11,10 @@
 # Produce the AppImage (run from the repo root; outputs to ./build-appimage):
 #   docker run --rm -v "${PWD}:/src" sylvania-appimage
 #
-# linuxdeploy / appimagetool are themselves AppImages and need FUSE, which is
-# not available in a container, so APPIMAGE_EXTRACT_AND_RUN=1 makes them
-# self-extract instead of mounting.
-FROM ubuntu:22.04
+# linuxdeploy / appimagetool are themselves AppImages and would need FUSE, which
+# is not available in a container, so APPIMAGE_EXTRACT_AND_RUN=1 makes them
+# self-extract instead of mounting (no libfuse needed at all).
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APPIMAGE_EXTRACT_AND_RUN=1
@@ -35,7 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl-dev \
         libxkbcommon-dev \
         libgstreamer-plugins-base1.0-dev \
-        libfuse2 \
+        gstreamer1.0-plugins-good \
         zsync \
     && rm -rf /var/lib/apt/lists/*
 
