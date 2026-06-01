@@ -5,6 +5,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Environment
+import com.sylvania.launcher.core.Constants
+import com.sylvania.launcher.core.realmlist.RealmlistWriter
 import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
@@ -177,21 +180,54 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         }
     }
 
+    /** WoW client location on the device (pushed/downloaded here). */
+    private fun clientDir(): File =
+        File(Environment.getExternalStorageDirectory(), "SylvaniaLauncher/wotlk")
+
     private fun launchContainer(container: Container) {
-        // Workaround: Winlator's Container.loadData() has a switch fall-through
-        // (case "ddrawrapper" → "dxwrapperConfig") that corrupts dxwrapperConfig
-        // to "wined3d". An empty DXVK version then crashes
-        // XServerDisplayActivity.compareVersion (NumberFormatException on "").
-        // Force a valid DXVK config before launching.
+        // Workaround: Winlator's Container.loadData() switch fall-through
+        // (case "ddrawrapper" → "dxwrapperConfig") corrupts dxwrapperConfig to
+        // "wined3d"; an empty DXVK version crashes compareVersion. Force valid.
         val cfg = container.dxWrapperConfig
         if (cfg == null || !cfg.contains("version=")) {
             container.dxWrapperConfig = Container.DEFAULT_DXWRAPPERCONFIG
-            container.saveData()
-            log("dxwrapperConfig réparé.")
         }
-        setStatus("Lancement de l'environnement Wine (conteneur ${container.id})…")
+
+        val client = clientDir()
+        val wowExe = client.listFiles { f -> f.isFile && f.name.equals("Wow.exe", ignoreCase = true) }?.firstOrNull()
+        if (wowExe == null) {
+            setStatus("Client WoW introuvable dans ${client.absolutePath}.\nUtilisez le bouton de téléchargement.")
+            launchButton.isEnabled = true
+            return
+        }
+
+        // 1. Write the realmlist into the client (ported launcher logic).
+        RealmlistWriter.updateRealmlist(client, Constants.CANONICAL_REALMLIST)
+
+        // 2. Map Wine drive D: → the client directory so Wow.exe is D:\Wow.exe.
+        container.drives = "D:" + client.absolutePath
+        container.saveData()
+
+        // 3. Create a .desktop shortcut on Wow.exe so the game launches directly
+        //    (a bare container would only show the Wine desktop / file manager).
+        val desktopDir = container.desktopDir.apply { mkdirs() }
+        val shortcut = File(desktopDir, "Sylvania.desktop")
+        shortcut.writeText(
+            buildString {
+                appendLine("[Desktop Entry]")
+                appendLine("Type=Application")
+                appendLine("Name=Sylvania WoW")
+                // D: is the client root; forward slashes survive Winlator's
+                // Shortcut path unescape() (backslashes get stripped).
+                appendLine("Exec=wine D:/${wowExe.name}")
+            },
+        )
+
+        setStatus("Lancement de World of Warcraft…")
         val intent = Intent(this, XServerDisplayActivity::class.java).apply {
             putExtra("container_id", container.id)
+            putExtra("shortcut_path", shortcut.absolutePath)
+            putExtra("shortcut_name", "Sylvania WoW")
         }
         startActivity(intent)
         launchButton.isEnabled = true
