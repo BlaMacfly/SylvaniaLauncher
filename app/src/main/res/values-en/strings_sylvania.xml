@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sylvania launcher home strings — English. Translations from the C++ .ts. -->
+<resources>
+    <string name="syl_play">PLAY</string>
+    <string name="syl_download">DOWNLOAD</string>
+    <string name="syl_hd">HD</string>
+    <string name="syl_settings">SETTINGS</string>
+    <string name="syl_quit">QUIT</string>
+    <string name="syl_addons">Addons List</string>
+    <string name="syl_change_server">Change Server</string>
+
+    <string name="syl_panel_server">Server</string>
+    <string name="syl_panel_stats">Game Statistics</string>
+
+    <string name="syl_server_name">Server: %1$s</string>
+    <string name="syl_realmlist">Realmlist: %1$s</string>
+    <string name="syl_play_time">Play time: %1$dh %2$dmin</string>
+    <string name="syl_launches">Launches: %1$d</string>
+    <string name="syl_last_session">Last session: %1$s</string>
+    <string name="syl_last_session_none">Last session: --</string>
+    <string name="syl_lang_button">Language: EN</string>
+
+    <string name="syl_status_ready">Ready to play on %1$s!</string>
+    <string name="syl_status_no_client">WoW client not found in %1$s.\nUse DOWNLOAD or SETTINGS.</string>
+    <string name="syl_status_preparing">Preparing runtime…</string>
+    <string name="syl_status_runtime_installed">Runtime already installed.</string>
+    <string name="syl_status_launching">Launching World of Warcraft…</string>
+    <string name="syl_status_container_creating">Creating arm64ec / WoW64 container…</string>
+    <string name="syl_status_container_failed">Container creation failed.</string>
+    <string name="syl_status_error">Error: %1$s</string>
+
+    <string name="syl_ok">OK</string>
+    <string name="syl_cancel">Cancel</string>
+    <string name="syl_save">Save</string>
+    <string name="syl_close">Close</string>
+    <string name="syl_install">Install</string>
+    <string name="syl_delete">Delete</string>
+
+    <string name="syl_dlg_settings">Settings</string>
+    <string name="syl_set_client_path">WoW client folder:</string>
+    <string name="syl_set_language">Client language:</string>
+    <string name="syl_set_theme">Background theme:</string>
+    <string name="syl_set_random_bg">Random background on launch</string>
+    <string name="syl_settings_saved">Settings saved</string>
+
+    <string name="syl_dlg_change_server">Change server</string>
+    <string name="syl_select">Select</string>
+    <string name="syl_add">Add…</string>
+    <string name="syl_add_server">Add a server</string>
+    <string name="syl_server_name_label">Name:</string>
+    <string name="syl_server_addr_label">Realmlist address:</string>
+    <string name="syl_server_added">Server added</string>
+    <string name="syl_server_switched">Server: %1$s</string>
+
+    <string name="syl_dlg_download">Download client</string>
+    <string name="syl_download_confirm">Download the WoW 3.3.5 client (~19 GB) from %1$s and extract it to %2$s?\n\nMake sure you have ~40 GB free and a stable Wi-Fi connection.</string>
+    <string name="syl_download_connecting">Connecting…</string>
+    <string name="syl_download_progress">Downloading… %1$d%%</string>
+    <string name="syl_download_downloading">Downloading…</string>
+    <string name="syl_download_extracting">Extracting… (may take several minutes)</string>
+    <string name="syl_download_installed">Client installed ✓</string>
+    <string name="syl_download_failed">Failed: %1$s</string>
+    <string name="syl_download_cancelled">Download cancelled.</string>
+
+    <!-- English (enUS) language pack -->
+    <string name="syl_dlg_enus">English Pack (enUS)</string>
+    <string name="syl_enus_missing_title">Missing English Pack</string>
+    <string name="syl_enus_missing_msg">The English language pack (enUS) is not installed in your client.\nDownload it now? (~3 GB)</string>
+    <string name="syl_enus_installed">English Pack installed ✓</string>
+
+    <string name="syl_dlg_hd">HD Patch</string>
+    <string name="syl_hd_need_client">Download the client first (DOWNLOAD) before installing the HD Patch.</string>
+    <string name="syl_hd_reinstall">The HD Patch seems already installed. Reinstall / update it?</string>
+    <string name="syl_hd_install_q">Download and install the HD Patch (high-definition textures/UI)?</string>
+
+    <string name="syl_dlg_addons">Recommended Addons</string>
+    <string name="syl_addons_need_client">Download the client first (DOWNLOAD) to manage addons.</string>
+    <string name="syl_consoleport_installed">✓ ConsolePort (controller) installed\n</string>
+    <string name="syl_addon_installing">Downloading…</string>
+    <string name="syl_addon_extracting">Extracting…</string>
+    <string name="syl_addon_installed">Installed ✓</string>
+    <string name="syl_addon_failed">Failed</string>
+    <string name="syl_addon_wait">Please wait…</string>
+    <string name="syl_addon_delete_title">Delete %1$s?</string>
+    <string name="syl_addon_delete_msg">The addon folder will be removed from the client.</string>
+    <string name="syl_addon_deleted">Deleted</string>
+</resources>
