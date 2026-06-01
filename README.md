@@ -1,8 +1,11 @@
-# Sylvania Launcher
+# Sylvania Launcher — Édition Windows 🪟
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.8-success)
 
-🎮 **Launcher officiel pour le serveur World of Warcraft - Sylvania**
+🎮 **Launcher officiel pour le serveur World of Warcraft 3.3.5 - Sylvania**
+
+> 🐧 **Vous êtes sous Linux ?** Une version native (AppImage + Wine-GE) est disponible sur la branche [`linux`](https://github.com/BlaMacfly/SylvaniaLauncher/tree/linux).
 
 ## Aperçu
 
@@ -22,7 +25,9 @@
 
 - 🎮 **Lancement du jeu** avec configuration automatique du realmlist
 - 📥 **Téléchargement du client WoW** 3.3.5 avec progression en temps réel
-- 💎 **Patch HD Sylvania** : Installation automatique du patch haute définition (Data, Interface, PatchMenu)
+- 💎 **Patch HD Sylvania** : Installation automatique du patch haute définition (Data, Interface)
+- 🧬 **ARAC** (All Races All Classes) : activable/désactivable
+- 🖼️ **Fond d'écran aléatoire** : option ON/OFF
 - ⚙️ **Auto-Configuration** : Génération automatique du fichier `Config.wtf` optimal
 - 📊 **Statistiques de jeu** : temps de jeu, nombre de lancements
 - 📝 **Notes personnelles** style post-it avec couleurs
@@ -31,7 +36,14 @@
 
 ## Version actuelle
 
-**v2.7** - Application native C++ / Qt6
+**v2.8** - Application native C++ / Qt6
+
+### Nouveautés v2.8
+- 💎 Refonte du gestionnaire de Patch HD (localisation robuste de la racine du client dans l'archive).
+- 🧬 Nouveau bouton ARAC (All Races All Classes).
+- 🖼️ Fond d'écran aléatoire en option ON/OFF.
+- 🔄 Migration automatique des anciens hôtes de realmlist au démarrage.
+- ⚡ Surveillance non bloquante du processus de jeu, extraction d'archives durcie et écritures atomiques.
 
 ### Nouveautés v2.7
 - 🌐 Internationalisation (i18n) complète (Français/Anglais).
@@ -47,7 +59,8 @@
 
 ## Téléchargement
 
-[Télécharger le launcher](https://sylvania-servergame.com/launcher)
+- 🌐 [Télécharger depuis le site officiel](https://sylvania-servergame.com/launcher)
+- 📦 [Release GitHub v2.8 — `SylvaniaLauncher_v2.8.zip`](https://github.com/BlaMacfly/SylvaniaLauncher/releases/download/v2.8/SylvaniaLauncher_v2.8.zip)
 
 ## Configuration requise
 
