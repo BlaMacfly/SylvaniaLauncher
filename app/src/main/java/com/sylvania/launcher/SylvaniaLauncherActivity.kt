@@ -43,6 +43,7 @@ import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.contents.ContentsManager
+import com.winlator.cmod.core.EnvVars
 import com.winlator.cmod.core.TarCompressorUtils
 import com.winlator.cmod.xenvironment.ImageFs
 import com.winlator.cmod.xenvironment.ImageFsInstaller
@@ -667,6 +668,12 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         container.screenSize = "1920x1080"
         container.graphicsDriver = "wrapper"
         container.graphicsDriverConfig = "version=turnip25.1.0;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal"
+
+        // Disable the DXVK perf HUD (FPS/gpuload/frametimes) — leftover Winlator debug overlay.
+        // Forced here so it stays off even for containers created with the old default env vars.
+        val envVars = EnvVars(container.envVars)
+        envVars.put("DXVK_HUD", "0")
+        container.envVars = envVars.toString()
 
         val client = clientDir()
         val wowExe = client.listFiles { f -> f.isFile && f.name.equals("Wow.exe", ignoreCase = true) }?.firstOrNull()
