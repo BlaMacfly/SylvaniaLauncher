@@ -1,8 +1,0 @@
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/SylvaniaLauncher.dir
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/edit_cache.dir
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/rebuild_cache.dir
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/list_install_components.dir
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/install.dir
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/install/local.dir
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/install/strip.dir
-/home/blamacfly/Sylvania Launcher/build-appimage/CMakeFiles/SylvaniaLauncher_autogen.dir
