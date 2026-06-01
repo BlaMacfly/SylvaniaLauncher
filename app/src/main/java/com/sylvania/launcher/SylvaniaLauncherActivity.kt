@@ -12,15 +12,24 @@ import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sylvania.launcher.core.Constants
+import com.sylvania.launcher.core.config.ConfigManager
+import com.sylvania.launcher.core.config.RealmlistEntry
 import com.sylvania.launcher.core.realmlist.RealmlistWriter
 import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.container.Container
@@ -37,24 +46,30 @@ import java.util.Locale
 
 /**
  * Sylvania launcher home screen — Android port of the Windows/Qt launcher's
- * MainWindow (see "Sylvania Launcher - C++"). Presents the launcher front-end
- * (server info, PLAY / DOWNLOAD / HD / SETTINGS / ADDONS / QUIT, play stats)
- * instead of jumping straight into the game.
- *
- * PLAY drives the verified runtime flow: extract the bionic rootfs + Wine from
- * APK assets, create an arm64ec / WoW64 (wowbox64) container with Turnip, then
- * launch XServerDisplayActivity on the Wow.exe shortcut.
+ * MainWindow. Presents the launcher front-end (server info, PLAY / DOWNLOAD /
+ * HD / SETTINGS / ADDONS / QUIT, play stats) instead of jumping into the game.
+ * Settings, the active server and the background theme are persisted via the
+ * ported ConfigManager (config.json), interchangeable with the Windows build.
  */
 class SylvaniaLauncherActivity : AppCompatActivity() {
 
+    private lateinit var configMgr: ConfigManager
+    private lateinit var bgView: ImageView
     private lateinit var playButton: Button
     private lateinit var status: TextView
+    private lateinit var serverNameLabel: TextView
+    private lateinit var realmlistLabel: TextView
     private lateinit var playTimeLabel: TextView
     private lateinit var launchCountLabel: TextView
     private lateinit var lastSessionLabel: TextView
 
     private val WINE_VERSIONS = arrayOf("proton-9.0-x86_64", "proton-9.0-arm64ec")
     private val ARM64EC = "proton-9.0-arm64ec"
+
+    private val THEMES = listOf(
+        "Alliance", "Arbre de Vie", "Azeroth", "Horde",
+        "Ilidan", "Lich King", "Ragnaros", "Taverne",
+    )
 
     // --- Play stats (mirrors the C++ stats.json) ---------------------------
     private var launchCount = 0
@@ -64,6 +79,10 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configMgr = ConfigManager(filesDir)
+        // Default the client path on first run so the rest of the UI has a target.
+        if (configMgr.wowPath.isBlank()) configMgr.setWowPath(defaultClientDir().absolutePath)
+
         setContentView(buildHome())
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -72,21 +91,22 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
             requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
         }
 
+        applyBackgroundOnLaunch()
         loadStats()
         updateStatsUi()
+        updateServerUi()
         refreshClientState()
-        // No auto-launch: the launcher home is shown first (the point of a launcher).
     }
 
     override fun onResume() {
         super.onResume()
-        // Returning from the game: accumulate a rough session time.
         if (sessionStart > 0L) {
             totalPlayTime += (System.currentTimeMillis() - sessionStart) / 1000
             sessionStart = 0L
             saveStats()
         }
         updateStatsUi()
+        updateServerUi()
         refreshClientState()
     }
 
@@ -94,20 +114,37 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
     private fun drawableId(name: String): Int = resources.getIdentifier(name, "drawable", packageName)
-
     private val GOLD = "#d4af37"
+
+    private fun themeDrawable(theme: String): Int {
+        val key = "bg_" + theme.lowercase(Locale.ROOT)
+            .replace("é", "e").replace("è", "e").replace(" ", "")
+        val id = drawableId(key)
+        return if (id != 0) id else drawableId("launcher_bg")
+    }
+
+    private fun applyBackgroundOnLaunch() {
+        var theme = configMgr.config.background
+        if (configMgr.config.randomBackgroundEnabled) {
+            val others = THEMES.filter { it != theme }
+            if (others.isNotEmpty()) {
+                theme = others[(System.nanoTime() % others.size).toInt()]
+                configMgr.update { it.copy(background = theme) }
+            }
+        }
+        applyBackground(theme)
+    }
+
+    private fun applyBackground(theme: String) {
+        val id = themeDrawable(theme)
+        if (id != 0) bgView.setImageResource(id) else bgView.setBackgroundColor(Color.parseColor("#0E1B2E"))
+    }
 
     private fun buildHome(): View {
         val root = FrameLayout(this)
 
-        // Full-screen background
-        val bg = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            val id = drawableId("launcher_bg")
-            if (id != 0) setImageResource(id) else setBackgroundColor(Color.parseColor("#0E1B2E"))
-        }
-        root.addView(bg, FrameLayout.LayoutParams(MATCH, MATCH))
-        // Dark scrim for readability
+        bgView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+        root.addView(bgView, FrameLayout.LayoutParams(MATCH, MATCH))
         root.addView(View(this).apply { setBackgroundColor(Color.parseColor("#660A0F1A")) },
             FrameLayout.LayoutParams(MATCH, MATCH))
 
@@ -116,39 +153,24 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
             setPadding(dp(18), dp(14), dp(18), dp(12))
         }
 
-        // Header: logo + title
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        drawableId("sylvania_logo").let { if (it != 0) header.addView(ImageView(this).apply { setImageResource(it) },
-            LinearLayout.LayoutParams(dp(72), dp(72))) }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        drawableId("sylvania_logo").let { if (it != 0) header.addView(ImageView(this).apply { setImageResource(it) }, LinearLayout.LayoutParams(dp(72), dp(72))) }
         header.addView(TextView(this).apply {
-            text = "  Sylvania Launcher"
-            setTextColor(Color.parseColor(GOLD))
-            textSize = 22f
+            text = "  Sylvania Launcher"; setTextColor(Color.parseColor(GOLD)); textSize = 22f
             setShadowLayer(6f, 0f, 2f, Color.BLACK)
         })
         content.addView(header, wrap())
 
-        // Two panels
         val panels = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         panels.addView(buildServerPanel(), lin(0, MATCH, 1f).apply { marginEnd = dp(8) })
         panels.addView(buildStatsPanel(), lin(0, MATCH, 1f).apply { marginStart = dp(8) })
         content.addView(panels, LinearLayout.LayoutParams(MATCH, 0, 1f).apply { topMargin = dp(10) })
 
-        status = TextView(this).apply {
-            setTextColor(Color.parseColor("#7ec8e3"))
-            textSize = 12f
-            setPadding(0, dp(6), 0, dp(2))
-        }
+        status = TextView(this).apply { setTextColor(Color.parseColor("#7ec8e3")); textSize = 12f; setPadding(0, dp(6), 0, dp(2)) }
         content.addView(status, wrap())
-
         content.addView(TextView(this).apply {
             text = "© 2025 Sylvania Launcher — World of Warcraft 3.3.5"
-            setTextColor(Color.parseColor(GOLD))
-            textSize = 10f
-            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor(GOLD)); textSize = 10f; gravity = Gravity.CENTER
         }, wrap())
 
         root.addView(content, FrameLayout.LayoutParams(MATCH, MATCH))
@@ -156,48 +178,30 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
     }
 
     private fun buildServerPanel(): View {
-        val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = panelBg()
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-        }
+        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = panelBg(); setPadding(dp(16), dp(12), dp(16), dp(12)) }
         panel.addView(panelTitle("Serveur"))
-        panel.addView(label("The Kingdom of Sylvania — 3.3.5", "#ffffff", 13f, true))
-        panel.addView(label("Realmlist : ${Constants.SERVER_HOST}", "#7ec8e3", 12f, false))
+        serverNameLabel = label("", "#ffffff", 13f, true); panel.addView(serverNameLabel)
+        realmlistLabel = label("", "#7ec8e3", 12f, false); panel.addView(realmlistLabel)
 
-        // Row 1: JOUER (big) + TÉLÉCHARGER + HD
-        val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; }
-        playButton = wowButton("JOUER", "#4a7c3f", "#2a5a1f", "#5a8c4f", "#ffffff", 15f)
-        playButton.setOnClickListener { onPlayClicked() }
+        val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        playButton = wowButton("JOUER", "#4a7c3f", "#2a5a1f", "#5a8c4f", "#ffffff", 15f).also { it.setOnClickListener { onPlayClicked() } }
         row1.addView(playButton, lin(0, WRAP, 2f).apply { marginEnd = dp(6) })
-        row1.addView(wowButton("TÉLÉCHARGER", "#4a3a20", "#2a1a0a", GOLD, GOLD, 11f)
-            .also { it.setOnClickListener { onDownloadClicked() } }, lin(0, WRAP, 2f).apply { marginEnd = dp(6) })
-        row1.addView(wowButton("HD", "#2a6dd4", "#15479a", "#3a7de4", "#ffffff", 13f)
-            .also { it.setOnClickListener { comingSoon("Patch HD") } }, lin(0, WRAP, 1f))
+        row1.addView(wowButton("TÉLÉCHARGER", "#4a3a20", "#2a1a0a", GOLD, GOLD, 11f).also { it.setOnClickListener { onDownloadClicked() } }, lin(0, WRAP, 2f).apply { marginEnd = dp(6) })
+        row1.addView(wowButton("HD", "#2a6dd4", "#15479a", "#3a7de4", "#ffffff", 13f).also { it.setOnClickListener { comingSoon("Patch HD") } }, lin(0, WRAP, 1f))
         panel.addView(row1, topMargin(wrap(), 14))
 
-        // Row 2: RÉGLAGES + QUITTER
         val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row2.addView(wowButton("RÉGLAGES", "#5a4a3d", "#3a2a1d", "#6a5a4d", GOLD, 11f)
-            .also { it.setOnClickListener { comingSoon("Réglages") } }, lin(0, WRAP, 1f).apply { marginEnd = dp(6) })
-        row2.addView(wowButton("QUITTER", "#8a4a5a", "#6a2a3a", "#9a5a6a", "#ffffff", 11f)
-            .also { it.setOnClickListener { finishAffinity() } }, lin(0, WRAP, 1f))
+        row2.addView(wowButton("RÉGLAGES", "#5a4a3d", "#3a2a1d", "#6a5a4d", GOLD, 11f).also { it.setOnClickListener { onSettingsClicked() } }, lin(0, WRAP, 1f).apply { marginEnd = dp(6) })
+        row2.addView(wowButton("QUITTER", "#8a4a5a", "#6a2a3a", "#9a5a6a", "#ffffff", 11f).also { it.setOnClickListener { finishAffinity() } }, lin(0, WRAP, 1f))
         panel.addView(row2, topMargin(wrap(), 8))
 
-        // Row 3: Addons
-        panel.addView(wowButton("Liste des Addons", "#7a6a3a", "#3a3a1a", GOLD, "#ffffff", 12f)
-            .also { it.setOnClickListener { onAddonsClicked() } }, topMargin(wrap(), 8))
-
-        panel.addView(View(this), lin(MATCH, 0, 1f)) // spacer
+        panel.addView(wowButton("Liste des Addons", "#7a6a3a", "#3a3a1a", GOLD, "#ffffff", 12f).also { it.setOnClickListener { onAddonsClicked() } }, topMargin(wrap(), 8))
+        panel.addView(View(this), lin(MATCH, 0, 1f))
         return panel
     }
 
     private fun buildStatsPanel(): View {
-        val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = panelBg()
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-        }
+        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = panelBg(); setPadding(dp(16), dp(12), dp(16), dp(12)) }
         panel.addView(panelTitle("Statistiques de Jeu"))
         playTimeLabel = statBox("Temps de jeu : 0h 0min")
         launchCountLabel = statBox("Lancements : 0")
@@ -206,8 +210,7 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         panel.addView(launchCountLabel, topMargin(wrap(), 8))
         panel.addView(lastSessionLabel, topMargin(wrap(), 8))
         panel.addView(View(this), lin(MATCH, 0, 1f))
-        panel.addView(wowButton("Changer de Serveur", "#7a6a3a", "#3a3a1a", GOLD, "#ffffff", 12f)
-            .also { it.setOnClickListener { comingSoon("Changer de serveur") } }, topMargin(wrap(), 8))
+        panel.addView(wowButton("Changer de Serveur", "#7a6a3a", "#3a3a1a", GOLD, "#ffffff", 12f).also { it.setOnClickListener { onChangeServerClicked() } }, topMargin(wrap(), 8))
         return panel
     }
 
@@ -219,100 +222,166 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
     private fun lin(w: Int, h: Int, weight: Float) = LinearLayout.LayoutParams(w, h, weight)
     private fun topMargin(lp: LinearLayout.LayoutParams, m: Int) = lp.apply { topMargin = dp(m) }
 
-    private fun panelBg() = GradientDrawable().apply {
-        setColor(Color.argb(160, 0, 0, 0)); setStroke(dp(2), Color.parseColor("#5a4a2d")); cornerRadius = dp(10).toFloat()
-    }
-
-    private fun panelTitle(t: String) = TextView(this).apply {
-        text = t; setTextColor(Color.parseColor(GOLD)); textSize = 17f; gravity = Gravity.CENTER
-        setPadding(0, 0, 0, dp(6))
-    }
-
+    private fun panelBg() = GradientDrawable().apply { setColor(Color.argb(160, 0, 0, 0)); setStroke(dp(2), Color.parseColor("#5a4a2d")); cornerRadius = dp(10).toFloat() }
+    private fun panelTitle(t: String) = TextView(this).apply { text = t; setTextColor(Color.parseColor(GOLD)); textSize = 17f; gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) }
     private fun label(t: String, color: String, size: Float, bold: Boolean) = TextView(this).apply {
         text = t; setTextColor(Color.parseColor(color)); textSize = size
         if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
-
     private fun statBox(t: String) = TextView(this).apply {
-        text = t; setTextColor(Color.WHITE); textSize = 13f; gravity = Gravity.CENTER
-        setPadding(dp(10), dp(10), dp(10), dp(10))
-        background = GradientDrawable().apply {
-            setColor(Color.argb(150, 50, 38, 20)); setStroke(dp(2), Color.parseColor(GOLD)); cornerRadius = dp(8).toFloat()
-        }
+        text = t; setTextColor(Color.WHITE); textSize = 13f; gravity = Gravity.CENTER; setPadding(dp(10), dp(10), dp(10), dp(10))
+        background = GradientDrawable().apply { setColor(Color.argb(150, 50, 38, 20)); setStroke(dp(2), Color.parseColor(GOLD)); cornerRadius = dp(8).toFloat() }
     }
-
     private fun wowButton(text: String, top: String, bottom: String, border: String, txt: String, size: Float): Button {
         val b = Button(this)
-        b.text = text
-        b.isAllCaps = false
-        b.textSize = size
-        b.setTextColor(Color.parseColor(txt))
-        b.setTypeface(b.typeface, android.graphics.Typeface.BOLD)
-        b.stateListAnimator = null
+        b.text = text; b.isAllCaps = false; b.textSize = size; b.setTextColor(Color.parseColor(txt))
+        b.setTypeface(b.typeface, android.graphics.Typeface.BOLD); b.stateListAnimator = null
         b.setPadding(dp(6), dp(10), dp(6), dp(10))
-        b.background = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(Color.parseColor(top), Color.parseColor(bottom)),
-        ).apply { cornerRadius = dp(8).toFloat(); setStroke(dp(2), Color.parseColor(border)) }
+        b.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.parseColor(top), Color.parseColor(bottom)))
+            .apply { cornerRadius = dp(8).toFloat(); setStroke(dp(2), Color.parseColor(border)) }
         return b
     }
 
     private fun log(msg: String) { Log.i(TAG, msg); runOnUiThread { status.append("\n$msg") } }
     private fun setStatus(msg: String) { Log.i(TAG, msg); runOnUiThread { status.text = msg } }
-    private fun comingSoon(feature: String) =
-        Toast.makeText(this, "$feature — bientôt disponible", Toast.LENGTH_SHORT).show()
+    private fun comingSoon(feature: String) = Toast.makeText(this, "$feature — bientôt disponible", Toast.LENGTH_SHORT).show()
 
-    // ------------------------------------------------------------- Stats
+    // --------------------------------------------------------- Server UI
 
-    private fun statsFile() = File(filesDir, "stats.json")
+    private fun activeEntry(): RealmlistEntry {
+        val entries = configMgr.realmlistEntries
+        val idx = configMgr.activeRealmlistIndex
+        return entries.getOrNull(idx) ?: RealmlistEntry("Sylvania", Constants.CANONICAL_REALMLIST, true)
+    }
 
-    private fun loadStats() {
+    private fun updateServerUi() {
+        val e = activeEntry()
+        serverNameLabel.text = "Serveur : ${e.name}"
+        realmlistLabel.text = "Realmlist : ${e.address.removePrefix("set realmlist ").trim()}"
+    }
+
+    // ------------------------------------------------------ Settings UI
+
+    private fun onSettingsClicked() {
+        val cfg = configMgr.config
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(12), dp(20), dp(4)) }
+
+        box.addView(label("Dossier du client WoW :", GOLD, 13f, true))
+        val pathField = EditText(this).apply { setText(if (cfg.wowPath.isBlank()) defaultClientDir().absolutePath else cfg.wowPath); textSize = 12f }
+        box.addView(pathField)
+
+        box.addView(label("Langue du client :", GOLD, 13f, true).apply { setPadding(0, dp(12), 0, 0) })
+        val langGroup = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL }
+        val rbFr = RadioButton(this).apply { text = "Français (frFR)" }
+        val rbEn = RadioButton(this).apply { text = "English (enUS)" }
+        langGroup.addView(rbFr); langGroup.addView(rbEn)
+        (if (cfg.language == "en") rbEn else rbFr).isChecked = true
+        box.addView(langGroup)
+
+        box.addView(label("Thème de fond :", GOLD, 13f, true).apply { setPadding(0, dp(12), 0, 0) })
+        val themeSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@SylvaniaLauncherActivity, android.R.layout.simple_spinner_dropdown_item, THEMES)
+            setSelection(THEMES.indexOf(cfg.background).coerceAtLeast(0))
+        }
+        box.addView(themeSpinner)
+
+        val randomCb = CheckBox(this).apply { text = "Fond aléatoire au démarrage"; isChecked = cfg.randomBackgroundEnabled }
+        box.addView(randomCb, topMargin(wrap(), 8))
+
+        AlertDialog.Builder(this)
+            .setTitle("Réglages")
+            .setView(ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Enregistrer") { _, _ ->
+                val newPath = pathField.text.toString().trim()
+                val newLang = if (rbEn.isChecked) "en" else "fr"
+                val newTheme = THEMES[themeSpinner.selectedItemPosition]
+                val langChanged = newLang != configMgr.config.language
+                configMgr.update {
+                    it.copy(wowPath = newPath, language = newLang, background = newTheme, randomBackgroundEnabled = randomCb.isChecked)
+                }
+                if (langChanged) applyClientLocale(newLang)
+                applyBackground(newTheme)
+                refreshClientState()
+                Toast.makeText(this, "Réglages enregistrés", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    /** FR/EN → Config.wtf locale (frFR/enUS), mirrors the C++ changeLanguage. */
+    private fun applyClientLocale(lang: String) {
+        val wtf = File(clientDir(), "WTF/Config.wtf")
+        if (!wtf.exists()) return
         try {
-            val f = statsFile()
-            if (!f.exists()) return
-            val o = JSONObject(f.readText())
-            launchCount = o.optInt("launch_count", 0)
-            totalPlayTime = o.optLong("total_play_time", 0L)
-            lastSession = o.optLong("last_session", 0L)
-        } catch (e: Exception) { Log.w(TAG, "loadStats", e) }
+            var c = wtf.readText()
+            c = if (lang == "en") {
+                if (c.contains("SET locale")) c.replace("SET locale \"frFR\"", "SET locale \"enUS\"")
+                else c + "\nSET locale \"enUS\"\n"
+            } else {
+                c.replace("SET locale \"enUS\"", "SET locale \"frFR\"")
+            }
+            wtf.writeText(c)
+        } catch (e: Exception) { Log.w(TAG, "applyClientLocale", e) }
     }
 
-    private fun saveStats() {
-        try {
-            statsFile().writeText(JSONObject().apply {
-                put("launch_count", launchCount)
-                put("total_play_time", totalPlayTime)
-                put("last_session", lastSession)
-            }.toString())
-        } catch (e: Exception) { Log.w(TAG, "saveStats", e) }
+    // -------------------------------------------------- Change server UI
+
+    private fun onChangeServerClicked() {
+        val entries = configMgr.realmlistEntries.toMutableList()
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), dp(4)) }
+        val group = RadioGroup(this)
+        entries.forEachIndexed { i, e ->
+            group.addView(RadioButton(this).apply {
+                text = "${e.name}  (${e.address.removePrefix("set realmlist ").trim()})"
+                id = i; isChecked = i == configMgr.activeRealmlistIndex
+            })
+        }
+        box.addView(group)
+
+        AlertDialog.Builder(this)
+            .setTitle("Changer de serveur")
+            .setView(ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Sélectionner") { _, _ ->
+                val idx = group.checkedRadioButtonId
+                if (idx in entries.indices) {
+                    configMgr.setActiveRealmlistIndex(idx)
+                    updateServerUi()
+                    Toast.makeText(this, "Serveur : ${entries[idx].name}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNeutralButton("Ajouter…") { _, _ -> promptAddServer() }
+            .setNegativeButton("Fermer", null)
+            .show()
     }
 
-    private fun updateStatsUi() {
-        val h = totalPlayTime / 3600; val m = (totalPlayTime % 3600) / 60
-        playTimeLabel.text = "Temps de jeu : ${h}h ${m}min"
-        launchCountLabel.text = "Lancements : $launchCount"
-        lastSessionLabel.text = if (lastSession > 0)
-            "Dernière session : " + SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE).format(Date(lastSession))
-        else "Dernière session : --"
+    private fun promptAddServer() {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), dp(4)) }
+        val nameField = EditText(this).apply { hint = "Nom du serveur" }
+        val addrField = EditText(this).apply { hint = "adresse (ex. logon.monserveur.com)" }
+        box.addView(label("Nom :", GOLD, 12f, true)); box.addView(nameField)
+        box.addView(label("Adresse realmlist :", GOLD, 12f, true).apply { setPadding(0, dp(8), 0, 0) }); box.addView(addrField)
+        AlertDialog.Builder(this)
+            .setTitle("Ajouter un serveur")
+            .setView(box)
+            .setPositiveButton("Ajouter") { _, _ ->
+                val name = nameField.text.toString().trim()
+                val addr = addrField.text.toString().trim()
+                if (name.isNotEmpty() && addr.isNotEmpty()) {
+                    val line = if (addr.startsWith("set realmlist")) addr else "set realmlist $addr"
+                    val newEntries = configMgr.realmlistEntries + RealmlistEntry(name, line, false)
+                    configMgr.setRealmlistEntries(newEntries)
+                    Toast.makeText(this, "Serveur ajouté", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
     }
-
-    private fun refreshClientState() {
-        val client = clientDir()
-        val hasClient = client.listFiles { f -> f.isFile && f.name.equals("Wow.exe", true) }?.isNotEmpty() == true
-        playButton.isEnabled = hasClient
-        playButton.alpha = if (hasClient) 1f else 0.5f
-        if (!hasClient) setStatus("Client WoW introuvable dans ${client.absolutePath}.\nUtilisez TÉLÉCHARGER.")
-        else if (status.text.isNullOrBlank()) setStatus("Prêt à jouer sur The Kingdom of Sylvania !")
-    }
-
-    // ----------------------------------------------------------- Handlers
 
     private fun onDownloadClicked() {
         AlertDialog.Builder(this)
             .setTitle("Télécharger le client")
             .setMessage("Le client WoW 3.3.5 (~19 Go) sera téléchargé depuis ${Constants.SERVER_HOST} puis extrait dans ${clientDir().absolutePath}.\n\nTéléchargement intégré en cours d'implémentation.")
-            .setPositiveButton("OK", null)
-            .show()
+            .setPositiveButton("OK", null).show()
     }
 
     private fun onAddonsClicked() {
@@ -321,14 +390,42 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         val hasConsolePort = File(addonsDir, "ConsolePort").isDirectory
         AlertDialog.Builder(this)
             .setTitle("Addons")
-            .setMessage(buildString {
-                append("$count addon(s) installé(s) dans le client.\n")
-                append(if (hasConsolePort) "✓ ConsolePort (manette) installé." else "ConsolePort non détecté.")
-                append("\n\nGestion complète des addons en cours d'implémentation.")
-            })
-            .setPositiveButton("OK", null)
-            .show()
+            .setMessage("$count addon(s) installé(s) dans le client.\n" +
+                (if (hasConsolePort) "✓ ConsolePort (manette) installé." else "ConsolePort non détecté.") +
+                "\n\nGestion complète des addons en cours d'implémentation.")
+            .setPositiveButton("OK", null).show()
     }
+
+    // ------------------------------------------------------------- Stats
+
+    private fun statsFile() = File(filesDir, "stats.json")
+    private fun loadStats() {
+        try {
+            val f = statsFile(); if (!f.exists()) return
+            val o = JSONObject(f.readText())
+            launchCount = o.optInt("launch_count", 0); totalPlayTime = o.optLong("total_play_time", 0L); lastSession = o.optLong("last_session", 0L)
+        } catch (e: Exception) { Log.w(TAG, "loadStats", e) }
+    }
+    private fun saveStats() {
+        try { statsFile().writeText(JSONObject().apply { put("launch_count", launchCount); put("total_play_time", totalPlayTime); put("last_session", lastSession) }.toString()) }
+        catch (e: Exception) { Log.w(TAG, "saveStats", e) }
+    }
+    private fun updateStatsUi() {
+        val h = totalPlayTime / 3600; val m = (totalPlayTime % 3600) / 60
+        playTimeLabel.text = "Temps de jeu : ${h}h ${m}min"
+        launchCountLabel.text = "Lancements : $launchCount"
+        lastSessionLabel.text = if (lastSession > 0) "Dernière session : " + SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE).format(Date(lastSession)) else "Dernière session : --"
+    }
+
+    private fun refreshClientState() {
+        val client = clientDir()
+        val hasClient = client.listFiles { f -> f.isFile && f.name.equals("Wow.exe", true) }?.isNotEmpty() == true
+        playButton.isEnabled = hasClient; playButton.alpha = if (hasClient) 1f else 0.5f
+        if (!hasClient) setStatus("Client WoW introuvable dans ${client.absolutePath}.\nUtilisez TÉLÉCHARGER ou RÉGLAGES.")
+        else setStatus("Prêt à jouer sur ${activeEntry().name} !")
+    }
+
+    // ----------------------------------------------------------- Launch
 
     private fun onPlayClicked() {
         playButton.isEnabled = false
@@ -336,52 +433,35 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         Thread {
             try {
                 val imageFs = ImageFs.find(this)
-                if (!isImageFsInstalled(imageFs)) installImageFs(imageFs)
-                else log("Runtime déjà installé (v${imageFs.version}).")
-
+                if (!isImageFsInstalled(imageFs)) installImageFs(imageFs) else log("Runtime déjà installé (v${imageFs.version}).")
                 ensureControlsProfile()
-
                 val contents = ContentsManager(this).apply { syncContents() }
                 val manager = ContainerManager(this)
                 runOnUiThread { ensureContainerAndLaunch(manager, contents) }
             } catch (e: Exception) {
-                Log.e(TAG, "prepare failed", e)
-                setStatus("Erreur: ${e.message}")
+                Log.e(TAG, "prepare failed", e); setStatus("Erreur: ${e.message}")
                 runOnUiThread { playButton.isEnabled = true }
             }
         }.start()
     }
 
-    /**
-     * Install the pre-built gamepad mapping profile ("WoW ConsolePort") from APK
-     * assets into the Winlator profiles dir if absent, so the controller is mapped
-     * for ConsolePortLK out of the box (the shortcut's controlsProfile extra then
-     * auto-activates it). Maps the gamepad to the WoWmapper key scheme.
-     */
     private fun ensureControlsProfile() {
         val dest = File(filesDir, "profiles/controls-$CONTROLS_PROFILE_ID.icp")
         if (dest.exists()) return
         try {
             dest.parentFile?.mkdirs()
-            assets.open("profiles/controls-$CONTROLS_PROFILE_ID.icp").use { input ->
-                dest.outputStream().use { input.copyTo(it) }
-            }
+            assets.open("profiles/controls-$CONTROLS_PROFILE_ID.icp").use { input -> dest.outputStream().use { input.copyTo(it) } }
             log("Profil manette installé (WoW ConsolePort).")
-        } catch (e: Exception) {
-            Log.w(TAG, "controls profile install failed", e)
-        }
+        } catch (e: Exception) { Log.w(TAG, "controls profile install failed", e) }
     }
 
     private fun isImageFsInstalled(imageFs: ImageFs): Boolean =
-        imageFs.isValid && imageFs.version >= ImageFsInstaller.LATEST_VERSION &&
-            File(imageFs.rootDir, "opt/$ARM64EC/bin/wine").exists()
+        imageFs.isValid && imageFs.version >= ImageFsInstaller.LATEST_VERSION && File(imageFs.rootDir, "opt/$ARM64EC/bin/wine").exists()
 
     private fun installImageFs(imageFs: ImageFs) {
         val rootDir = imageFs.rootDir
         log("Extraction du rootfs (imagefs.txz)… (~quelques minutes)")
-        if (!TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, this, "imagefs.txz", rootDir)) {
-            throw RuntimeException("échec extraction imagefs.txz")
-        }
+        if (!TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, this, "imagefs.txz", rootDir)) throw RuntimeException("échec extraction imagefs.txz")
         for (v in WINE_VERSIONS) {
             val out = File(rootDir, "opt/$v").apply { mkdirs() }
             log("Extraction de $v…")
@@ -391,120 +471,64 @@ class SylvaniaLauncherActivity : AppCompatActivity() {
         log("Runtime installé.")
     }
 
-    /** WoW client location on the device (pushed/downloaded here). */
-    private fun clientDir(): File =
-        File(Environment.getExternalStorageDirectory(), "SylvaniaLauncher/wotlk")
+    private fun defaultClientDir(): File = File(Environment.getExternalStorageDirectory(), "SylvaniaLauncher/wotlk")
+    private fun clientDir(): File = configMgr.wowPath.ifBlank { null }?.let { File(it) } ?: defaultClientDir()
 
     private fun ensureContainerAndLaunch(manager: ContainerManager, contents: ContentsManager) {
         val existing = manager.containers
-        if (existing.isNotEmpty()) {
-            launchContainer(existing[0])
-            return
-        }
+        if (existing.isNotEmpty()) { launchContainer(existing[0]); return }
         setStatus("Création du conteneur arm64ec / WoW64…")
         val data = JSONObject().apply {
-            put("name", "Sylvania")
-            put("wineVersion", ARM64EC)
-            put("wow64Mode", true)
-            put("screenSize", "1280x720")
-            put("emulator", "wowbox64")
-            put("box64Version", "0.3.7")
-            put("fexcoreVersion", "2507")
-            put("dxwrapper", Container.DEFAULT_DXWRAPPER)
-            put("dxwrapperConfig", Container.DEFAULT_DXWRAPPERCONFIG)
-            put("graphicsDriver", Container.DEFAULT_GRAPHICS_DRIVER)
-            put("graphicsDriverConfig", Container.DEFAULT_GRAPHICSDRIVERCONFIG)
+            put("name", "Sylvania"); put("wineVersion", ARM64EC); put("wow64Mode", true)
+            put("screenSize", "1280x720"); put("emulator", "wowbox64"); put("box64Version", "0.3.7"); put("fexcoreVersion", "2507")
+            put("dxwrapper", Container.DEFAULT_DXWRAPPER); put("dxwrapperConfig", Container.DEFAULT_DXWRAPPERCONFIG)
+            put("graphicsDriver", Container.DEFAULT_GRAPHICS_DRIVER); put("graphicsDriverConfig", Container.DEFAULT_GRAPHICSDRIVERCONFIG)
             put("ddrawrapper", Container.DEFAULT_DDRAWRAPPER)
         }
         manager.createContainerAsync(data, contents) { container ->
-            if (container != null) {
-                log("Conteneur créé (id=${container.id}).")
-                launchContainer(container)
-            } else {
-                setStatus("Échec de création du conteneur.")
-                playButton.isEnabled = true
-            }
+            if (container != null) { log("Conteneur créé (id=${container.id})."); launchContainer(container) }
+            else { setStatus("Échec de création du conteneur."); playButton.isEnabled = true }
         }
     }
 
     private fun launchContainer(container: Container) {
-        // Workaround: Winlator's Container.loadData() switch fall-through
-        // (case "ddrawrapper" → "dxwrapperConfig") corrupts dxwrapperConfig to
-        // "wined3d"; an empty DXVK version crashes compareVersion. Force valid.
         val cfg = container.dxWrapperConfig
-        if (cfg == null || !cfg.contains("version=")) {
-            container.dxWrapperConfig = Container.DEFAULT_DXWRAPPERCONFIG
-        }
-        // Match the Wine desktop to the device + the client's Config.wtf (1920x1080).
+        if (cfg == null || !cfg.contains("version=")) container.dxWrapperConfig = Container.DEFAULT_DXWRAPPERCONFIG
         container.screenSize = "1920x1080"
-
-        // Use Turnip (Mesa) via AdrenoTools instead of the proprietary Adreno
-        // driver. The proprietary Qualcomm driver fails a DXVK Vulkan memory
-        // allocation (4 MiB, ~11 GB free) right after swapchain creation, which
-        // stalls WoW's render thread → WoW hangs at the login screen → its
-        // watchdog aborts. Turnip allocates correctly and exposes VK_KHR_surface
-        // via the wrapper ICD → the login screen renders. The turnip25.1.0 driver
-        // ships as an APK asset (adrenotools-turnip25.1.0.tzst).
+        // Turnip (Mesa) via AdrenoTools — the proprietary Adreno driver fails a DXVK
+        // memory allocation and hangs WoW at the login screen; Turnip works.
         container.graphicsDriver = "wrapper"
-        container.graphicsDriverConfig =
-            "version=turnip25.1.0;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal"
+        container.graphicsDriverConfig = "version=turnip25.1.0;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal"
 
         val client = clientDir()
         val wowExe = client.listFiles { f -> f.isFile && f.name.equals("Wow.exe", ignoreCase = true) }?.firstOrNull()
-        if (wowExe == null) {
-            setStatus("Client WoW introuvable dans ${client.absolutePath}.\nUtilisez TÉLÉCHARGER.")
-            playButton.isEnabled = true
-            return
-        }
+        if (wowExe == null) { setStatus("Client WoW introuvable dans ${client.absolutePath}."); playButton.isEnabled = true; return }
 
-        // 1. Write the realmlist into the client (ported launcher logic).
-        RealmlistWriter.updateRealmlist(client, Constants.CANONICAL_REALMLIST)
+        // Write the active realmlist (from config) into the client.
+        RealmlistWriter.updateRealmlist(client, activeEntry().address)
 
-        // 2. Map Wine drive D: → the client directory so Wow.exe is D:\Wow.exe.
         container.drives = "D:" + client.absolutePath
         container.saveData()
 
-        // 3. Create a .desktop shortcut on Wow.exe so the game launches directly.
         val desktopDir = container.desktopDir.apply { mkdirs() }
         val shortcut = File(desktopDir, "Sylvania.desktop")
-        shortcut.writeText(
-            buildString {
-                appendLine("[Desktop Entry]")
-                appendLine("Type=Application")
-                appendLine("Name=Sylvania WoW")
-                appendLine("Exec=wine D:/${wowExe.name}")
-                // Auto-activate the gamepad mapping for ConsolePort (profile id =
-                // CONTROLS_PROFILE_ID): XServerDisplayActivity reads this extra and
-                // shows the controls profile, so the controller works without the
-                // player picking it in-game.
-                appendLine("")
-                appendLine("[Extra Data]")
-                appendLine("controlsProfile=$CONTROLS_PROFILE_ID")
-            },
-        )
+        shortcut.writeText(buildString {
+            appendLine("[Desktop Entry]"); appendLine("Type=Application"); appendLine("Name=Sylvania WoW")
+            appendLine("Exec=wine D:/${wowExe.name}")
+            appendLine(""); appendLine("[Extra Data]"); appendLine("controlsProfile=$CONTROLS_PROFILE_ID")
+        })
 
-        // Update play stats.
-        launchCount++
-        lastSession = System.currentTimeMillis()
-        sessionStart = lastSession
-        saveStats()
-        updateStatsUi()
+        launchCount++; lastSession = System.currentTimeMillis(); sessionStart = lastSession; saveStats(); updateStatsUi()
 
         setStatus("Lancement de World of Warcraft…")
-        val intent = Intent(this, XServerDisplayActivity::class.java).apply {
-            putExtra("container_id", container.id)
-            putExtra("shortcut_path", shortcut.absolutePath)
-            putExtra("shortcut_name", "Sylvania WoW")
-        }
-        startActivity(intent)
+        startActivity(Intent(this, XServerDisplayActivity::class.java).apply {
+            putExtra("container_id", container.id); putExtra("shortcut_path", shortcut.absolutePath); putExtra("shortcut_name", "Sylvania WoW")
+        })
         playButton.isEnabled = true
     }
 
     companion object {
         private const val TAG = "SylvaniaLauncher"
-        /** Id of the pre-provisioned Winlator controls profile "WoW ConsolePort"
-         *  (files/profiles/controls-10.icp): maps the gamepad to the key scheme
-         *  ConsolePortLK expects. Activated via the shortcut's controlsProfile extra. */
         private const val CONTROLS_PROFILE_ID = 10
     }
 }
