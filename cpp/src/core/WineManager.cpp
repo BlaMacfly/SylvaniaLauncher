@@ -48,6 +48,31 @@ bool waitForProcess(QProcess& proc, int timeoutMs) {
     }
     return true;
 }
+
+// Names of the environment variables an AppImage's AppRun injects to point at
+// the launcher's OWN bundled Qt/runtime. They MUST be stripped before running
+// Wine: otherwise Wine inherits them and loads the launcher's bundled libraries
+// instead of its own, which breaks the prefix bootstrap (e.g. "could not load
+// kernel32.dll, status c0000135").
+const char* const kAppImageInjectedVars[] = {
+    "LD_LIBRARY_PATH", "LD_PRELOAD",
+    "QT_PLUGIN_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH", "QTWEBENGINEPROCESS_PATH",
+    "GST_PLUGIN_SYSTEM_PATH", "GST_PLUGIN_SYSTEM_PATH_1_0",
+    "GTK_PATH", "GTK_EXE_PREFIX", "GTK_DATA_PREFIX",
+    "PERLLIB", "GCONV_PATH", "GIO_MODULE_DIR", "PYTHONPATH",
+    "FONTCONFIG_PATH", "FONTCONFIG_FILE",
+};
+
+// A process environment for invoking Wine: the system environment minus the
+// AppImage-injected variables, plus the WINEPREFIX / quiet-debug settings.
+QProcessEnvironment cleanWineEnvironment(const QString& prefixDir) {
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    for (const char* var : kAppImageInjectedVars)
+        env.remove(QString::fromLatin1(var));
+    env.insert("WINEPREFIX", prefixDir);
+    env.insert("WINEDEBUG", "-all");
+    return env;
+}
 } // namespace
 
 WineManager::WineManager(QObject* parent)
@@ -249,9 +274,7 @@ void WineManager::createPrefix()
 
     QDir().mkpath(m_prefixDir);
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX", m_prefixDir);
-    env.insert("WINEDEBUG", "-all");  // Suppress all Wine debug output
+    QProcessEnvironment env = cleanWineEnvironment(m_prefixDir);
     env.insert("DISPLAY", env.value("DISPLAY", ":0"));
 
     // Get wineboot path (same dir as wine binary)
@@ -278,9 +301,7 @@ void WineManager::configurePrefix()
     QString wineBin = getWineBinary();
     if (wineBin.isEmpty()) return;
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX", m_prefixDir);
-    env.insert("WINEDEBUG", "-all");
+    QProcessEnvironment env = cleanWineEnvironment(m_prefixDir);
 
     // Configure Wine for optimal WoW 3.3.5 experience
     // Set Windows version to Windows 7 (best compatibility for WoTLK)
@@ -336,6 +357,14 @@ bool WineManager::launchExe(const QString& exePath, const QString& workDir)
 
     QTextStream out(&script);
     out << "#!/bin/bash\n";
+    // Strip the variables the AppImage's AppRun injected to point at the
+    // launcher's OWN bundled Qt/runtime. If Wine inherits them it loads the
+    // wrong libraries and fails to bootstrap ("could not load kernel32.dll").
+    out << "unset LD_LIBRARY_PATH LD_PRELOAD QT_PLUGIN_PATH"
+           " QT_QPA_PLATFORM_PLUGIN_PATH QTWEBENGINEPROCESS_PATH"
+           " GST_PLUGIN_SYSTEM_PATH GST_PLUGIN_SYSTEM_PATH_1_0"
+           " GTK_PATH GTK_EXE_PREFIX GTK_DATA_PREFIX PERLLIB GCONV_PATH"
+           " GIO_MODULE_DIR PYTHONPATH FONTCONFIG_PATH FONTCONFIG_FILE\n";
     out << "export WINEPREFIX=" << shellQuote(m_prefixDir) << "\n";
     out << "export WINEDEBUG=-all\n";
     out << "export WINE_LARGE_ADDRESS_AWARE=1\n";
