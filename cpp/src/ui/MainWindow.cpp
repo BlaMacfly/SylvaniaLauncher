@@ -340,7 +340,7 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5", this);
+    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.9 - World of Warcraft 3.3.5", this);
     m_footerLabel->setAlignment(Qt::AlignCenter);
     m_footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
     mainLayout->addWidget(m_footerLabel);
@@ -1142,7 +1142,7 @@ void MainWindow::retranslateUi() {
     if (m_statsTitleLabel) m_statsTitleLabel->setText(tr("Statistiques de Jeu"));
     // Note: m_serverNameLabel is updated via updateServerInfo below
     
-    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5"));
+    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.9 - World of Warcraft 3.3.5"));
     
     checkWowInstalled();
     updateStats();
