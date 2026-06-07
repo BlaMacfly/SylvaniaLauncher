@@ -874,7 +874,6 @@ void MainWindow::onSettingsButtonClicked() {
     SettingsDialog* dialog = new SettingsDialog(m_config.get(), m_soundManager.get(), this);
     connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::checkWowInstalled);
     connect(dialog, &SettingsDialog::backgroundChanged, this, &MainWindow::applyTheme);
-    connect(dialog, &SettingsDialog::resetWindowRequested, this, &MainWindow::resetWindowGeometry);
     dialog->exec();
     dialog->deleteLater();
 }
@@ -992,16 +991,6 @@ void MainWindow::clampToAvailableScreen() {
     int x = qBound(available.left(), frame.left(), available.right() - frame.width() + 1);
     int y = qBound(available.top(), frame.top(), available.bottom() - frame.height() + 1);
     move(x, y);
-}
-
-void MainWindow::resetWindowGeometry() {
-    m_config->setWindowGeometry(QByteArray());  // forget the saved geometry
-    resize(SylvaniaConstants::kMainWindowWidth, SylvaniaConstants::kMainWindowHeight);
-    QScreen* screen = this->screen() ? this->screen() : QGuiApplication::primaryScreen();
-    if (screen) {
-        const QRect available = screen->availableGeometry();
-        move(available.center() - rect().center());
-    }
 }
 
 void MainWindow::checkWowProcess() {

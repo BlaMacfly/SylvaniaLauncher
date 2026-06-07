@@ -336,10 +336,6 @@ Removed folders: %2</translation>
         <translation>GB</translation>
     </message>
     <message>
-        <source>Addons Recommandés</source>
-        <translation type="vanished">Recommended Addons</translation>
-    </message>
-    <message>
         <location filename="../../src/ui/AddonsWindow.cpp" line="236"/>
         <source>Sélectionnez les addons que vous souhaitez installer. Ils seront automatiquement placés dans le dossier de votre jeu.</source>
         <translation>Select the addons you want to install. They will be automatically placed in your game folder.</translation>
@@ -454,10 +450,6 @@ Removed folders: %2</translation>
         <location filename="../../src/ui/AddonsWindow.cpp" line="540"/>
         <source>Installer</source>
         <translation>Install</translation>
-    </message>
-    <message>
-        <source>Déjà présent</source>
-        <translation type="vanished">Already present</translation>
     </message>
     <message>
         <location filename="../../src/ui/AddonsWindow.cpp" line="173"/>
@@ -588,14 +580,6 @@ Vérifiez vos droits d&apos;administrateur.</source>
         <translation>Please wait...</translation>
     </message>
     <message>
-        <source>Extraction en cours... %1%</source>
-        <translation type="vanished">Extracting... %1%</translation>
-    </message>
-    <message>
-        <source>%1 extraits</source>
-        <translation type="vanished">%1 extracted</translation>
-    </message>
-    <message>
         <location filename="../../src/ui/DownloadDialog.cpp" line="327"/>
         <source>Extraction terminée!</source>
         <translation>Extraction complete!</translation>
@@ -704,17 +688,9 @@ Vérifiez vos droits d&apos;administrateur.</source>
         <translation>Verification completed. Extracting...</translation>
     </message>
     <message>
-        <source>Extraction des fichiers HD... %1%</source>
-        <translation type="vanished">Extracting HD files... %1%</translation>
-    </message>
-    <message>
         <location filename="../../src/core/HdPatchManager.cpp" line="179"/>
         <source>Extraction terminée. Migration des fichiers...</source>
         <translation>Extraction finished. Migrating files...</translation>
-    </message>
-    <message>
-        <source>Dossier &apos;Le Client WoW HD&apos; non trouvé dans l&apos;archive</source>
-        <translation type="vanished">Folder &apos;Le Client WoW HD&apos; not found in the archive</translation>
     </message>
     <message>
         <location filename="../../src/core/HdPatchManager.cpp" line="170"/>
@@ -791,7 +767,7 @@ Vérifiez vos droits d&apos;administrateur.</source>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="364"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1141"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1130"/>
         <source>Serveur</source>
         <translation>Server</translation>
     </message>
@@ -807,7 +783,7 @@ Vérifiez vos droits d&apos;administrateur.</source>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="385"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1132"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1121"/>
         <source>JOUER</source>
         <translation>PLAY</translation>
     </message>
@@ -818,43 +794,43 @@ Vérifiez vos droits d&apos;administrateur.</source>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="386"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1133"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1122"/>
         <source>TÉLÉCHARGER</source>
         <translation>DOWNLOAD</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="387"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1134"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1123"/>
         <source>HD</source>
         <translation>HD</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="398"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1135"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1124"/>
         <source>RÉGLAGES</source>
         <translation>SETTINGS</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="399"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1136"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1125"/>
         <source>NOTES</source>
         <translation>NOTES</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="400"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1137"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1126"/>
         <source>QUITTER</source>
         <translation>QUIT</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="411"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1138"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1127"/>
         <source>Liste des Addons</source>
         <translation>Addons List</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="435"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1142"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1131"/>
         <source>Statistiques de Jeu</source>
         <translation>Game Statistics</translation>
     </message>
@@ -865,7 +841,7 @@ Vérifiez vos droits d&apos;administrateur.</source>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="678"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1069"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1058"/>
         <source>Temps de jeu: %1h %2min</source>
         <translation>Play time: %1h %2min</translation>
     </message>
@@ -952,23 +928,13 @@ Do you want to reinstall it or force an update anyway?</translation>
         <translation>Download error</translation>
     </message>
     <message>
-        <location filename="../../src/ui/MainWindow.cpp" line="1145"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1134"/>
         <source>© 2025 Sylvania Launcher v2.9 - World of Warcraft 3.3.5</source>
         <translation>© 2025 Sylvania Launcher v2.9 - World of Warcraft 3.3.5</translation>
     </message>
     <message>
-        <source>Pack Anglais Manquant</source>
-        <translation type="vanished">Missing English Pack</translation>
-    </message>
-    <message>
-        <source>Le pack de langue anglaise (enUS) n&apos;est pas installé dans votre dossier WoW.
-Voulez-vous le télécharger maintenant ?</source>
-        <translation type="vanished">The English language pack (enUS) is not installed in your WoW folder.
-Do you want to download it now?</translation>
-    </message>
-    <message>
         <location filename="../../src/ui/MainWindow.cpp" line="516"/>
-        <location filename="../../src/ui/MainWindow.cpp" line="1139"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1128"/>
         <source>Changer de Serveur</source>
         <translation>Change Server</translation>
     </message>
@@ -986,10 +952,6 @@ Do you want to download it now?</translation>
         <location filename="../../src/ui/MainWindow.cpp" line="714"/>
         <source>World of Warcraft 3.3.5 est installé. Prêt à jouer sur %1!</source>
         <translation>World of Warcraft 3.3.5 is installed. Ready to play on %1!</translation>
-    </message>
-    <message>
-        <source>© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5</source>
-        <translation type="vanished">© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5</translation>
     </message>
     <message>
         <location filename="../../src/ui/MainWindow.cpp" line="729"/>
@@ -1015,12 +977,12 @@ Please check the installation path.</translation>
         <translation>Unable to launch World of Warcraft.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/MainWindow.cpp" line="1044"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1033"/>
         <source>World of Warcraft en cours d&apos;exécution...</source>
         <translation>World of Warcraft is running...</translation>
     </message>
     <message>
-        <location filename="../../src/ui/MainWindow.cpp" line="1057"/>
+        <location filename="../../src/ui/MainWindow.cpp" line="1046"/>
         <source>Session terminée! Temps joué: %1 min</source>
         <translation>Session ended! Time played: %1 min</translation>
     </message>
@@ -1396,7 +1358,6 @@ Please check the installation path.</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="199"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="765"/>
         <source>Apparence</source>
         <translation>Appearance</translation>
     </message>
@@ -1417,46 +1378,41 @@ Please check the installation path.</translation>
     </message>
     <message>
         <location filename="../../src/ui/SettingsDialog.cpp" line="266"/>
-        <source>Réinitialiser la taille de la fenêtre</source>
-        <translation>Reset window size</translation>
-    </message>
-    <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="283"/>
         <source>Audio</source>
         <translation>Audio</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="288"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="271"/>
         <source>Activer les sons du launcher</source>
         <translation>Enable launcher sounds</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="322"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="305"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="341"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="324"/>
         <source>Annuler</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="383"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="365"/>
         <source>Gestion des Patchs HD</source>
         <translation>HD Patch Management</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="710"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="692"/>
         <source>Sélectionner le dossier World of Warcraft</source>
         <translation>Select World of Warcraft folder</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="719"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="701"/>
         <source>Confirmation</source>
         <translation>Confirmation</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="720"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="702"/>
         <source>Wow.exe n&apos;a pas été trouvé dans ce dossier.
 
 Voulez-vous utiliser cet emplacement (par exemple pour une nouvelle installation) ?</source>
@@ -1465,70 +1421,65 @@ Voulez-vous utiliser cet emplacement (par exemple pour une nouvelle installation
 Do you want to use this location anyway (for example for a new installation)?</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="736"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="758"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="773"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="793"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="718"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="740"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="748"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="768"/>
         <source>Erreur</source>
         <translation>Error</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="736"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="773"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="793"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="718"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="748"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="768"/>
         <source>Aucun dossier WoW configuré.</source>
         <translation>No WoW folder configured.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="744"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="726"/>
         <source>Info</source>
         <translation>Info</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="744"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="726"/>
         <source>Aucun cache à vider.</source>
         <translation>No cache to clear.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="748"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="730"/>
         <source>Confirmer</source>
         <translation>Confirm</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="749"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="731"/>
         <source>Êtes-vous sûr de vouloir vider le cache WoW?
 Cela supprimera le dossier Cache.</source>
         <translation>Are you sure you want to clear the WoW cache?
 This will delete the Cache folder.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="756"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="805"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="738"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="780"/>
         <source>Succès</source>
         <translation>Success</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="756"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="738"/>
         <source>Cache vidé avec succès!</source>
         <translation>Cache cleared successfully!</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="758"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="740"/>
         <source>Impossible de vider le cache.</source>
         <translation>Unable to clear cache.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="766"/>
-        <source>La taille de la fenêtre a été réinitialisée.</source>
-        <translation>The window size has been reset.</translation>
-    </message>
-    <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="801"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="776"/>
         <source>Téléchargement du Pack Anglais</source>
         <translation>Downloading English Pack</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="805"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="780"/>
         <source>Pack Anglais installé avec succès !</source>
         <translation>English Pack installed successfully!</translation>
     </message>
@@ -1568,14 +1519,14 @@ This will delete the Cache folder.</translation>
         <translation>Mini-dungeon maps</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="555"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="701"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="537"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="683"/>
         <source>🎲 Aléatoire : ON</source>
         <translation>🎲 Random: ON</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="556"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="702"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="538"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="684"/>
         <source>🎲 Aléatoire : OFF</source>
         <translation>🎲 Random: OFF</translation>
     </message>
@@ -1587,57 +1538,57 @@ OFF : garde toujours le même arrière-plan.</source>
 OFF: always keeps the same background.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="393"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="375"/>
         <source>ACTIVÉ : active tous les patchs présents.
 DÉSACTIVÉ : éteint tous les patchs (client d&apos;origine).</source>
         <translation>ENABLED: turns on every installed patch.
 DISABLED: turns off all patches (original client).</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="420"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="402"/>
         <source>Videz le cache après tout changement de patch (certains modifient des tables .dbc).</source>
         <translation>Clear the cache after any patch change (some modify .dbc tables).</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="441"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="423"/>
         <source>Patch « Dangereux » : il remplace une table .dbc (risque de détection « unlike check » ou de crash selon le serveur).</source>
         <translation>&quot;Dangerous&quot; patch: it replaces a .dbc table (risk of &quot;unlike check&quot; detection or a crash depending on the server).</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="517"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="499"/>
         <source>Patch HD : ACTIVÉ</source>
         <translation>HD Patch: ON</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="518"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="500"/>
         <source>Patch HD : DÉSACTIVÉ</source>
         <translation>HD Patch: OFF</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="452"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="510"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="434"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="492"/>
         <source>ACTIVÉ</source>
         <translation>ON</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="452"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="502"/>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="510"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="434"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="484"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="492"/>
         <source>ÉTEINT</source>
         <translation>OFF</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="568"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="550"/>
         <source>Absent</source>
         <translation>Absent</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="569"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="551"/>
         <source>Ce patch n&apos;est pas présent dans votre installation.</source>
         <translation>This patch is not present in your installation.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/SettingsDialog.cpp" line="597"/>
+        <location filename="../../src/ui/SettingsDialog.cpp" line="579"/>
         <source>Veuillez d&apos;abord configurer le dossier WoW (Wow.exe)</source>
         <translation>Please configure the WoW folder first (Wow.exe)</translation>
     </message>

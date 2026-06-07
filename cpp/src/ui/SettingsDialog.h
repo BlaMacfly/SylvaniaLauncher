@@ -38,14 +38,12 @@ public:
 signals:
   void settingsChanged();
   void backgroundChanged(const QString &bgName);
-  void resetWindowRequested();
 
 private slots:
   void onBrowseClicked();
   void onBackgroundChanged(const QString &bgName);
   void onRandomBgToggled(bool enabled);
   void onClearCacheClicked();
-  void onResetWindowClicked();
   void onOpenAddonsClicked();
   void onDownloadEnUsClicked();
   void onMasterToggled(bool enabled);
@@ -96,7 +94,6 @@ private:
   QPushButton *m_browseButton = nullptr;
   QComboBox *m_backgroundCombo = nullptr;
   QPushButton *m_randomBgButton = nullptr;
-  QPushButton *m_resetWindowButton = nullptr;
   QPushButton *m_clearCacheButton = nullptr;
   QPushButton *m_openAddonsButton = nullptr;
   QPushButton *m_downloadEnUsButton = nullptr;

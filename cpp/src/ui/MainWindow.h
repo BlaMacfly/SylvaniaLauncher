@@ -79,7 +79,6 @@ private:
     // to the default centered size on request.
     void restoreWindowGeometry();
     void clampToAvailableScreen();
-    void resetWindowGeometry();
     
     QWidget* createServerPanel();
     QWidget* createStatsPanel();
