@@ -56,6 +56,11 @@ public:
     bool isRandomBackgroundEnabled() const;
     void setRandomBackgroundEnabled(bool enabled);
 
+    // Main window geometry persistence (saveGeometry/restoreGeometry payload,
+    // stored base64-encoded in config.json). Empty = use the default size.
+    QByteArray getWindowGeometry() const;
+    void setWindowGeometry(const QByteArray& geometry);
+
     // Realmlist management
     std::vector<RealmlistEntry> getRealmlistEntries() const;
     void setRealmlistEntries(const std::vector<RealmlistEntry>& entries);

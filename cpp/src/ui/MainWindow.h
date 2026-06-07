@@ -73,6 +73,13 @@ private:
     void handleWowRunningState(bool running);
     void changeLanguage(const QString& lang, bool initial = false);
     void retranslateUi();
+
+    // Window geometry: restore the saved size/position (clamped to the visible
+    // screen area for multi-monitor / unplugged-display safety), and reset it
+    // to the default centered size on request.
+    void restoreWindowGeometry();
+    void clampToAvailableScreen();
+    void resetWindowGeometry();
     
     QWidget* createServerPanel();
     QWidget* createStatsPanel();

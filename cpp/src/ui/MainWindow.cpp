@@ -28,6 +28,8 @@
 #include <QJsonObject>
 #include <QRandomGenerator>
 #include <QSaveFile>
+#include <QScreen>
+#include <QGuiApplication>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -36,8 +38,10 @@ MainWindow::MainWindow(QWidget* parent)
     , m_notesManager(std::make_unique<NotesManager>(this))
 {
     setWindowTitle("Sylvania Launcher - World of Warcraft 3.3.5");
-    setFixedSize(SylvaniaConstants::kMainWindowWidth,
-                 SylvaniaConstants::kMainWindowHeight);
+    // The window is responsive: content lives in Qt layouts and the window is
+    // freely resizable down to a usable minimum. Geometry is restored below.
+    setMinimumSize(SylvaniaConstants::kMainWindowMinWidth,
+                   SylvaniaConstants::kMainWindowMinHeight);
     
     // Load logo
     QString logoPath = PathUtils::getAssetsDir() + "/sylvania_logo.png";
@@ -77,6 +81,9 @@ MainWindow::MainWindow(QWidget* parent)
     } else {
         applyTheme(m_config->getBackground());
     }
+
+    // Restore the last window size/position (or center at the default size).
+    restoreWindowGeometry();
 }
 
 MainWindow::~MainWindow() = default;
@@ -867,6 +874,7 @@ void MainWindow::onSettingsButtonClicked() {
     SettingsDialog* dialog = new SettingsDialog(m_config.get(), m_soundManager.get(), this);
     connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::checkWowInstalled);
     connect(dialog, &SettingsDialog::backgroundChanged, this, &MainWindow::applyTheme);
+    connect(dialog, &SettingsDialog::resetWindowRequested, this, &MainWindow::resetWindowGeometry);
     dialog->exec();
     dialog->deleteLater();
 }
@@ -938,10 +946,62 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         m_realmlistWindow->close();
     }
     
+    // Persist the current window size/position so it is restored next launch.
+    m_config->setWindowGeometry(saveGeometry());
+
     m_config->save();
     saveStats();
-    
+
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::restoreWindowGeometry() {
+    const QByteArray geometry = m_config->getWindowGeometry();
+    if (!geometry.isEmpty() && restoreGeometry(geometry)) {
+        // A saved geometry may now be off-screen (monitor unplugged / changed
+        // resolution); pull it back into a visible area.
+        clampToAvailableScreen();
+        return;
+    }
+
+    // First launch (or invalid saved data): default size, centered.
+    resize(SylvaniaConstants::kMainWindowWidth, SylvaniaConstants::kMainWindowHeight);
+    QScreen* screen = this->screen() ? this->screen() : QGuiApplication::primaryScreen();
+    if (screen) {
+        const QRect available = screen->availableGeometry();
+        move(available.center() - rect().center());
+    }
+}
+
+void MainWindow::clampToAvailableScreen() {
+    QScreen* screen = QGuiApplication::screenAt(frameGeometry().center());
+    if (!screen) screen = this->screen();
+    if (!screen) screen = QGuiApplication::primaryScreen();
+    if (!screen) return;
+
+    const QRect available = screen->availableGeometry();
+
+    // Never larger than the available area.
+    QSize s = size();
+    s.setWidth(qMin(s.width(), available.width()));
+    s.setHeight(qMin(s.height(), available.height()));
+    if (s != size()) resize(s);
+
+    // Keep the whole frame inside the available area.
+    QRect frame = frameGeometry();
+    int x = qBound(available.left(), frame.left(), available.right() - frame.width() + 1);
+    int y = qBound(available.top(), frame.top(), available.bottom() - frame.height() + 1);
+    move(x, y);
+}
+
+void MainWindow::resetWindowGeometry() {
+    m_config->setWindowGeometry(QByteArray());  // forget the saved geometry
+    resize(SylvaniaConstants::kMainWindowWidth, SylvaniaConstants::kMainWindowHeight);
+    QScreen* screen = this->screen() ? this->screen() : QGuiApplication::primaryScreen();
+    if (screen) {
+        const QRect available = screen->availableGeometry();
+        move(available.center() - rect().center());
+    }
 }
 
 void MainWindow::checkWowProcess() {

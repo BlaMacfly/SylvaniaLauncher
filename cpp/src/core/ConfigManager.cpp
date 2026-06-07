@@ -230,6 +230,14 @@ void ConfigManager::setRandomBackgroundEnabled(bool enabled) {
     set("random_bg_on_launch", enabled);
 }
 
+QByteArray ConfigManager::getWindowGeometry() const {
+    return QByteArray::fromBase64(get("window_geometry", "").toString().toLatin1());
+}
+
+void ConfigManager::setWindowGeometry(const QByteArray& geometry) {
+    set("window_geometry", QString::fromLatin1(geometry.toBase64()));
+}
+
 std::vector<RealmlistEntry> ConfigManager::getRealmlistEntries() const {
     std::vector<RealmlistEntry> entries;
     

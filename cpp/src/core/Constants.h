@@ -8,8 +8,13 @@
 namespace SylvaniaConstants {
 
 // --- Main window --------------------------------------------------------
+// Default size on first launch / after "reset window size"; the window is now
+// resizable, so these are no longer a hard cap.
 constexpr int kMainWindowWidth = 920;
 constexpr int kMainWindowHeight = 580;
+// Smallest size at which the layout stays usable.
+constexpr int kMainWindowMinWidth = 820;
+constexpr int kMainWindowMinHeight = 540;
 constexpr int kLogoSizePx = 140;
 
 // --- Timers (milliseconds) ---------------------------------------------
