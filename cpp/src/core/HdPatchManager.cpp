@@ -93,16 +93,30 @@ void HdPatchManager::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
 }
 
 void HdPatchManager::onDownloadFinished() {
-    if (m_reply->error() != QNetworkReply::NoError) return;
-    
+    // The reply is consumed here for BOTH success and error (Qt always emits
+    // finished() after errorOccurred()). Detach and schedule its deletion so a
+    // failed install never leaks the QNetworkReply: previously m_reply was left
+    // dangling and simply overwritten on the next attempt.
+    QNetworkReply* reply = m_reply;
+    m_reply = nullptr;
+    const bool hadError = !reply || reply->error() != QNetworkReply::NoError;
+    if (reply) reply->deleteLater();
+
     if (m_file) {
         m_file->close();
     }
-    
+
+    if (hadError) {
+        // Error already reported by onDownloadError; drop the partial download.
+        m_file.reset();
+        QFile::remove(m_tempDir + "/patch-hd.zip");
+        return;
+    }
+
     emit progressChanged(100, tr("Téléchargement terminé. Vérification..."));
-    
+
     QString zipPath = m_tempDir + "/patch-hd.zip";
-    
+
     // Asynchronous hash verification
     verifyHash(zipPath);
 }

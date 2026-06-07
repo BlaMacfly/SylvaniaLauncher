@@ -27,6 +27,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRandomGenerator>
+#include <QSaveFile>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -950,20 +951,27 @@ void MainWindow::checkWowProcess() {
     // tick. Skip this tick if a previous check is still running.
     if (m_wowCheckProcess) return;
 
-    m_wowCheckProcess = new QProcess(this);
-    connect(m_wowCheckProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int, QProcess::ExitStatus) {
-        const bool running = QString::fromLocal8Bit(m_wowCheckProcess->readAllStandardOutput())
+    // Capture the local QProcess* in the lambdas instead of the member: both
+    // finished() and errorOccurred() may fire for the same process (e.g. a
+    // crash), so reading the member after the first handler nulled it would
+    // dereference null. Each handler guards on identity to delete exactly once.
+    QProcess* proc = new QProcess(this);
+    m_wowCheckProcess = proc;
+    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, proc](int, QProcess::ExitStatus) {
+        if (m_wowCheckProcess != proc) return;
+        const bool running = QString::fromLocal8Bit(proc->readAllStandardOutput())
                                  .contains("Wow.exe", Qt::CaseInsensitive);
-        m_wowCheckProcess->deleteLater();
         m_wowCheckProcess = nullptr;
+        proc->deleteLater();
         handleWowRunningState(running);
     });
-    connect(m_wowCheckProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
-        m_wowCheckProcess->deleteLater();
+    connect(proc, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError) {
+        if (m_wowCheckProcess != proc) return;
         m_wowCheckProcess = nullptr;
+        proc->deleteLater();
     });
-    m_wowCheckProcess->start("tasklist",
+    proc->start("tasklist",
         QStringList() << "/FI" << "IMAGENAME eq Wow.exe" << "/NH");
 #endif
 }
@@ -1033,9 +1041,13 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
     // Update Config.wtf locale
     QString wtfPath = m_config->getWowPath() + "/WTF/Config.wtf";
     if (QFile::exists(wtfPath)) {
+        QString content;
         QFile wtfFile(wtfPath);
-        if (wtfFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
-            QString content = wtfFile.readAll();
+        if (wtfFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            content = QString::fromUtf8(wtfFile.readAll());
+            wtfFile.close();
+        }
+        if (!content.isEmpty()) {
             if (lang == "en") {
                 if (content.contains("SET locale")) {
                     content.replace("SET locale \"frFR\"", "SET locale \"enUS\"");
@@ -1045,9 +1057,13 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
             } else {
                 content.replace("SET locale \"enUS\"", "SET locale \"frFR\"");
             }
-            wtfFile.resize(0);
-            wtfFile.write(content.toUtf8());
-            wtfFile.close();
+            // Atomic rewrite: never leave a half-written Config.wtf if the
+            // launcher crashes or WoW reads the file mid-write.
+            QSaveFile out(wtfPath);
+            if (out.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                out.write(content.toUtf8());
+                out.commit();
+            }
         }
     }
 }
