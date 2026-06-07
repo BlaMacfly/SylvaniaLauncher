@@ -773,21 +773,23 @@ void AddonsWindow::extractAndDeploy(const QString& zipPath, AddonCard* card) {
             return;
         }
 
-        // Deploy: prefer the manifest's declared folders (found anywhere in the
-        // extracted tree, so wrapped archives work); fall back to every
-        // top-level folder for catalogue zips whose layout we don't model.
-        QStringList deployed;
+        // Locate the directory that actually holds the addon folders: use a
+        // declared folder as a hint (so archives that wrap everything in an
+        // extra top folder still work), then deploy EVERY top-level folder it
+        // contains. Addon zips put one folder per component at that level, so
+        // deploying them all is what installs multi-folder addons completely
+        // (DBM ships 13 folders, Details 9, ElvUI 7...). Relying only on the
+        // declared list would silently drop components the catalogue doesn't
+        // model.
+        QString root = extractRoot;
         for (const QString& folder : target.folders) {
-            const QString src = findFolderIn(extractRoot, folder);
-            if (!src.isEmpty() && moveDirInto(src, addonsDir)) {
-                deployed << QFileInfo(src).fileName();
-            }
+            const QString found = findFolderIn(extractRoot, folder);
+            if (!found.isEmpty()) { root = QFileInfo(found).absolutePath(); break; }
         }
-        if (deployed.isEmpty()) {
-            const QStringList topDirs = QDir(extractRoot).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-            for (const QString& sub : topDirs) {
-                if (moveDirInto(extractRoot + "/" + sub, addonsDir)) deployed << sub;
-            }
+        QStringList deployed;
+        const QStringList topDirs = QDir(root).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString& sub : topDirs) {
+            if (moveDirInto(root + "/" + sub, addonsDir)) deployed << sub;
         }
 
         if (deployed.isEmpty()) {

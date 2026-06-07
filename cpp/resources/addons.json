@@ -1,21 +1,92 @@
 {
     "addons": [
         {
-            "id": "consoleportlk",
-            "name": "ConsolePortLK",
-            "version": "1.5.0-rc",
-            "description": "Support manette / contrôleur pour WoW 3.3.5a.",
-            "url": "https://sylvania-servergame.com/download_addon.php?file=ConsolePortLK-1.5.0-rc.zip",
-            "folders": [
-                "ConsolePort",
-                "ConsolePortAdvanced",
-                "ConsolePortBar",
-                "ConsolePortHelp",
-                "ConsolePortKeyboard",
-                "ConsolePortLoader",
-                "ConsolePortUI_Loot",
-                "ConsolePortUI_Menu"
-            ]
+            "id": "elvui",
+            "name": "ElvUI",
+            "version": "6.08",
+            "description": "Une interface utilisateur complète, moderne et minimaliste.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=elvui.zip",
+            "folders": ["ElvUI", "ElvUI_AddOnSkins", "ElvUI_CustomTags", "ElvUI_Enhanced", "ElvUI_OptionsUI", "ElvUI_ProjectZidras", "ElvUI_SwingBar"]
+        },
+        {
+            "id": "bartender4",
+            "name": "Bartender4",
+            "version": "4.4.2",
+            "description": "Personnalisation totale de vos barres d'actions.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=Bartender4.zip",
+            "folders": ["Bartender4"]
+        },
+        {
+            "id": "dbm",
+            "name": "Deadly Boss Mods (DBM)",
+            "version": "",
+            "description": "Alertes et chronomètres indispensables pour les raids.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=DBM.zip",
+            "folders": ["DBM-ChamberOfAspects", "DBM-Coliseum", "DBM-Core", "DBM-EyeOfEternity", "DBM-GUI", "DBM-Icecrown", "DBM-Naxx", "DBM-Onyxia", "DBM-Party-WotLK", "DBM-PvP", "DBM-Ulduar", "DBM-VoA", "DBM-WorldEvents"]
+        },
+        {
+            "id": "details",
+            "name": "Details! Damage Meter",
+            "version": "",
+            "description": "Le compteur de combat le plus précis et détaillé.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=details.zip",
+            "folders": ["Details", "Details_3DModelsPaths", "Details_ChartViewer", "Details_DataStorage", "Details_DeathGraphs", "Details_EncounterDetails", "Details_SunderCount", "Details_TimeLine", "Details_TinyThreat"]
+        },
+        {
+            "id": "weakauras",
+            "name": "WeakAuras",
+            "version": "4.0.0",
+            "description": "L'outil ultime pour créer vos propres alertes visuelles.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=WeakAuras.zip",
+            "folders": ["WeakAuras", "WeakAurasArchive", "WeakAurasModelPaths", "WeakAurasOptions"]
+        },
+        {
+            "id": "atlasloot",
+            "name": "AtlasLoot",
+            "version": "5.11.04",
+            "description": "Base de données complète des butins de donjons et raids.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=AtlasLoot.zip",
+            "folders": ["AtlasLoot", "AtlasLootFu", "AtlasLoot_BurningCrusade", "AtlasLoot_Crafting", "AtlasLoot_OriginalWoW", "AtlasLoot_WorldEvents", "AtlasLoot_WrathoftheLichKing"]
+        },
+        {
+            "id": "gearscore",
+            "name": "GearScore",
+            "version": "3.1.20b",
+            "description": "Évalue le niveau d'équipement global des joueurs.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=GearScore.zip",
+            "folders": ["GearScore"]
+        },
+        {
+            "id": "auctionator",
+            "name": "Auctionator",
+            "version": "2.6.3",
+            "description": "Améliore l'interface de l'Hôtel des Ventes.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=Auctionator.zip",
+            "folders": ["Auctionator"]
+        },
+        {
+            "id": "bagnon",
+            "name": "Bagnon",
+            "version": "2.13.3",
+            "description": "Regroupe tous vos sacs en une seule fenêtre épurée.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=Bagnon.zip",
+            "folders": ["Bagnon", "Bagnon_Config", "Bagnon_Forever", "Bagnon_GuildBank", "Bagnon_Tooltips"]
+        },
+        {
+            "id": "questhelper",
+            "name": "QuestHelper",
+            "version": "1.4.1",
+            "description": "Le guide classique pour optimiser vos itinéraires de quêtes.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=QuestHelper.zip",
+            "folders": ["QuestHelper"]
+        },
+        {
+            "id": "tomtom",
+            "name": "TomTom",
+            "version": "",
+            "description": "Navigation par coordonnées GPS et flèche directionnelle.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=TomTom.zip",
+            "folders": ["TomTom"]
         },
         {
             "id": "healbot",
@@ -23,10 +94,23 @@
             "version": "3.3.5.4",
             "description": "Addon de soin par clic, incontournable pour les heals.",
             "url": "https://sylvania-servergame.com/download_addon.php?file=HealBot_3.3.5.4.zip",
-            "folders": [
-                "HealBot",
-                "TitanHealBot"
-            ]
+            "folders": ["HealBot", "TitanHealBot"]
+        },
+        {
+            "id": "vuhdo",
+            "name": "VuhDo",
+            "version": "2.23",
+            "description": "Interface de raid et de soin extrêmement personnalisable.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=vuhdo.zip",
+            "folders": ["VuhDo", "VuhDoOptions"]
+        },
+        {
+            "id": "consoleportlk",
+            "name": "ConsolePortLK",
+            "version": "1.5.0-rc",
+            "description": "Support manette / contrôleur complet pour WoW 3.3.5a (ConsolePort porté pour WotLK).",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=ConsolePortLK-1.5.0-rc.zip",
+            "folders": ["ConsolePort", "ConsolePortAdvanced", "ConsolePortBar", "ConsolePortHelp", "ConsolePortKeyboard", "ConsolePortLoader", "ConsolePortUI_Loot", "ConsolePortUI_Menu"]
         }
     ]
 }
