@@ -8,8 +8,13 @@
 namespace SylvaniaConstants {
 
 // --- Main window --------------------------------------------------------
+// Default size on first launch / after "reset window size"; the window is now
+// resizable, so these are no longer a hard cap.
 constexpr int kMainWindowWidth = 920;
 constexpr int kMainWindowHeight = 580;
+// Smallest size at which the layout stays usable.
+constexpr int kMainWindowMinWidth = 820;
+constexpr int kMainWindowMinHeight = 540;
 constexpr int kLogoSizePx = 140;
 
 // --- Timers (milliseconds) ---------------------------------------------
@@ -27,6 +32,12 @@ inline constexpr const char* kHdPatchUrl =
     "https://sylvania-servergame.com/patch-hd-download.php";
 inline constexpr const char* kAddonDownloadEndpoint =
     "https://sylvania-servergame.com/download_addon.php";
+// Remote manifest describing the "recommended addons" (id, version, download
+// URL, expected folders). Editing it server-side adds an addon without a client
+// rebuild; if it cannot be fetched the launcher falls back to the copy embedded
+// in resources (:/addons/manifest).
+inline constexpr const char* kAddonManifestUrl =
+    "https://sylvania-servergame.com/launcher/addons.json";
 
 // --- Archive extraction -------------------------------------------------
 // Arguments passed to "powershell" to extract a ZIP.

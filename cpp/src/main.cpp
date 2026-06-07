@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     
     // Set application metadata
     app.setApplicationName("Sylvania Launcher");
-    app.setApplicationVersion("2.6");
+    app.setApplicationVersion("2.9");
     app.setOrganizationName("Sylvania");
     app.setOrganizationDomain("sylvania-servergame.com");
     

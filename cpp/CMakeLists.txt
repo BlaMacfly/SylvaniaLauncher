@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(SylvaniaLauncher VERSION 2.8 LANGUAGES CXX)
+project(SylvaniaLauncher VERSION 2.9 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,6 +33,8 @@ set(SOURCES
     src/ui/AddonsWindow.cpp
     src/utils/PathUtils.cpp
     src/core/HdPatchManager.cpp
+    src/core/AddonRegistry.cpp
+    src/core/AddonManifest.cpp
 )
 
 # Header files
@@ -50,6 +52,8 @@ set(HEADERS
     src/ui/AddonsWindow.h
     src/utils/PathUtils.h
     src/core/HdPatchManager.h
+    src/core/AddonRegistry.h
+    src/core/AddonManifest.h
 )
 
 # Resources

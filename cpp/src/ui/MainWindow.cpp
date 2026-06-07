@@ -27,6 +27,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRandomGenerator>
+#include <QSaveFile>
+#include <QScreen>
+#include <QGuiApplication>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -35,8 +38,10 @@ MainWindow::MainWindow(QWidget* parent)
     , m_notesManager(std::make_unique<NotesManager>(this))
 {
     setWindowTitle("Sylvania Launcher - World of Warcraft 3.3.5");
-    setFixedSize(SylvaniaConstants::kMainWindowWidth,
-                 SylvaniaConstants::kMainWindowHeight);
+    // The window is responsive: content lives in Qt layouts and the window is
+    // freely resizable down to a usable minimum. Geometry is restored below.
+    setMinimumSize(SylvaniaConstants::kMainWindowMinWidth,
+                   SylvaniaConstants::kMainWindowMinHeight);
     
     // Load logo
     QString logoPath = PathUtils::getAssetsDir() + "/sylvania_logo.png";
@@ -76,6 +81,9 @@ MainWindow::MainWindow(QWidget* parent)
     } else {
         applyTheme(m_config->getBackground());
     }
+
+    // Restore the last window size/position (or center at the default size).
+    restoreWindowGeometry();
 }
 
 MainWindow::~MainWindow() = default;
@@ -332,7 +340,7 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(m_statusLabel);
     
     // Footer
-    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5", this);
+    m_footerLabel = new QLabel("© 2025 Sylvania Launcher v2.9 - World of Warcraft 3.3.5", this);
     m_footerLabel->setAlignment(Qt::AlignCenter);
     m_footerLabel->setStyleSheet("color: #d4af37; font-size: 11px;");
     mainLayout->addWidget(m_footerLabel);
@@ -866,6 +874,7 @@ void MainWindow::onSettingsButtonClicked() {
     SettingsDialog* dialog = new SettingsDialog(m_config.get(), m_soundManager.get(), this);
     connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::checkWowInstalled);
     connect(dialog, &SettingsDialog::backgroundChanged, this, &MainWindow::applyTheme);
+    connect(dialog, &SettingsDialog::resetWindowRequested, this, &MainWindow::resetWindowGeometry);
     dialog->exec();
     dialog->deleteLater();
 }
@@ -937,10 +946,62 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         m_realmlistWindow->close();
     }
     
+    // Persist the current window size/position so it is restored next launch.
+    m_config->setWindowGeometry(saveGeometry());
+
     m_config->save();
     saveStats();
-    
+
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::restoreWindowGeometry() {
+    const QByteArray geometry = m_config->getWindowGeometry();
+    if (!geometry.isEmpty() && restoreGeometry(geometry)) {
+        // A saved geometry may now be off-screen (monitor unplugged / changed
+        // resolution); pull it back into a visible area.
+        clampToAvailableScreen();
+        return;
+    }
+
+    // First launch (or invalid saved data): default size, centered.
+    resize(SylvaniaConstants::kMainWindowWidth, SylvaniaConstants::kMainWindowHeight);
+    QScreen* screen = this->screen() ? this->screen() : QGuiApplication::primaryScreen();
+    if (screen) {
+        const QRect available = screen->availableGeometry();
+        move(available.center() - rect().center());
+    }
+}
+
+void MainWindow::clampToAvailableScreen() {
+    QScreen* screen = QGuiApplication::screenAt(frameGeometry().center());
+    if (!screen) screen = this->screen();
+    if (!screen) screen = QGuiApplication::primaryScreen();
+    if (!screen) return;
+
+    const QRect available = screen->availableGeometry();
+
+    // Never larger than the available area.
+    QSize s = size();
+    s.setWidth(qMin(s.width(), available.width()));
+    s.setHeight(qMin(s.height(), available.height()));
+    if (s != size()) resize(s);
+
+    // Keep the whole frame inside the available area.
+    QRect frame = frameGeometry();
+    int x = qBound(available.left(), frame.left(), available.right() - frame.width() + 1);
+    int y = qBound(available.top(), frame.top(), available.bottom() - frame.height() + 1);
+    move(x, y);
+}
+
+void MainWindow::resetWindowGeometry() {
+    m_config->setWindowGeometry(QByteArray());  // forget the saved geometry
+    resize(SylvaniaConstants::kMainWindowWidth, SylvaniaConstants::kMainWindowHeight);
+    QScreen* screen = this->screen() ? this->screen() : QGuiApplication::primaryScreen();
+    if (screen) {
+        const QRect available = screen->availableGeometry();
+        move(available.center() - rect().center());
+    }
 }
 
 void MainWindow::checkWowProcess() {
@@ -950,20 +1011,27 @@ void MainWindow::checkWowProcess() {
     // tick. Skip this tick if a previous check is still running.
     if (m_wowCheckProcess) return;
 
-    m_wowCheckProcess = new QProcess(this);
-    connect(m_wowCheckProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int, QProcess::ExitStatus) {
-        const bool running = QString::fromLocal8Bit(m_wowCheckProcess->readAllStandardOutput())
+    // Capture the local QProcess* in the lambdas instead of the member: both
+    // finished() and errorOccurred() may fire for the same process (e.g. a
+    // crash), so reading the member after the first handler nulled it would
+    // dereference null. Each handler guards on identity to delete exactly once.
+    QProcess* proc = new QProcess(this);
+    m_wowCheckProcess = proc;
+    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, proc](int, QProcess::ExitStatus) {
+        if (m_wowCheckProcess != proc) return;
+        const bool running = QString::fromLocal8Bit(proc->readAllStandardOutput())
                                  .contains("Wow.exe", Qt::CaseInsensitive);
-        m_wowCheckProcess->deleteLater();
         m_wowCheckProcess = nullptr;
+        proc->deleteLater();
         handleWowRunningState(running);
     });
-    connect(m_wowCheckProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
-        m_wowCheckProcess->deleteLater();
+    connect(proc, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError) {
+        if (m_wowCheckProcess != proc) return;
         m_wowCheckProcess = nullptr;
+        proc->deleteLater();
     });
-    m_wowCheckProcess->start("tasklist",
+    proc->start("tasklist",
         QStringList() << "/FI" << "IMAGENAME eq Wow.exe" << "/NH");
 #endif
 }
@@ -1033,9 +1101,13 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
     // Update Config.wtf locale
     QString wtfPath = m_config->getWowPath() + "/WTF/Config.wtf";
     if (QFile::exists(wtfPath)) {
+        QString content;
         QFile wtfFile(wtfPath);
-        if (wtfFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
-            QString content = wtfFile.readAll();
+        if (wtfFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            content = QString::fromUtf8(wtfFile.readAll());
+            wtfFile.close();
+        }
+        if (!content.isEmpty()) {
             if (lang == "en") {
                 if (content.contains("SET locale")) {
                     content.replace("SET locale \"frFR\"", "SET locale \"enUS\"");
@@ -1045,9 +1117,13 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
             } else {
                 content.replace("SET locale \"enUS\"", "SET locale \"frFR\"");
             }
-            wtfFile.resize(0);
-            wtfFile.write(content.toUtf8());
-            wtfFile.close();
+            // Atomic rewrite: never leave a half-written Config.wtf if the
+            // launcher crashes or WoW reads the file mid-write.
+            QSaveFile out(wtfPath);
+            if (out.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                out.write(content.toUtf8());
+                out.commit();
+            }
         }
     }
 }
@@ -1066,7 +1142,7 @@ void MainWindow::retranslateUi() {
     if (m_statsTitleLabel) m_statsTitleLabel->setText(tr("Statistiques de Jeu"));
     // Note: m_serverNameLabel is updated via updateServerInfo below
     
-    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.8 - World of Warcraft 3.3.5"));
+    if (m_footerLabel) m_footerLabel->setText(tr("© 2025 Sylvania Launcher v2.9 - World of Warcraft 3.3.5"));
     
     checkWowInstalled();
     updateStats();

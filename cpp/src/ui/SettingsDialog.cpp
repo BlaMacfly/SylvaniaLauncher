@@ -262,6 +262,23 @@ void SettingsDialog::setupUi() {
     appearanceLayout->addStretch();
     mainLayout->addLayout(appearanceLayout);
 
+    // Reset the (now resizable) main window back to its default size, centered.
+    m_resetWindowButton = new QPushButton(tr("Réinitialiser la taille de la fenêtre"), this);
+    m_resetWindowButton->setCursor(Qt::PointingHandCursor);
+    m_resetWindowButton->setStyleSheet(R"(
+        QPushButton {
+            background-color: #3a3a3a;
+            color: #ffffff;
+            border: 1px solid #5a5a5a;
+            border-radius: 5px;
+            padding: 8px;
+        }
+        QPushButton:hover {
+            background-color: #4a4a4a;
+        }
+    )");
+    mainLayout->addWidget(m_resetWindowButton);
+
     // Audio section
     QLabel* audioTitle = new QLabel(tr("Audio"), this);
     audioTitle->setAlignment(Qt::AlignCenter);
@@ -344,6 +361,7 @@ void SettingsDialog::setupUi() {
     // Connect signals
     connect(m_browseButton, &QPushButton::clicked, this, &SettingsDialog::onBrowseClicked);
     connect(m_clearCacheButton, &QPushButton::clicked, this, &SettingsDialog::onClearCacheClicked);
+    connect(m_resetWindowButton, &QPushButton::clicked, this, &SettingsDialog::onResetWindowClicked);
     connect(m_openAddonsButton, &QPushButton::clicked, this, &SettingsDialog::onOpenAddonsClicked);
     connect(m_downloadEnUsButton, &QPushButton::clicked, this, &SettingsDialog::onDownloadEnUsClicked);
     connect(m_randomBgButton, &QPushButton::toggled, this, &SettingsDialog::onRandomBgToggled);
@@ -739,6 +757,13 @@ void SettingsDialog::onClearCacheClicked() {
     } else {
         QMessageBox::warning(this, tr("Erreur"), tr("Impossible de vider le cache."));
     }
+}
+
+void SettingsDialog::onResetWindowClicked() {
+    m_soundManager->play("button");
+    emit resetWindowRequested();
+    QMessageBox::information(this, tr("Apparence"),
+                            tr("La taille de la fenêtre a été réinitialisée."));
 }
 
 void SettingsDialog::onOpenAddonsClicked() {

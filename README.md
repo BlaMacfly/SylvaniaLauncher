@@ -1,7 +1,7 @@
 # Sylvania Launcher — Édition Windows 🪟
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
-![Version](https://img.shields.io/badge/version-v2.8-success)
+![Version](https://img.shields.io/badge/version-v2.9-success)
 
 🎮 **Launcher officiel pour le serveur World of Warcraft 3.3.5 - Sylvania**
 
@@ -31,12 +31,23 @@
 - ⚙️ **Auto-Configuration** : Génération automatique du fichier `Config.wtf` optimal
 - 📊 **Statistiques de jeu** : temps de jeu, nombre de lancements
 - 📝 **Notes personnelles** style post-it avec couleurs
-- ⚙️ **Réglages** : chemin WoW (sélection libre), cache, AddOns, sons
+- 🧩 **Gestionnaire d'AddOns** : addons recommandés en un clic, catalogue, et suppression des addons installés
+- ⚙️ **Réglages** : chemin WoW (sélection libre), cache, AddOns, sons, taille de fenêtre
 - 🔄 **Gestion des serveurs** : ajouter, modifier, supprimer
 
 ## Version actuelle
 
-**v2.8** - Application native C++ / Qt6
+**v2.9** - Application native C++ / Qt6
+
+### Nouveautés v2.9
+- 🐛 **Corrections de bugs** : fuites de `QNetworkReply`/`QProcess`, course sur le suivi du processus de jeu, et écriture atomique du `Config.wtf` lors du changement de langue.
+- 🖼️ **Nouveau logo** : icône de l'exécutable resynchronisée avec le logo Sylvania actuel (plus aucune ancienne icône).
+- 🗑️ **Suppression d'addons** : onglet « Installés » listant les addons (nom via `.toc`, version, taille) avec sélection multiple et suppression. Les addons posés par le launcher (multi-dossiers, ex. ConsolePortLK) sont retirés d'un seul coup grâce au registre local.
+- 🪟 **Fenêtre redimensionnable** : fenêtre responsive, taille minimale cohérente, géométrie sauvegardée/restaurée (et bornée à l'écran visible), gestion High-DPI, et bouton « Réinitialiser la taille de la fenêtre ».
+- 🎮 **Addons recommandés (ConsolePortLK & HealBot)** : nouvel onglet piloté par un manifeste JSON distant (avec copie embarquée de secours). Installation/mise à jour/désinstallation en un clic, barre de progression, états *Non installé / Installé (vX) / Mise à jour dispo*. Ajouter un addon = éditer le manifeste côté serveur, sans recompiler.
+
+> [!NOTE]
+> Côté serveur, déposer le manifeste `addons.json` à l'adresse `https://sylvania-servergame.com/launcher/addons.json` (les archives des addons sont déjà servies par `download_addon.php`). En son absence, le launcher utilise la copie embarquée.
 
 ### Nouveautés v2.8
 - 💎 Refonte du gestionnaire de Patch HD (localisation robuste de la racine du client dans l'archive).
@@ -60,7 +71,7 @@
 ## Téléchargement
 
 - 🌐 [Télécharger depuis le site officiel](https://sylvania-servergame.com/launcher)
-- 📦 [Release GitHub v2.8 — `SylvaniaLauncher_v2.8.zip`](https://github.com/BlaMacfly/SylvaniaLauncher/releases/download/v2.8/SylvaniaLauncher_v2.8.zip)
+- 📦 [Release GitHub v2.9 — `SylvaniaLauncher_v2.9.zip`](https://github.com/BlaMacfly/SylvaniaLauncher/releases/download/v2.9/SylvaniaLauncher_v2.9.zip)
 
 ## Configuration requise
 
