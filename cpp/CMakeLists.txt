@@ -33,6 +33,8 @@ set(SOURCES
     src/ui/AddonsWindow.cpp
     src/utils/PathUtils.cpp
     src/core/HdPatchManager.cpp
+    src/core/AddonRegistry.cpp
+    src/core/AddonManifest.cpp
 )
 
 # Header files
@@ -50,6 +52,8 @@ set(HEADERS
     src/ui/AddonsWindow.h
     src/utils/PathUtils.h
     src/core/HdPatchManager.h
+    src/core/AddonRegistry.h
+    src/core/AddonManifest.h
 )
 
 # Resources
