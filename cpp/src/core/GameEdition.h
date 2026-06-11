@@ -48,9 +48,19 @@ struct GameEdition {
     // Theme tokens (assets are relative to the Asset directory).
     QString logoAsset;
     QString taskbarIconAsset;         // .ico — window + taskbar icon
-    QString backgroundAsset;          // fixed background; empty = dynamic backgrounds (wotlk)
     QString accentColor;
     QString accentDark;
+
+    // Background pool: each edition has its own set of background images, never
+    // shared. backgroundDir is relative to the Asset directory; backgrounds are
+    // the base file names (without extension). backgroundPaletteKey, when set,
+    // forces a single palette for every background of the edition (Legion is
+    // always fel-green); when empty the palette is chosen per background name
+    // (WotLK's classic per-theme colours).
+    QString backgroundDir;
+    QStringList backgrounds;
+    QString backgroundPaletteKey;
+    QString defaultBackground;
 
     static const GameEdition& wotlk();
     static const GameEdition& legion();

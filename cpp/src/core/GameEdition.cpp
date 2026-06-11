@@ -24,9 +24,17 @@ const GameEdition& GameEdition::wotlk() {
         ed.supportsEnUsPack = true;
         ed.logoAsset = QStringLiteral("sylvania_logo.png");
         ed.taskbarIconAsset = QStringLiteral("LogoSylvania/LogoSylvania256.ico");
-        ed.backgroundAsset.clear();  // dynamic backgrounds (random/per-user)
         ed.accentColor = QStringLiteral("#d4af37");   // WoW gold
         ed.accentDark = QStringLiteral("#8a7a2d");
+        ed.backgroundDir = QStringLiteral("Background");
+        ed.backgrounds = {
+            QStringLiteral("Alliance"), QStringLiteral("Arbre de Vie"),
+            QStringLiteral("Azeroth"), QStringLiteral("Horde"),
+            QStringLiteral("Ilidan"), QStringLiteral("Lich King"),
+            QStringLiteral("Ragnaros"), QStringLiteral("Taverne")
+        };
+        ed.backgroundPaletteKey.clear();   // per-background palette (classic)
+        ed.defaultBackground = QStringLiteral("Azeroth");
         return ed;
     }();
     return e;
@@ -55,9 +63,19 @@ const GameEdition& GameEdition::legion() {
         ed.supportsHdPatch = false;
         ed.logoAsset = QStringLiteral("Legion/legion_logo.png");
         ed.taskbarIconAsset = QStringLiteral("Legion/LegionSylvania256.ico");
-        ed.backgroundAsset = QStringLiteral("Legion/Background/Legion.png");
         ed.accentColor = QStringLiteral("#76e84c");   // fel green
         ed.accentDark = QStringLiteral("#2f7a1e");
+        ed.backgroundDir = QStringLiteral("Legion/Background");
+        ed.backgrounds = {
+            QStringLiteral("Anduin"), QStringLiteral("AzerothPlanete"),
+            QStringLiteral("IlidanLegion"), QStringLiteral("Ilidanvsgudan"),
+            QStringLiteral("Ilidari"), QStringLiteral("Legion"),
+            QStringLiteral("Sargeras"), QStringLiteral("Tombe")
+        };
+        // Every Legion background uses the fel-green palette (only the image
+        // changes, the accent stays Legion green).
+        ed.backgroundPaletteKey = QStringLiteral("Legion");
+        ed.defaultBackground = QStringLiteral("Legion");
         return ed;
     }();
     return e;

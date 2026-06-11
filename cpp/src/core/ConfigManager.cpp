@@ -105,6 +105,18 @@ bool ConfigManager::migrateToEditionConfig() {
             migrated = true;
         }
     }
+    // Migrate the pre-3.0 GLOBAL "background" key into the WotLK edition (it was
+    // always a 3.3.5 background). Legion keeps its own default.
+    if (m_config.contains("background")) {
+        QJsonObject wotlk = editions.value("wotlk").toObject();
+        if (!wotlk.contains("background")) {
+            wotlk["background"] = m_config.value("background").toString();
+            editions["wotlk"] = wotlk;
+        }
+        m_config.remove("background");
+        migrated = true;
+    }
+
     m_config["editions"] = editions;
 
     // Validated active edition (anything unknown collapses to wotlk).
@@ -369,11 +381,19 @@ void ConfigManager::setLanguage(const QString& lang) {
 }
 
 QString ConfigManager::getBackground() const {
-    return get("background", "Azeroth").toString();
+    // Per-edition: each edition remembers its own last background. Default to
+    // the edition's declared default when unset.
+    const GameEdition& edition = GameEdition::byId(activeEditionId());
+    return editionConfig(QString()).value("background")
+        .toString(edition.defaultBackground);
 }
 
 void ConfigManager::setBackground(const QString& bgName) {
-    set("background", bgName);
+    QJsonObject ed = editionConfig(QString());
+    ed["background"] = bgName;
+    setEditionConfig(QString(), ed);
+    scheduleSave();
+    emit configChanged("background");
 }
 
 bool ConfigManager::isRandomBackgroundEnabled() const {

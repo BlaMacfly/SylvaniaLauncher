@@ -137,10 +137,10 @@ MainWindow::MainWindow(QWidget* parent)
     if (currentLang.isEmpty()) currentLang = "fr";
     changeLanguage(currentLang, true); // true means initial, so we DON'T check for enUS yet
 
-    // WotLK background on launch: if the random toggle is ON, pick a fresh one
-    // (different from last time); otherwise keep the saved background. Legion
-    // uses its fixed edition background (applied by applyEdition).
-    if (activeEdition().backgroundAsset.isEmpty() && m_config->isRandomBackgroundEnabled()) {
+    // Background on launch: if the random toggle is ON, pick a fresh one from
+    // the active edition's pool (different from last time); otherwise keep the
+    // saved per-edition background. Applied by applyEdition() just below.
+    if (m_config->isRandomBackgroundEnabled()) {
         m_config->setBackground(pickRandomBackground(m_config->getBackground()));
     }
 
@@ -157,11 +157,11 @@ const GameEdition& MainWindow::activeEdition() const {
 }
 
 QString MainWindow::pickRandomBackground(const QString& exclude) const {
-    static const QStringList backgrounds = {
-        "Alliance", "Arbre de Vie", "Azeroth", "Horde",
-        "Ilidan", "Lich King", "Ragnaros", "Taverne"
-    };
-    if (backgrounds.size() <= 1) return backgrounds.value(0);
+    // Pick from the ACTIVE edition's own background pool (WotLK and Legion each
+    // have their own set — never mixed).
+    const QStringList& backgrounds = activeEdition().backgrounds;
+    if (backgrounds.isEmpty()) return QString();
+    if (backgrounds.size() == 1) return backgrounds.first();
     QString chosen = exclude;
     while (chosen == exclude) {
         chosen = backgrounds.at(QRandomGenerator::global()->bounded(backgrounds.size()));
@@ -202,20 +202,10 @@ void MainWindow::applyEdition() {
     qApp->setWindowIcon(icon);
     if (m_trayIcon) m_trayIcon->setIcon(icon);
 
-    // Background: Legion ships a fixed themed background; WotLK keeps the
-    // dynamic per-user backgrounds (v2.7 feature).
-    if (!edition.backgroundAsset.isEmpty()) {
-        const QString bgPath = assets + "/" + edition.backgroundAsset;
-        if (QFile::exists(bgPath)) {
-            m_backgroundImage.load(bgPath);
-        } else {
-            m_backgroundImage.load(QStringLiteral(":/background"));
-        }
-        update();
-        applyTheme(QStringLiteral("Legion"));
-    } else {
-        applyTheme(m_config->getBackground());
-    }
+    // Background: each edition has its own dynamic pool. getBackground() is
+    // per-edition, so this restores the edition's last-used background; the
+    // image + palette are applied by applyTheme.
+    applyTheme(m_config->getBackground());
 
     // HD patch is a 3.3.5-only feature: gated, not removed. Same slot in the
     // nav bar in both modes — controls never move between editions.
@@ -286,24 +276,30 @@ ButtonStyles::ThemeTokens MainWindow::themeTokensFor(const QString& bgName) cons
 }
 
 void MainWindow::applyTheme(const QString& bgName) {
-    // WotLK: load the chosen dynamic background image (Legion's fixed
-    // background is loaded by applyEdition before calling us).
-    if (bgName != QLatin1String("Legion")) {
-        QString bgPath = PathUtils::getAssetsDir() + "/Background/" + bgName + ".jpg";
-        if (!QFile::exists(bgPath)) {
-            bgPath = PathUtils::getAssetsDir() + "/Background/" + bgName + ".png";
-        }
-        if (!QFile::exists(bgPath)) {
-            bgPath = PathUtils::getAssetsDir() + "/Background/Taverne.png"; // Fallback
-        }
-        if (QFile::exists(bgPath)) {
-            m_backgroundImage.load(bgPath);
-        }
-        update(); // Trigger repaint
+    // Load the chosen background image from the ACTIVE edition's pool. Tries
+    // .jpg then .png, falling back to the first background of the edition, then
+    // to the embedded resource, so the window never paints blank.
+    const GameEdition& edition = activeEdition();
+    const QString bgRoot = PathUtils::getAssetsDir() + "/" + edition.backgroundDir + "/";
+    QString bgPath = bgRoot + bgName + ".jpg";
+    if (!QFile::exists(bgPath)) bgPath = bgRoot + bgName + ".png";
+    if (!QFile::exists(bgPath) && !edition.backgrounds.isEmpty()) {
+        bgPath = bgRoot + edition.backgrounds.first() + ".jpg";
+        if (!QFile::exists(bgPath)) bgPath = bgRoot + edition.backgrounds.first() + ".png";
     }
+    if (QFile::exists(bgPath)) {
+        m_backgroundImage.load(bgPath);
+    } else {
+        m_backgroundImage.load(QStringLiteral(":/background"));
+    }
+    update(); // Trigger repaint
 
-    const Palette pal = paletteFor(bgName);
-    const ButtonStyles::ThemeTokens tokens = themeTokensFor(bgName);
+    // Palette: Legion forces one fel palette for every background; WotLK picks
+    // per background name.
+    const QString paletteKey = edition.backgroundPaletteKey.isEmpty()
+                                   ? bgName : edition.backgroundPaletteKey;
+    const Palette pal = paletteFor(paletteKey);
+    const ButtonStyles::ThemeTokens tokens = themeTokensFor(paletteKey);
 
     // Panels
     const QString panelStyle = QString(
@@ -919,11 +915,8 @@ void MainWindow::onSettingsButtonClicked() {
     SettingsDialog* dialog = new SettingsDialog(m_config.get(), m_soundManager.get(), this);
     connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::refreshPrimaryState);
     connect(dialog, &SettingsDialog::backgroundChanged, this, [this](const QString& bgName) {
-        // Dynamic backgrounds are a WotLK feature; Legion keeps its fixed
-        // themed background.
-        if (activeEdition().backgroundAsset.isEmpty()) {
-            applyTheme(bgName);
-        }
+        // Both editions have dynamic backgrounds; apply the chosen one live.
+        applyTheme(bgName);
     });
     dialog->exec();
     dialog->deleteLater();

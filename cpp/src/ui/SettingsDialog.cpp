@@ -212,14 +212,11 @@ void SettingsDialog::setupUi() {
     bgLabel->setStyleSheet("color: #ffffff; font-size: 12px;");
 
     m_backgroundCombo = new QComboBox(this);
-    m_backgroundCombo->addItem("Alliance", "Alliance");
-    m_backgroundCombo->addItem(tr("Arbre de Vie"), "Arbre de Vie");
-    m_backgroundCombo->addItem("Azeroth", "Azeroth");
-    m_backgroundCombo->addItem("Horde", "Horde");
-    m_backgroundCombo->addItem("Ilidan", "Ilidan");
-    m_backgroundCombo->addItem("Lich King", "Lich King");
-    m_backgroundCombo->addItem("Ragnaros", "Ragnaros");
-    m_backgroundCombo->addItem(tr("Taverne"), "Taverne");
+    // Populate from the ACTIVE edition's background pool (WotLK and Legion each
+    // have their own set). The base name doubles as the display label.
+    for (const QString& bg : GameEdition::byId(m_config->activeEditionId()).backgrounds) {
+        m_backgroundCombo->addItem(bg, bg);
+    }
     m_backgroundCombo->setStyleSheet(R"(
         QComboBox {
             background-color: #2a2a2a;
