@@ -1,3 +1,380 @@
 {
-    "addons": []
+  "addons": [
+    {
+      "id": "elvui",
+      "name": "ElvUI",
+      "version": "7.3.5",
+      "description": "Refonte complète et élégante de toute l'interface : cadres, barres, sacs, minimap.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/elvui.zip",
+      "folders": [
+        "ElvUI",
+        "ElvUI_Config"
+      ]
+    },
+    {
+      "id": "bartender4",
+      "name": "Bartender4",
+      "version": "7.3.5",
+      "description": "Personnalisez entièrement la position et l'apparence de vos barres d'action.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/bartender4.zip",
+      "folders": [
+        "Bartender4"
+      ]
+    },
+    {
+      "id": "bagnon",
+      "name": "Bagnon",
+      "version": "7.3.5",
+      "description": "Regroupe tous vos sacs et la banque en une fenêtre unique et claire.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/bagnon.zip",
+      "folders": [
+        "BagBrother",
+        "Bagnon",
+        "Bagnon_Config",
+        "Bagnon_GuildBank",
+        "Bagnon_VoidStorage"
+      ]
+    },
+    {
+      "id": "omnicc",
+      "name": "OmniCC",
+      "version": "7.3.5",
+      "description": "Affiche un compte à rebours lisible sur toutes les icônes en cooldown.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/omnicc.zip",
+      "folders": [
+        "OmniCC",
+        "OmniCC_Config"
+      ]
+    },
+    {
+      "id": "masque",
+      "name": "Masque",
+      "version": "7.3.5",
+      "description": "Habillez les boutons (barres, sacs, auras) avec des thèmes graphiques.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/masque.zip",
+      "folders": [
+        "Masque"
+      ]
+    },
+    {
+      "id": "shadowed-unit-frames",
+      "name": "Shadowed Unit Frames",
+      "version": "7.3.5",
+      "description": "Des cadres d'unité légers et entièrement configurables.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/shadowed-unit-frames.zip",
+      "folders": [
+        "ShadowedUF_Options",
+        "ShadowedUnitFrames"
+      ]
+    },
+    {
+      "id": "prat",
+      "name": "Prat 3.0",
+      "version": "7.3.5",
+      "description": "Améliore la fenêtre de discussion : onglets, copie, historique, mise en forme.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/prat.zip",
+      "folders": [
+        "prat-3-0-3.6.56",
+        "Prat-3.0_Debug",
+        "Prat-3.0_Experimental",
+        "Prat-3.0_Loader"
+      ]
+    },
+    {
+      "id": "deadly-boss-mods",
+      "name": "Deadly Boss Mods (DBM)",
+      "version": "7.3.5",
+      "description": "Alertes, minuteurs et avertissements pour les mécaniques de boss.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/deadly-boss-mods.zip",
+      "folders": [
+        "DBM-AntorusBurningThrone",
+        "DBM-Argus",
+        "DBM-Azeroth-BfA",
+        "DBM-Brawlers",
+        "DBM-BrokenIsles",
+        "DBM-Core",
+        "DBM-DefaultSkin",
+        "DBM-DMF",
+        "DBM-EmeraldNightmare",
+        "DBM-GUI",
+        "DBM-Nighthold",
+        "DBM-Party-BfA",
+        "DBM-Party-Legion",
+        "DBM-StatusBarTimers",
+        "DBM-TombofSargeras",
+        "DBM-TrialofValor",
+        "DBM-Uldir",
+        "DBM-WorldEvents"
+      ]
+    },
+    {
+      "id": "bigwigs",
+      "name": "BigWigs",
+      "version": "7.3.5",
+      "description": "Alternative légère et modulaire à DBM pour les raids.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/bigwigs.zip",
+      "folders": [
+        "Antorus",
+        "ArgusInvasionPoints",
+        "BigWigs-98",
+        "BrokenIsles",
+        "Core",
+        "Nighthold",
+        "Nightmare",
+        "Options",
+        "Plugins",
+        "TombOfSargeras",
+        "TrialOfValor",
+        "Uldir"
+      ]
+    },
+    {
+      "id": "skada",
+      "name": "Skada Damage Meter",
+      "version": "7.3.5",
+      "description": "Mètre de dégâts, soins et menaces, clair et modulaire.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/skada.zip",
+      "folders": [
+        "Skada-1.7.2"
+      ]
+    },
+    {
+      "id": "details",
+      "name": "Details! Damage Meter",
+      "version": "7.3.5",
+      "description": "Mètre de combat très détaillé avec rapports et graphiques avancés.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/details.zip",
+      "folders": [
+        "Details_3DModelsPaths",
+        "Details_DataStorage",
+        "Details_DmgRank",
+        "Details_DpsTuning",
+        "Details_EncounterDetails",
+        "Details_RaidCheck",
+        "Details_RaidInfo-EmeraldNightmare",
+        "Details_RaidInfo-Nighthold",
+        "Details_RaidInfo-TombOfSargeras",
+        "Details_RaidInfo-TrialOfValor",
+        "Details_Streamer",
+        "Details_TimeAttack",
+        "Details_TinyThreat",
+        "Details_Vanguard",
+        "Details-Damage-Meter-7.2.5.4247.122"
+      ]
+    },
+    {
+      "id": "weakauras",
+      "name": "WeakAuras 2",
+      "version": "7.3.5",
+      "description": "Auras, alertes et suivis personnalisés — l'outil incontournable du joueur exigeant.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/weakauras.zip",
+      "folders": [
+        "WeakAuras",
+        "WeakAurasModelPaths",
+        "WeakAurasOptions",
+        "WeakAurasTemplates"
+      ]
+    },
+    {
+      "id": "gtfo",
+      "name": "GTFO",
+      "version": "7.3.5",
+      "description": "Émet une alerte sonore dès que vous êtes dans une zone dangereuse.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/gtfo.zip",
+      "folders": [
+        "GTFO"
+      ]
+    },
+    {
+      "id": "angry-keystones",
+      "name": "Angry Keystones",
+      "version": "7.3.5",
+      "description": "Améliore l'affichage des donjons Mythique+ : chrono, progression, objectifs.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/angry-keystones.zip",
+      "folders": [
+        "AngryKeystones"
+      ]
+    },
+    {
+      "id": "vuhdo",
+      "name": "VuhDo",
+      "version": "7.3.5",
+      "description": "Cadres de groupe et de raid avec soins par clic, très complet.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/vuhdo.zip",
+      "folders": [
+        "VuhDo",
+        "VuhDoOptions"
+      ]
+    },
+    {
+      "id": "healbot",
+      "name": "HealBot Continued",
+      "version": "7.3.5",
+      "description": "Interface de soin réactive : soignez d'un simple clic sur les barres.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/healbot.zip",
+      "folders": [
+        "HealBot",
+        "HealBot_br",
+        "HealBot_cn",
+        "HealBot_de",
+        "HealBot_es",
+        "HealBot_fr",
+        "HealBot_gr",
+        "HealBot_hu",
+        "HealBot_it",
+        "HealBot_kr",
+        "HealBot_ru",
+        "HealBot_Tips",
+        "HealBot_tw"
+      ]
+    },
+    {
+      "id": "grid2",
+      "name": "Grid2",
+      "version": "7.3.5",
+      "description": "Cadres de raid compacts et hautement personnalisables.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/grid2.zip",
+      "folders": [
+        "Grid2",
+        "Grid2LDB",
+        "Grid2Options",
+        "Grid2RaidDebuffs",
+        "Grid2RaidDebuffsOptions"
+      ]
+    },
+    {
+      "id": "clique",
+      "name": "Clique",
+      "version": "7.3.5",
+      "description": "Liez vos sorts aux clics de souris sur les cadres d'unité.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/clique.zip",
+      "folders": [
+        "Clique"
+      ]
+    },
+    {
+      "id": "tradeskillmaster",
+      "name": "TradeSkillMaster (TSM)",
+      "version": "7.3.5",
+      "description": "La suite de référence pour l'Hôtel des Ventes, le craft et l'or.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/tradeskillmaster.zip",
+      "folders": [
+        "TradeSkillMaster"
+      ]
+    },
+    {
+      "id": "auctionator",
+      "name": "Auctionator",
+      "version": "7.3.5",
+      "description": "Achat et vente à l'Hôtel des Ventes simplifiés et rapides.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/auctionator.zip",
+      "folders": [
+        "Auctionator"
+      ]
+    },
+    {
+      "id": "postal",
+      "name": "Postal",
+      "version": "7.3.5",
+      "description": "Gestion améliorée du courrier : tout ouvrir, envois rapides, filtres.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/postal.zip",
+      "folders": [
+        "Postal"
+      ]
+    },
+    {
+      "id": "pawn",
+      "name": "Pawn",
+      "version": "7.3.5",
+      "description": "Note vos objets et indique d'un coup d'œil les améliorations d'équipement.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/pawn.zip",
+      "folders": [
+        "Pawn"
+      ]
+    },
+    {
+      "id": "world-quest-tracker",
+      "name": "World Quest Tracker",
+      "version": "7.3.5",
+      "description": "Affiche et filtre toutes les quêtes du monde de Legion sur la carte.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/world-quest-tracker.zip",
+      "folders": [
+        "WorldQuestTracker"
+      ]
+    },
+    {
+      "id": "atlasloot",
+      "name": "AtlasLoot Enhanced",
+      "version": "7.3.5",
+      "description": "Consultez le butin des donjons et raids sans quitter le jeu.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/atlasloot.zip",
+      "folders": [
+        "AtlasLoot",
+        "AtlasLoot_BurningCrusade",
+        "AtlasLoot_Cataclysm",
+        "AtlasLoot_Classic",
+        "AtlasLoot_Collections",
+        "AtlasLoot_Crafting",
+        "AtlasLoot_Factions",
+        "AtlasLoot_Legion",
+        "AtlasLoot_MistsofPandaria",
+        "AtlasLoot_Options",
+        "AtlasLoot_PvP",
+        "AtlasLoot_WarlordsofDraenor",
+        "AtlasLoot_WorldEvents",
+        "AtlasLoot_WrathoftheLichKing"
+      ]
+    },
+    {
+      "id": "handynotes",
+      "name": "HandyNotes",
+      "version": "7.3.5",
+      "description": "Ajoutez des notes et marqueurs utiles directement sur la carte.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/handynotes.zip",
+      "folders": [
+        "HandyNotes-1.4.15"
+      ]
+    },
+    {
+      "id": "tomtom",
+      "name": "TomTom",
+      "version": "7.3.5",
+      "description": "Une flèche de navigation et des coordonnées pour atteindre tout point.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/tomtom.zip",
+      "folders": [
+        "TomTom"
+      ]
+    },
+    {
+      "id": "mapster",
+      "name": "Mapster",
+      "version": "7.3.5",
+      "description": "Améliore la carte du monde : transparence, zoom, coordonnées.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/mapster.zip",
+      "folders": [
+        "Mapster-1.7.6"
+      ]
+    },
+    {
+      "id": "carbonite",
+      "name": "Carbonite Quest",
+      "version": "7.3.5",
+      "description": "Carte et aide aux quêtes enrichies, suivi de progression détaillé.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/carbonite.zip",
+      "folders": [
+        "Carbonite.Quests-7.3"
+      ]
+    },
+    {
+      "id": "gatherer",
+      "name": "Gatherer",
+      "version": "7.3.5",
+      "description": "Mémorise les emplacements de minerai et d'herbe sur la minimap.",
+      "url": "https://legendesylvania.com/assets/downloads/addons/gatherer.zip",
+      "folders": [
+        "Gatherer",
+        "Gatherer_HUD"
+      ]
+    }
+  ]
 }

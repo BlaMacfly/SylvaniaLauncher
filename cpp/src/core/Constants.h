@@ -85,9 +85,13 @@ inline constexpr const char* kLegionDefaultPortal = "164.132.43.2";
 // carrying it to kLegionDefaultPortal (one-time, Legion-scoped) so early
 // configs pick up the correct value.
 inline constexpr const char* kLegionPlaceholderPortal = "sylvania-servergame.com";
-// Placeholder Legion addon manifest (own list — never mixed with WotLK's).
+// Legion addon manifest (own list — never mixed with WotLK's). The recommended
+// addons live on legendesylvania.com; until a JSON manifest is published at
+// this URL the launcher falls back to the embedded copy (:/addons/manifest_legion).
 inline constexpr const char* kLegionAddonManifestUrl =
-    "https://sylvania-servergame.com/launcher/addons_legion.json";
+    "https://legendesylvania.com/addons.json";
+// Host serving the Legion addon archives (validated before any download).
+inline constexpr const char* kLegionAddonHost = "legendesylvania.com";
 
 // --- Archive extraction -------------------------------------------------
 // Arguments passed to "powershell" to extract a ZIP.

@@ -19,6 +19,7 @@ const GameEdition& GameEdition::wotlk() {
         ed.archiveFormat = QStringLiteral("zip");
         ed.addonManifestUrl = QString::fromUtf8(SylvaniaConstants::kAddonManifestUrl);
         ed.embeddedManifestResource = QStringLiteral(":/addons/manifest");
+        ed.addonDownloadHost = QString::fromUtf8(SylvaniaConstants::kServerHost);
         ed.supportsHdPatch = true;
         ed.supportsEnUsPack = true;
         ed.logoAsset = QStringLiteral("sylvania_logo.png");
@@ -50,6 +51,7 @@ const GameEdition& GameEdition::legion() {
         ed.archiveFormat = QStringLiteral("tar.gz");
         ed.addonManifestUrl = QString::fromUtf8(SylvaniaConstants::kLegionAddonManifestUrl);
         ed.embeddedManifestResource = QStringLiteral(":/addons/manifest_legion");
+        ed.addonDownloadHost = QString::fromUtf8(SylvaniaConstants::kLegionAddonHost);
         ed.supportsHdPatch = false;
         ed.logoAsset = QStringLiteral("Legion/legion_logo.png");
         ed.taskbarIconAsset = QStringLiteral("Legion/LegionSylvania256.ico");

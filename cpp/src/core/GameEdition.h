@@ -38,6 +38,9 @@ struct GameEdition {
     // Addons (the two manifests are never mixed).
     QString addonManifestUrl;
     QString embeddedManifestResource; // offline fallback, e.g. ":/addons/manifest"
+    // Only addon archives served by this host may be downloaded (anti-tamper:
+    // a swapped manifest can't point installs at an arbitrary domain).
+    QString addonDownloadHost;
 
     bool supportsHdPatch = false;     // gates HdPatchManager + HD UI
     bool supportsEnUsPack = false;    // gates the 3.3.5 enUS language-pack button

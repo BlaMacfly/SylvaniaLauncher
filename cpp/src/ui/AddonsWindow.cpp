@@ -665,10 +665,12 @@ void AddonsWindow::startInstall(const InstallTarget& target, AddonCard* card) {
         return;
     }
 
-    // Only download from the trusted Sylvania host (the manifest could be
-    // tampered with or an old embedded copy).
+    // Only download from the active edition's trusted addon host (the manifest
+    // could be tampered with or an old embedded copy). WotLK addons live on
+    // sylvania-servergame.com, Legion's on legendesylvania.com.
+    const QString trustedHost = GameEdition::byId(m_config->activeEditionId()).addonDownloadHost;
     const QUrl url(target.url);
-    if (url.scheme() != "https" || url.host() != QString::fromUtf8(SylvaniaConstants::kServerHost)) {
+    if (url.scheme() != "https" || url.host() != trustedHost) {
         QMessageBox::warning(this, tr("Erreur"), tr("URL de téléchargement de l'addon invalide."));
         return;
     }
