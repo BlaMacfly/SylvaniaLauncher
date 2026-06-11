@@ -34,6 +34,12 @@ ConfigManager::ConfigManager(QObject* parent)
             updateRealmlist(entries[activeIndex].address);
         }
     }
+
+    // Correct the early-v3.0 Legion portal placeholder, if present.
+    if (migrateLegionPortal()) {
+        dirty = true;
+    }
+
     if (dirty) {
         save();
     }
@@ -160,6 +166,37 @@ bool ConfigManager::migrateLegacyRealmlist() {
         m_config["editions"] = editions;
     }
     return migrated;
+}
+
+bool ConfigManager::migrateLegionPortal() {
+    // Scoped to the Legion edition only — WotLK's "set realmlist
+    // sylvania-servergame.com" is legitimate and must never be rewritten.
+    const QString placeholder = QString::fromUtf8(SylvaniaConstants::kLegionPlaceholderPortal);
+    const QString canonical = QString::fromUtf8(SylvaniaConstants::kLegionDefaultPortal);
+
+    QJsonObject editions = m_config.value("editions").toObject();
+    if (!editions.contains("legion")) return false;
+
+    QJsonObject legion = editions.value("legion").toObject();
+    QJsonArray entries = legion.value("realmlist_entries").toArray();
+    bool changed = false;
+
+    for (int i = 0; i < entries.size(); ++i) {
+        QJsonObject e = entries[i].toObject();
+        if (e.value("address").toString() == placeholder) {
+            e["address"] = canonical;
+            entries[i] = e;
+            changed = true;
+            qWarning() << "Portal Legion placeholder migré:" << placeholder << "->" << canonical;
+        }
+    }
+
+    if (changed) {
+        legion["realmlist_entries"] = entries;
+        editions["legion"] = legion;
+        m_config["editions"] = editions;
+    }
+    return changed;
 }
 
 ConfigManager::~ConfigManager() {

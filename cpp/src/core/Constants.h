@@ -70,13 +70,21 @@ inline constexpr const char* kWotlkClientSha256 = "";
 // --- Legion 7.3.5 client --------------------------------------------------
 inline constexpr const char* kLegionClientUrl =
     "https://legendesylvania.com/downloads/Legion7.3.5.tar.gz";
-// ⚠️ Size + SHA-256 not provided yet (§9 of the v3.0 spec). While the hash is
-// empty the Legion archive is downloaded but extraction is REFUSED — the
-// launcher never degrades to "no verification".
-inline constexpr long long kLegionClientExpectedSize = 0;
-inline constexpr const char* kLegionClientSha256 = "";
-// Placeholder until the official Legion realmlist/portal is provided (§9).
-inline constexpr const char* kLegionDefaultPortal = "sylvania-servergame.com";
+// Official integrity data (server-side sha256sum + stat, confirmed against the
+// HTTP Content-Length). The download is verified size + SHA-256 BEFORE any
+// extraction; a mismatch aborts and deletes the file.
+inline constexpr long long kLegionClientExpectedSize = 47702669464LL;
+inline constexpr const char* kLegionClientSha256 =
+    "5d384ac788f985b7d767723c9b228378ee521d8d50500a5d5ee4864deed9af24";
+// Legion auth server. On Legion 7.3.5 realmlist.wtf is ignored; the client
+// connects via the SET portal line of WTF/Config.wtf (port 3724 is appended
+// automatically by the client). Written/patched before launch.
+inline constexpr const char* kLegionDefaultPortal = "164.132.43.2";
+// The placeholder portal that shipped in the very first v3.0 build, before the
+// real auth server was known. ConfigManager rewrites Legion entries still
+// carrying it to kLegionDefaultPortal (one-time, Legion-scoped) so early
+// configs pick up the correct value.
+inline constexpr const char* kLegionPlaceholderPortal = "sylvania-servergame.com";
 // Placeholder Legion addon manifest (own list — never mixed with WotLK's).
 inline constexpr const char* kLegionAddonManifestUrl =
     "https://sylvania-servergame.com/launcher/addons_legion.json";

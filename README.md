@@ -47,8 +47,8 @@
 - 🎨 **Refonte de l'interface** : système de boutons centralisé à 3 niveaux (primaire/secondaire/tertiaire), échelle d'espacement unique, disposition stable entre les deux éditions, navigation clavier ; thème sombre et thèmes dynamiques conservés.
 - 🔐 **Téléchargement Legion sécurisé** : flux `.tar.gz` écrit directement sur disque, vérification d'espace libre, intégrité taille + SHA-256 **bloquante** (pas de hash attendu ⇒ pas d'extraction), garde anti path-traversal sur les entrées de l'archive.
 
-> [!IMPORTANT]
-> Restent à renseigner dans `Constants.h` pour finaliser Legion : taille + SHA-256 du `Legion7.3.5.tar.gz` (l'extraction est volontairement refusée tant qu'ils manquent), l'URL réelle du manifeste d'addons Legion, le realmlist/portal officiel et le nom exact de l'exécutable.
+> [!NOTE]
+> Client Legion entièrement configuré : URL, taille + SHA-256 du `Legion7.3.5.tar.gz` (intégrité vérifiée avant extraction), portal d'authentification (`164.132.43.2`, écrit dans `WTF/Config.wtf`) et exécutable (`Wow.exe`). Seul le manifeste d'addons recommandés Legion reste un placeholder (repli sur une liste embarquée vide) — à pointer vers la vraie URL côté serveur quand elle existera.
 
 ### Nouveautés v2.9
 - 🐛 **Corrections de bugs** : fuites de `QNetworkReply`/`QProcess`, course sur le suivi du processus de jeu, et écriture atomique du `Config.wtf` lors du changement de langue.

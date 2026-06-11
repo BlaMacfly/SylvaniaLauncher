@@ -107,6 +107,10 @@ private:
     // rewritten. Runs once on construction and is idempotent on subsequent
     // launches.
     bool migrateLegacyRealmlist();
+    // v3.0 shipped a placeholder Legion portal before the real auth server was
+    // known; rewrite any Legion entry still carrying it to the canonical
+    // portal. Legion-scoped and idempotent. Returns true if anything changed.
+    bool migrateLegionPortal();
     QString getConfigPath() const;
 
     // Per-edition sub-object helpers.
