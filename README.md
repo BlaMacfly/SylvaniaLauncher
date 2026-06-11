@@ -1,9 +1,9 @@
 # Sylvania Launcher — Édition Windows 🪟
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
-![Version](https://img.shields.io/badge/version-v2.9-success)
+![Version](https://img.shields.io/badge/version-v3.0-success)
 
-🎮 **Launcher officiel pour le serveur World of Warcraft 3.3.5 - Sylvania**
+🎮 **Launcher officiel du serveur Sylvania — WoW 3.3.5a (WotLK) et WoW Legion 7.3.5, deux launchers en un**
 
 > 🐧 **Vous êtes sous Linux ?** Une version native (AppImage + Wine-GE) est disponible sur la branche [`linux`](https://github.com/BlaMacfly/SylvaniaLauncher/tree/linux).
 
@@ -23,21 +23,32 @@
 
 ## Fonctionnalités
 
-- 🎮 **Lancement du jeu** avec configuration automatique du realmlist
-- 📥 **Téléchargement du client WoW** 3.3.5 avec progression en temps réel
-- 💎 **Patch HD Sylvania** : Installation automatique du patch haute définition (Data, Interface)
+- 🔁 **2 launchers en 1** : bascule WotLK 3.3.5a ⇄ Legion 7.3.5 sans redémarrage (logo, icône de barre des tâches, fond, accent, realmlist, stats et addons suivent l'édition active)
+- 🎮 **Lancement du jeu** avec configuration automatique du realmlist (3.3.5) ou du portal (Legion)
+- 📥 **Bouton unique Installer / Jouer** : détecte le client de l'édition active et enchaîne automatiquement Installer → Téléchargement → Jouer
+- 💎 **Patch HD Sylvania** (WotLK uniquement) : installation automatique du patch haute définition (Data, Interface)
 - 🧬 **ARAC** (All Races All Classes) : activable/désactivable
-- 🖼️ **Fond d'écran aléatoire** : option ON/OFF
-- ⚙️ **Auto-Configuration** : Génération automatique du fichier `Config.wtf` optimal
-- 📊 **Statistiques de jeu** : temps de jeu, nombre de lancements
-- 📝 **Notes personnelles** style post-it avec couleurs
-- 🧩 **Gestionnaire d'AddOns** : addons recommandés en un clic, catalogue, et suppression des addons installés
+- 🖼️ **Fond d'écran aléatoire** (WotLK) : option ON/OFF — Legion a son thème fel dédié
+- ⚙️ **Auto-Configuration** : génération automatique du `Config.wtf` adapté à l'édition
+- 📊 **Statistiques de jeu** par édition : temps de jeu, nombre de lancements
+- 📝 **Notes personnelles** style post-it avec couleurs, **calendrier** et **rappels** (notifications Windows natives + son)
+- 🧩 **Gestionnaire d'AddOns** par édition : addons recommandés en un clic, catalogue (3.3.5), suppression des addons installés
 - ⚙️ **Réglages** : chemin WoW (sélection libre), cache, AddOns, sons, taille de fenêtre
 - 🔄 **Gestion des serveurs** : ajouter, modifier, supprimer
 
 ## Version actuelle
 
-**v2.9** - Application native C++ / Qt6
+**v3.0** - Application native C++ / Qt6
+
+### Nouveautés v3.0
+- 🔁 **Support WoW Legion 7.3.5** : nouvelle notion d'« édition de jeu » (`GameEdition`) — chemins, realmlist/portal, téléchargement, manifeste d'addons et thème distincts par édition, bascule in-process depuis l'interface.
+- 🎯 **Bouton principal à 3 états** : « Installer » quand le client de l'édition active est absent, progression pendant le téléchargement, « Jouer » quand il est détecté. Le bouton « Télécharger » redondant a été retiré.
+- 📅 **Notes enrichies** : calendrier avec décoration des jours portant une note ou un rappel, rappels datés par note, notifications système natives (icône de zone de notification) + son, rattrapage des rappels manqués au démarrage.
+- 🎨 **Refonte de l'interface** : système de boutons centralisé à 3 niveaux (primaire/secondaire/tertiaire), échelle d'espacement unique, disposition stable entre les deux éditions, navigation clavier ; thème sombre et thèmes dynamiques conservés.
+- 🔐 **Téléchargement Legion sécurisé** : flux `.tar.gz` écrit directement sur disque, vérification d'espace libre, intégrité taille + SHA-256 **bloquante** (pas de hash attendu ⇒ pas d'extraction), garde anti path-traversal sur les entrées de l'archive.
+
+> [!IMPORTANT]
+> Restent à renseigner dans `Constants.h` pour finaliser Legion : taille + SHA-256 du `Legion7.3.5.tar.gz` (l'extraction est volontairement refusée tant qu'ils manquent), l'URL réelle du manifeste d'addons Legion, le realmlist/portal officiel et le nom exact de l'exécutable.
 
 ### Nouveautés v2.9
 - 🐛 **Corrections de bugs** : fuites de `QNetworkReply`/`QProcess`, course sur le suivi du processus de jeu, et écriture atomique du `Config.wtf` lors du changement de langue.
@@ -71,7 +82,7 @@
 ## Téléchargement
 
 - 🌐 [Télécharger depuis le site officiel](https://sylvania-servergame.com/launcher)
-- 📦 [Release GitHub v2.9 — `SylvaniaLauncher_v2.9.zip`](https://github.com/BlaMacfly/SylvaniaLauncher/releases/download/v2.9/SylvaniaLauncher_v2.9.zip)
+- 📦 [Releases GitHub](https://github.com/BlaMacfly/SylvaniaLauncher/releases) (dernière version : v3.0)
 
 ## Configuration requise
 
@@ -121,4 +132,4 @@ Les contributions sont les bienvenues !
 
 ## Auteur
 
-© 2025 Sylvania - [sylvania-servergame.com](https://sylvania-servergame.com)
+© 2026 Sylvania - [sylvania-servergame.com](https://sylvania-servergame.com)

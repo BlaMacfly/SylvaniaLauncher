@@ -1,6 +1,7 @@
 #include "AddonsWindow.h"
 #include "ConfigManager.h"
 #include "AddonManifest.h"
+#include "GameEdition.h"
 #include "Constants.h"
 
 #include <QVBoxLayout>
@@ -79,7 +80,8 @@ AddonsWindow::AddonsWindow(ConfigManager* config, QWidget* parent)
     , m_config(config)
     , m_networkManager(std::make_unique<QNetworkAccessManager>(this))
 {
-    setWindowTitle(tr("Gestionnaire d'Addons - Sylvania"));
+    const GameEdition& edition = GameEdition::byId(m_config->activeEditionId());
+    setWindowTitle(tr("Gestionnaire d'Addons - %1").arg(edition.displayName));
     setMinimumSize(600, 640);
     resize(640, 720);
     setStyleSheet("QDialog { background-color: #1a1a2e; }");
@@ -87,9 +89,11 @@ AddonsWindow::AddonsWindow(ConfigManager* config, QWidget* parent)
     populateCatalog();
     setupUi();
 
-    // Fetch the recommended manifest asynchronously; the tab shows a loading
-    // hint until it arrives (remote or embedded fallback).
-    m_manifest = new AddonManifest(this);
+    // Fetch the active edition's recommended manifest asynchronously; the tab
+    // shows a loading hint until it arrives (remote or embedded fallback).
+    // WotLK and Legion each have their own manifest — never mixed.
+    m_manifest = new AddonManifest(edition.addonManifestUrl,
+                                   edition.embeddedManifestResource, this);
     connect(m_manifest, &AddonManifest::loaded, this, &AddonsWindow::onManifestLoaded);
     m_manifest->fetch();
 }
@@ -110,6 +114,12 @@ AddonsWindow::~AddonsWindow() {
 // Catalogue data (bundled single-folder quick-install addons)
 // ---------------------------------------------------------------------------
 void AddonsWindow::populateCatalog() {
+    // The bundled quick-install catalogue is 100% WotLK 3.3.5 addons; Legion
+    // only uses its own remote manifest (recommended tab).
+    if (GameEdition::byId(m_config->activeEditionId()).id != QLatin1String("wotlk")) {
+        m_catalog.clear();
+        return;
+    }
     m_catalog = {
         {"ArkInventory", tr("Gestion d'inventaire avancée avec catégories automatiques."), "ArkInventory.zip", "ArkInventory"},
         {"AtlasLoot", tr("Base de données complète des butins de donjons et raids."), "AtlasLoot.zip", "AtlasLoot"},

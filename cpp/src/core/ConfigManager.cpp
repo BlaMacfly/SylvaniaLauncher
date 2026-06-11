@@ -1,4 +1,5 @@
 #include "ConfigManager.h"
+#include "GameEdition.h"
 #include "PathUtils.h"
 #include "Constants.h"
 
@@ -8,6 +9,7 @@
 #include <QJsonArray>
 #include <QDir>
 #include <QTextStream>
+#include <QRegularExpression>
 #include <QDebug>
 
 ConfigManager::ConfigManager(QObject* parent)
@@ -16,17 +18,24 @@ ConfigManager::ConfigManager(QObject* parent)
     m_configDir = PathUtils::getConfigDir();
     loadConfig();
 
+    // v3.0: move pre-edition keys under editions.wotlk and seed the legion
+    // config object. Must run before any per-edition accessor is used.
+    bool dirty = migrateToEditionConfig();
+
     // Migrate any stale realmlist inherited from an older launcher build
     // (e.g. logon.sylvania-wow.com). Done before wiring up the debounce
     // timer so the corrected config is written synchronously and the
     // realmlist.wtf on disk is refreshed immediately.
     if (migrateLegacyRealmlist()) {
-        save();
+        dirty = true;
         const auto entries = getRealmlistEntries();
         const int activeIndex = getActiveRealmlistIndex();
         if (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) {
             updateRealmlist(entries[activeIndex].address);
         }
+    }
+    if (dirty) {
+        save();
     }
 
     // H4: coalesce bursts of setX() calls (e.g. Settings dialog applying many
@@ -34,6 +43,72 @@ ConfigManager::ConfigManager(QObject* parent)
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(SylvaniaConstants::kConfigSaveDebounceMs);
     connect(&m_saveTimer, &QTimer::timeout, this, [this]() { save(); });
+}
+
+QJsonArray ConfigManager::defaultRealmlistArrayFor(const QString& editionId) const {
+    const GameEdition& edition = GameEdition::byId(editionId);
+    QJsonArray array;
+    array.append(QJsonObject{
+        {"name", edition.defaultRealmName},
+        {"address", edition.defaultRealmlist},
+        {"active", true}
+    });
+    return array;
+}
+
+bool ConfigManager::migrateToEditionConfig() {
+    bool migrated = false;
+
+    QJsonObject editions = m_config.value("editions").toObject();
+
+    // Move pre-3.0 top-level keys into editions.wotlk (transparent upgrade).
+    if (!m_config.contains("editions") &&
+        (m_config.contains("wow_path") || m_config.contains("realmlist_entries"))) {
+        QJsonObject wotlk;
+        wotlk["wow_path"] = m_config.value("wow_path").toString();
+        wotlk["realmlist_entries"] = m_config.value("realmlist_entries").toArray();
+        wotlk["active_realmlist_index"] = m_config.value("active_realmlist_index").toInt(0);
+        editions["wotlk"] = wotlk;
+        m_config.remove("wow_path");
+        m_config.remove("realmlist_entries");
+        m_config.remove("active_realmlist_index");
+        migrated = true;
+        qDebug() << "Config migrée vers le schéma par édition (v3.0)";
+    }
+
+    // Make sure every known edition has a usable config object.
+    for (const QString& id : GameEdition::knownIds()) {
+        QJsonObject ed = editions.value(id).toObject();
+        bool changed = false;
+        if (!ed.contains("wow_path")) {
+            ed["wow_path"] = QString();
+            changed = true;
+        }
+        if (!ed.value("realmlist_entries").isArray() ||
+            ed.value("realmlist_entries").toArray().isEmpty()) {
+            ed["realmlist_entries"] = defaultRealmlistArrayFor(id);
+            ed["active_realmlist_index"] = 0;
+            changed = true;
+        }
+        if (!ed.contains("active_realmlist_index")) {
+            ed["active_realmlist_index"] = 0;
+            changed = true;
+        }
+        if (changed) {
+            editions[id] = ed;
+            migrated = true;
+        }
+    }
+    m_config["editions"] = editions;
+
+    // Validated active edition (anything unknown collapses to wotlk).
+    const QString active = m_config.value("active_edition").toString();
+    if (!GameEdition::isKnownId(active)) {
+        m_config["active_edition"] = GameEdition::wotlk().id;
+        migrated = true;
+    }
+
+    return migrated;
 }
 
 bool ConfigManager::migrateLegacyRealmlist() {
@@ -48,29 +123,41 @@ bool ConfigManager::migrateLegacyRealmlist() {
     static const QString kCanonicalAddress =
         QStringLiteral("set realmlist sylvania-servergame.com");
 
-    QJsonArray array = m_config.value("realmlist_entries").toArray();
+    QJsonObject editions = m_config.value("editions").toObject();
     bool migrated = false;
 
-    for (int i = 0; i < array.size(); ++i) {
-        QJsonObject obj = array[i].toObject();
-        const QString address = obj.value("address").toString();
-        bool isLegacy = false;
-        for (const QString& legacy : kLegacyHosts) {
-            if (address.contains(legacy, Qt::CaseInsensitive)) {
-                isLegacy = true;
-                break;
-            }
-        }
-        if (!isLegacy) continue;
+    for (const QString& editionId : editions.keys()) {
+        QJsonObject ed = editions.value(editionId).toObject();
+        QJsonArray array = ed.value("realmlist_entries").toArray();
+        bool edChanged = false;
 
-        obj["address"] = kCanonicalAddress;
-        array[i] = obj;
-        migrated = true;
-        qWarning() << "Realmlist legacy migré: " << address << " -> " << kCanonicalAddress;
+        for (int i = 0; i < array.size(); ++i) {
+            QJsonObject obj = array[i].toObject();
+            const QString address = obj.value("address").toString();
+            bool isLegacy = false;
+            for (const QString& legacy : kLegacyHosts) {
+                if (address.contains(legacy, Qt::CaseInsensitive)) {
+                    isLegacy = true;
+                    break;
+                }
+            }
+            if (!isLegacy) continue;
+
+            obj["address"] = kCanonicalAddress;
+            array[i] = obj;
+            edChanged = true;
+            qWarning() << "Realmlist legacy migré:" << address << "->" << kCanonicalAddress;
+        }
+
+        if (edChanged) {
+            ed["realmlist_entries"] = array;
+            editions[editionId] = ed;
+            migrated = true;
+        }
     }
 
     if (migrated) {
-        m_config["realmlist_entries"] = array;
+        m_config["editions"] = editions;
     }
     return migrated;
 }
@@ -90,14 +177,14 @@ void ConfigManager::scheduleSave() {
 void ConfigManager::loadConfig() {
     QString configPath = getConfigPath();
     QFile file(configPath);
-    
+
     if (file.exists() && file.open(QIODevice::ReadOnly)) {
         QByteArray data = file.readAll();
         file.close();
-        
+
         QJsonParseError error;
         QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-        
+
         if (error.error == QJsonParseError::NoError && doc.isObject()) {
             m_config = doc.object();
             qDebug() << "Configuration chargée depuis:" << configPath;
@@ -106,14 +193,13 @@ void ConfigManager::loadConfig() {
             qWarning() << "Erreur de parsing JSON:" << error.errorString();
         }
     }
-    
+
     // Create default config if not found or invalid
     createDefaultConfig();
 }
 
 void ConfigManager::createDefaultConfig() {
     m_config = QJsonObject{
-        {"wow_path", ""},
         {"sound_enabled", true},
         {"download_method", "direct"},
         {"max_upload_rate", 100},
@@ -121,19 +207,10 @@ void ConfigManager::createDefaultConfig() {
         {"first_run", true},
         {"auto_update", true},
         {"language", "fr"},
-        {"active_realmlist_index", 0}
+        {"active_edition", "wotlk"}
     };
-    
-    // Default realmlist entries
-    QJsonArray realmlistArray;
-    QJsonObject defaultRealm{
-        {"name", "Sylvania"},
-        {"address", "set realmlist sylvania-servergame.com"},
-        {"active", true}
-    };
-    realmlistArray.append(defaultRealm);
-    m_config["realmlist_entries"] = realmlistArray;
-    
+    // Per-edition objects are seeded by migrateToEditionConfig() right after.
+
     save();
     qDebug() << "Configuration par défaut créée";
 }
@@ -177,15 +254,55 @@ void ConfigManager::set(const QString& key, const QVariant& value) {
     emit configChanged(key);
 }
 
-QString ConfigManager::getWowPath() const {
-    return m_config.value("wow_path").toString();
+// --- Editions --------------------------------------------------------------
+
+QString ConfigManager::activeEditionId() const {
+    const QString id = m_config.value("active_edition").toString();
+    return GameEdition::isKnownId(id) ? id : GameEdition::wotlk().id;
+}
+
+void ConfigManager::setActiveEditionId(const QString& id) {
+    if (!GameEdition::isKnownId(id)) {
+        qWarning() << "Édition inconnue ignorée:" << id;
+        return;
+    }
+    if (activeEditionId() == id) return;
+    m_config["active_edition"] = id;
+    scheduleSave();
+    emit editionChanged(id);
+}
+
+QJsonObject ConfigManager::editionConfig(const QString& editionId) const {
+    const QString id = editionId.isEmpty() ? activeEditionId()
+                                           : GameEdition::byId(editionId).id;
+    return m_config.value("editions").toObject().value(id).toObject();
+}
+
+void ConfigManager::setEditionConfig(const QString& editionId, const QJsonObject& obj) {
+    const QString id = editionId.isEmpty() ? activeEditionId()
+                                           : GameEdition::byId(editionId).id;
+    QJsonObject editions = m_config.value("editions").toObject();
+    editions[id] = obj;
+    m_config["editions"] = editions;
+}
+
+QString ConfigManager::getWowPath(const QString& editionId) const {
+    return editionConfig(editionId).value("wow_path").toString();
 }
 
 void ConfigManager::setWowPath(const QString& path) {
-    m_config["wow_path"] = path;
+    setWowPathFor(QString(), path);
+}
+
+void ConfigManager::setWowPathFor(const QString& editionId, const QString& path) {
+    QJsonObject ed = editionConfig(editionId);
+    ed["wow_path"] = path;
+    setEditionConfig(editionId, ed);
     scheduleSave();
     emit configChanged("wow_path");
 }
+
+// --- Global settings ---------------------------------------------------------
 
 bool ConfigManager::isFirstRun() const {
     return m_config.value("first_run").toBool(true);
@@ -238,10 +355,12 @@ void ConfigManager::setWindowGeometry(const QByteArray& geometry) {
     set("window_geometry", QString::fromLatin1(geometry.toBase64()));
 }
 
+// --- Realmlist (active edition) ----------------------------------------------
+
 std::vector<RealmlistEntry> ConfigManager::getRealmlistEntries() const {
     std::vector<RealmlistEntry> entries;
-    
-    QJsonArray array = m_config.value("realmlist_entries").toArray();
+
+    QJsonArray array = editionConfig(QString()).value("realmlist_entries").toArray();
     for (const QJsonValue& val : array) {
         QJsonObject obj = val.toObject();
         RealmlistEntry entry;
@@ -250,7 +369,7 @@ std::vector<RealmlistEntry> ConfigManager::getRealmlistEntries() const {
         entry.active = obj.value("active").toBool(false);
         entries.push_back(entry);
     }
-    
+
     return entries;
 }
 
@@ -264,51 +383,51 @@ void ConfigManager::setRealmlistEntries(const std::vector<RealmlistEntry>& entri
         };
         array.append(obj);
     }
-    m_config["realmlist_entries"] = array;
+    QJsonObject ed = editionConfig(QString());
+    ed["realmlist_entries"] = array;
+    setEditionConfig(QString(), ed);
     scheduleSave();
     emit realmlistChanged();
 }
 
 void ConfigManager::setRealmlistEntry(int index, const QString& name, const QString& address, bool active) {
-    QJsonArray array = m_config.value("realmlist_entries").toArray();
-    
+    QJsonObject ed = editionConfig(QString());
+    QJsonArray array = ed.value("realmlist_entries").toArray();
+
+    QJsonObject obj{
+        {"name", name},
+        {"address", address},
+        {"active", active}
+    };
     if (index >= 0 && index < array.size()) {
-        QJsonObject obj{
-            {"name", name},
-            {"address", address},
-            {"active", active}
-        };
         array[index] = obj;
     } else if (index == array.size()) {
-        // Add new entry
-        QJsonObject obj{
-            {"name", name},
-            {"address", address},
-            {"active", active}
-        };
         array.append(obj);
     }
-    
-    m_config["realmlist_entries"] = array;
+
+    ed["realmlist_entries"] = array;
+    setEditionConfig(QString(), ed);
     scheduleSave();
     emit realmlistChanged();
 }
 
 int ConfigManager::getActiveRealmlistIndex() const {
-    return m_config.value("active_realmlist_index").toInt(0);
+    return editionConfig(QString()).value("active_realmlist_index").toInt(0);
 }
 
 void ConfigManager::setActiveRealmlistIndex(int index) {
-    m_config["active_realmlist_index"] = index;
-    
+    QJsonObject ed = editionConfig(QString());
+    ed["active_realmlist_index"] = index;
+
     // Update active flags in entries
-    QJsonArray array = m_config.value("realmlist_entries").toArray();
+    QJsonArray array = ed.value("realmlist_entries").toArray();
     for (int i = 0; i < array.size(); ++i) {
         QJsonObject obj = array[i].toObject();
         obj["active"] = (i == index);
         array[i] = obj;
     }
-    m_config["realmlist_entries"] = array;
+    ed["realmlist_entries"] = array;
+    setEditionConfig(QString(), ed);
 
     scheduleSave();
     emit realmlistChanged();
@@ -319,9 +438,21 @@ bool ConfigManager::switchRealmlist(int index) {
     if (index < 0 || index >= static_cast<int>(entries.size())) {
         return false;
     }
-    
+
     setActiveRealmlistIndex(index);
     return updateRealmlist(entries[index].address);
+}
+
+QString ConfigManager::hostFromAddress(const QString& address) {
+    QString host = address.trimmed();
+    // Strip the classic prefixes and any quotes so both "set realmlist x" and
+    // a bare host normalise to just the host.
+    static const QRegularExpression prefix(
+        QStringLiteral("^set\\s+(realmlist|portal)\\s+"),
+        QRegularExpression::CaseInsensitiveOption);
+    host.remove(prefix);
+    host.remove(QLatin1Char('"'));
+    return host.trimmed();
 }
 
 bool ConfigManager::updateRealmlist(const QString& realmlistText) {
@@ -330,15 +461,60 @@ bool ConfigManager::updateRealmlist(const QString& realmlistText) {
         qWarning() << "Chemin WoW non défini";
         return false;
     }
-    
-    // Find and update all realmlist.wtf files
+
+    const GameEdition& edition = GameEdition::byId(activeEditionId());
+
+    if (edition.id == QLatin1String("legion")) {
+        // Legion has no realmlist.wtf: the login server is the SET portal
+        // line of WTF/Config.wtf.
+        const QString host = hostFromAddress(realmlistText);
+        if (host.isEmpty()) {
+            qWarning() << "Portal Legion vide, écriture ignorée";
+            return false;
+        }
+
+        const QString wtfDir = wowPath + "/WTF";
+        QDir().mkpath(wtfDir);
+        const QString wtfPath = wtfDir + "/Config.wtf";
+
+        QString content;
+        QFile in(wtfPath);
+        if (in.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            content = QString::fromUtf8(in.readAll());
+            in.close();
+        }
+
+        static const QRegularExpression portalLine(
+            QStringLiteral("^SET\\s+portal\\s+.*$"),
+            QRegularExpression::MultilineOption);
+        const QString newLine = QStringLiteral("SET portal \"%1\"").arg(host);
+        if (content.contains(portalLine)) {
+            content.replace(portalLine, newLine);
+        } else {
+            if (!content.isEmpty() && !content.endsWith(QLatin1Char('\n')))
+                content += QLatin1Char('\n');
+            content += newLine + QLatin1Char('\n');
+        }
+
+        QSaveFile out(wtfPath);
+        if (out.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            out.write(content.toUtf8());
+            if (out.commit()) {
+                qDebug() << "Portal Legion mis à jour:" << wtfPath;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // WotLK: find and update all realmlist.wtf files
     QStringList realmlistPaths = {
         wowPath + "/realmlist.wtf",
         wowPath + "/Data/frFR/realmlist.wtf",
         wowPath + "/Data/enUS/realmlist.wtf",
         wowPath + "/Data/enGB/realmlist.wtf"
     };
-    
+
     bool success = false;
     for (const QString& path : realmlistPaths) {
         QFileInfo fileInfo(path);

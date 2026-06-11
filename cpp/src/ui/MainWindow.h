@@ -11,26 +11,36 @@
 #include <QTranslator>
 #include <memory>
 
+#include "ButtonStyles.h"
+
+struct GameEdition;
 class ConfigManager;
 class SoundManager;
 class NotesManager;
+class ReminderService;
 class NotesWindow;
 class RealmlistWindow;
 class DownloadDialog;
 class HdPatchManager;
+class WowButton;
 class QProgressBar;
 class QProcess;
+class QSystemTrayIcon;
 class AddonsWindow;
 
 /**
- * @brief Main window for Sylvania Launcher
- * 
- * Exact replica of Python version with:
- * - Two-panel layout (Server + Stats)
- * - Logo top-left
- * - Styled buttons matching WoW aesthetic
- * - Game statistics display
- * - Play time tracking via process monitoring
+ * @brief Main window for Sylvania Launcher (v3.0)
+ *
+ * - "2 launchers en 1": a toggle switches the active GameEdition (WotLK ⇄
+ *   Legion) in-process — window logo, taskbar icon, background, accent and
+ *   all edition-bound data (path, realmlist, stats, addons) follow.
+ * - Single primary action button (WowButton): Installer / Téléchargement /
+ *   Jouer, driven by per-edition client detection.
+ * - Layout: header (logo + edition/lang switches), info panels (server +
+ *   stats), anchored primary action zone, secondary nav bar, footer. All
+ *   Qt layouts, spacing from SylvaniaConstants, button styles from
+ *   ButtonStyles (3 strict levels).
+ * - System tray icon hosting reminder notifications (ReminderService).
  */
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -45,8 +55,8 @@ protected:
     void changeEvent(QEvent* event) override;
 
 private slots:
-    void onPlayButtonClicked();
-    void onDownloadButtonClicked();
+    void onPrimaryButtonClicked();   // Play or Install depending on state
+    void onEditionToggleClicked();
     void onHdButtonClicked();
     void onSettingsButtonClicked();
     void onNotesButtonClicked();
@@ -54,7 +64,7 @@ private slots:
     void onAddonsButtonClicked();
     void onQuitButtonClicked();
     void onLangButtonClicked();
-    
+
     void onDownloadComplete(bool success, const QString& message);
     void updateServerInfo();
     void updateStats();
@@ -63,11 +73,20 @@ private slots:
 private:
     void setupUi();
     void connectSignals();
+    // Applies everything bound to the active edition: window title, logo,
+    // window/taskbar/tray icon, background, accent, HD gating, realmlist,
+    // stats and the primary button state. Called at startup and on toggle.
+    void applyEdition();
     void applyTheme(const QString& bgName);
+    ButtonStyles::ThemeTokens themeTokensFor(const QString& bgName) const;
     QString pickRandomBackground(const QString& exclude = QString()) const;
-    void checkWowInstalled();
+    const GameEdition& activeEdition() const;
+    // Full path of the active edition's client exe, empty if not found.
+    QString clientExePath() const;
+    // Refreshes the 3-state primary button from on-disk client detection.
+    void refreshPrimaryState();
+    void startClientInstall();
     void playGame();
-    void browseWowDirectory();
     void loadStats();
     void saveStats();
     void handleWowRunningState(bool running);
@@ -79,48 +98,46 @@ private:
     // to the default centered size on request.
     void restoreWindowGeometry();
     void clampToAvailableScreen();
-    
+
+    QWidget* createHeader();
     QWidget* createServerPanel();
     QWidget* createStatsPanel();
-    QPushButton* createStyledButton(const QString& text, const QString& style);
-
-    // H7: applies a gradient/border style sheet to a button. Used 8+ times by
-    // applyTheme(); extracted from a duplicated lambda for clarity & reuse.
-    static void styleButton(QPushButton* btn,
-                            const QString& c1, const QString& c2, const QString& c3,
-                            const QString& border,
-                            const QString& textColor = QStringLiteral("#ffffff"),
-                            int fontSize = 14);
+    QWidget* createActionZone();
+    QWidget* createNavBar();
 
     // Managers
     std::unique_ptr<ConfigManager> m_config;
     std::unique_ptr<SoundManager> m_soundManager;
     std::unique_ptr<NotesManager> m_notesManager;
+    std::unique_ptr<ReminderService> m_reminderService;
+
+    // UI Elements - Header
+    QLabel* m_logoLabel = nullptr;
 
     // UI Elements - Server Panel
     QLabel* m_serverNameLabel = nullptr;
     QLabel* m_realmlistLabel = nullptr;
     QLabel* m_statusLabel = nullptr;
-    
+
     // UI Elements - Stats Panel
     QLabel* m_playTimeLabel = nullptr;
     QLabel* m_launchCountLabel = nullptr;
     QLabel* m_lastSessionLabel = nullptr;
-    
-    // HD Patch UI
-    QLabel* m_hdStatusLabel = nullptr;
-    QProgressBar* m_hdProgressBar = nullptr;
-    
-    // Buttons
-    QPushButton* m_playButton = nullptr;
-    QPushButton* m_downloadButton = nullptr;
-    QPushButton* m_hdButton = nullptr;
-    QPushButton* m_settingsButton = nullptr;
-    QPushButton* m_notesButton = nullptr;
-    QPushButton* m_addonsButton = nullptr;
-    QPushButton* m_quitButton = nullptr;
-    QPushButton* m_changeServerButton = nullptr;
-    QPushButton* m_langButton = nullptr;
+
+    // Shared progress row (client download + HD patch)
+    QLabel* m_progressLabel = nullptr;
+    QProgressBar* m_progressBar = nullptr;
+
+    // Buttons — exactly one primary, a consistent secondary row, tertiary lang.
+    WowButton* m_playButton = nullptr;        // primary (Install/Download/Play)
+    QPushButton* m_editionButton = nullptr;   // secondary (header, fixed spot)
+    QPushButton* m_hdButton = nullptr;        // secondary (WotLK only)
+    QPushButton* m_settingsButton = nullptr;  // secondary
+    QPushButton* m_notesButton = nullptr;     // secondary
+    QPushButton* m_addonsButton = nullptr;    // secondary
+    QPushButton* m_serversButton = nullptr;   // secondary
+    QPushButton* m_quitButton = nullptr;      // secondary
+    QPushButton* m_langButton = nullptr;      // tertiary (header)
 
     // Panels
     QFrame* m_serverPanel = nullptr;
@@ -136,21 +153,24 @@ private:
     AddonsWindow* m_addonsWindow = nullptr;
     std::unique_ptr<HdPatchManager> m_hdPatchManager;
 
+    // Tray (reminder notifications + restore-on-click)
+    QSystemTrayIcon* m_trayIcon = nullptr;
+
     // Background
     QPixmap m_backgroundImage;
     QPixmap m_logoImage;
-    
-    // Stats
+
+    // Stats (per active edition)
     int m_launchCount = 0;
     qint64 m_totalPlayTime = 0; // seconds
     QDateTime m_lastSession;
-    
+
     // Play time tracking
     QTimer* m_playTimeTimer = nullptr;
     QDateTime m_sessionStartTime;
     bool m_wowRunning = false;
     QProcess* m_wowCheckProcess = nullptr; // async Wow.exe presence check
-    
+    bool m_downloadInProgress = false;
+
     QTranslator m_translator;
 };
-

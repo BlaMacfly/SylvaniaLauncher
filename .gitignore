@@ -34,3 +34,10 @@ Thumbs.db
 # Dependencies (large folders)
 cpp/build2/_deps/
 build/
+
+# Claude Code session data
+.claude/
+
+# Scratch / packaging workspace
+cpp/scratch/
+release_build/

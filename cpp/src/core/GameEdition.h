@@ -1,0 +1,61 @@
+#pragma once
+
+#include <QString>
+#include <QStringList>
+
+/**
+ * @brief Describes one supported game edition ("2 launchers en 1").
+ *
+ * Everything that differs between the WotLK 3.3.5a client and the Legion 7.3.5
+ * client lives here: client detection, download source + integrity data,
+ * realmlist handling, addon manifest source and theme tokens. The launcher
+ * never special-cases "legion" outside of this descriptor — code asks the
+ * active GameEdition instead.
+ *
+ * Note: the *client install path* is per-user data and therefore lives in
+ * ConfigManager (one config object per edition), not in this static
+ * descriptor.
+ */
+struct GameEdition {
+    QString id;                    // "wotlk" | "legion" (stable, persisted)
+    QString displayName;           // "WoW 3.3.5a" | "WoW Legion 7.3.5"
+    QString windowTitle;           // full main-window title
+    QStringList clientExeCandidates; // names checked under the client path; first = canonical
+
+    // Realmlist / login redirection.
+    // wotlk: a full "set realmlist <host>" line written to realmlist.wtf.
+    // legion: the portal host written as SET portal "<host>" in WTF/Config.wtf.
+    QString defaultRealmName;
+    QString defaultRealmlist;
+
+    // Client download + integrity (verified BEFORE extraction).
+    QString clientDownloadUrl;
+    qint64  clientExpectedSize = 0;   // bytes; 0 = unknown
+    QString clientExpectedSha256;     // lowercase hex; empty = unknown
+    bool    requireHashBeforeExtract = false; // true -> extraction refused while hash unknown/mismatching
+    QString archiveFormat;            // "zip" | "tar.gz"
+
+    // Addons (the two manifests are never mixed).
+    QString addonManifestUrl;
+    QString embeddedManifestResource; // offline fallback, e.g. ":/addons/manifest"
+
+    bool supportsHdPatch = false;     // gates HdPatchManager + HD UI
+    bool supportsEnUsPack = false;    // gates the 3.3.5 enUS language-pack button
+
+    // Theme tokens (assets are relative to the Asset directory).
+    QString logoAsset;
+    QString taskbarIconAsset;         // .ico — window + taskbar icon
+    QString backgroundAsset;          // fixed background; empty = dynamic backgrounds (wotlk)
+    QString accentColor;
+    QString accentDark;
+
+    static const GameEdition& wotlk();
+    static const GameEdition& legion();
+
+    // Strictly validated lookup: any unknown/garbage id falls back to wotlk,
+    // so an id read from config or the command line can never be injected
+    // into a path or break the UI.
+    static const GameEdition& byId(const QString& id);
+    static bool isKnownId(const QString& id);
+    static QStringList knownIds();
+};

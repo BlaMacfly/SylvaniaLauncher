@@ -17,14 +17,32 @@ constexpr int kMainWindowMinWidth = 820;
 constexpr int kMainWindowMinHeight = 540;
 constexpr int kLogoSizePx = 140;
 
+// --- Spacing scale (px) ---------------------------------------------------
+// Single source of truth for layout margins/gutters: every layout margin or
+// spacing in the UI uses one of these steps (base 8), never a magic number.
+constexpr int kSpaceXs = 4;
+constexpr int kSpaceSm = 8;
+constexpr int kSpaceMd = 16;
+constexpr int kSpaceLg = 24;
+
+// --- Button system (shared gabarits, see ui/ButtonStyles) -----------------
+constexpr int kButtonHeightPrimary = 48;    // one per screen (Jouer/Installer)
+constexpr int kButtonHeightSecondary = 36;  // nav + common actions
+constexpr int kButtonHeightTertiary = 28;   // small toggles / icon buttons
+constexpr int kButtonRadiusPx = 8;
+
 // --- Timers (milliseconds) ---------------------------------------------
 constexpr int kPlayTimeCheckMs = 5000;        // MainWindow: poll Wow.exe status
 constexpr int kExtractProgressMs = 5000;      // HdPatchManager: extraction progress
 constexpr int kConfigSaveDebounceMs = 200;    // ConfigManager: coalesce setter writes
 constexpr int kHashVerifyDelayMs = 500;       // HdPatchManager: handle release delay
+constexpr int kReminderCheckMs = 30000;       // ReminderService: due-reminder poll
 
 // --- Limits -------------------------------------------------------------
 constexpr long long kMaxImportBytes = 10LL * 1024 * 1024;  // notes import cap (10 MB)
+// Free disk space required before downloading a client, as a multiple of the
+// archive size (archive + extracted tree coexist during installation).
+constexpr double kClientDiskSpaceFactor = 2.5;
 
 // --- Network ------------------------------------------------------------
 inline constexpr const char* kServerHost = "sylvania-servergame.com";
@@ -38,6 +56,30 @@ inline constexpr const char* kAddonDownloadEndpoint =
 // in resources (:/addons/manifest).
 inline constexpr const char* kAddonManifestUrl =
     "https://sylvania-servergame.com/launcher/addons.json";
+
+// --- WotLK 3.3.5a client -------------------------------------------------
+inline constexpr const char* kWotlkClientUrl =
+    "https://sylvania-servergame.com/launcher-download.php";
+inline constexpr const char* kEnUsPackUrl =
+    "https://sylvania-servergame.com/enus-download.php";
+// Integrity data not published by the endpoint yet: 0/empty = "unknown".
+// Filling these in makes the download size+hash enforced automatically.
+inline constexpr long long kWotlkClientExpectedSize = 0;
+inline constexpr const char* kWotlkClientSha256 = "";
+
+// --- Legion 7.3.5 client --------------------------------------------------
+inline constexpr const char* kLegionClientUrl =
+    "https://legendesylvania.com/downloads/Legion7.3.5.tar.gz";
+// ⚠️ Size + SHA-256 not provided yet (§9 of the v3.0 spec). While the hash is
+// empty the Legion archive is downloaded but extraction is REFUSED — the
+// launcher never degrades to "no verification".
+inline constexpr long long kLegionClientExpectedSize = 0;
+inline constexpr const char* kLegionClientSha256 = "";
+// Placeholder until the official Legion realmlist/portal is provided (§9).
+inline constexpr const char* kLegionDefaultPortal = "sylvania-servergame.com";
+// Placeholder Legion addon manifest (own list — never mixed with WotLK's).
+inline constexpr const char* kLegionAddonManifestUrl =
+    "https://sylvania-servergame.com/launcher/addons_legion.json";
 
 // --- Archive extraction -------------------------------------------------
 // Arguments passed to "powershell" to extract a ZIP.
@@ -72,6 +114,36 @@ inline QStringList extractArchiveArgs() {
            " & tar.exe -xf $src -C $dst 2>$null;"
            " if ($LASTEXITCODE -eq 0) { $ok=$true } };"
            "if ($ok) { exit 0 } else { exit 1 }";
+}
+
+// --- tar.gz extraction (Legion client) -----------------------------------
+// Expand-Archive cannot read .tar.gz, so the Legion client uses tar.exe
+// (bsdtar, shipped with Windows 10 >= 1803 / 11). Same security principle as
+// the ZIP path: SYL_SRC / SYL_DST flow through QProcess environment variables
+// and are never interpolated into the command string.
+
+// Lists the archive entries (one path per line on stdout). Used for the
+// anti path-traversal pre-check before any extraction.
+inline QStringList listTarGzArgs() {
+    return QStringList()
+        << "-NoProfile"
+        << "-ExecutionPolicy" << "Bypass"
+        << "-Command"
+        << "& tar.exe -tzf $env:SYL_SRC;"
+           "exit $LASTEXITCODE";
+}
+
+// Extracts gzip+tar into the destination directory.
+inline QStringList extractTarGzArgs() {
+    return QStringList()
+        << "-NoProfile"
+        << "-ExecutionPolicy" << "Bypass"
+        << "-Command"
+        << "$src=$env:SYL_SRC; $dst=$env:SYL_DST;"
+           "if (-not (Test-Path -LiteralPath $dst)) {"
+           " New-Item -ItemType Directory -Force -Path $dst | Out-Null };"
+           "& tar.exe -xzf $src -C $dst 2>$null;"
+           "exit $LASTEXITCODE";
 }
 
 }  // namespace SylvaniaConstants

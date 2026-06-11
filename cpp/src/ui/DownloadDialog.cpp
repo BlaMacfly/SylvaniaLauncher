@@ -1,5 +1,7 @@
 #include "DownloadDialog.h"
 #include "Constants.h"
+#include "GameEdition.h"
+#include "ConfigManager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -11,28 +13,27 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QCoreApplication>
-#include <QDir>
 #include <QSaveFile>
+#include <QStorageInfo>
 #include <QTextStream>
 #include <QtConcurrent>
 #include <QCryptographicHash>
 #include <QFutureWatcher>
-
-// Default WoW client download URL
-static const QString DEFAULT_DOWNLOAD_URL = "https://sylvania-servergame.com/launcher-download.php";
+#include <QRegularExpression>
+#include <QDebug>
 
 DownloadDialog::DownloadDialog(QWidget* parent, const QString& destination)
     : QDialog(parent)
     , m_networkManager(std::make_unique<QNetworkAccessManager>(this))
     , m_destination(destination)
-    , m_downloadUrl(DEFAULT_DOWNLOAD_URL)
+    , m_downloadUrl(QString::fromUtf8(SylvaniaConstants::kWotlkClientUrl))
 {
     setWindowTitle(tr("Téléchargement du Client WoW"));
     setFixedSize(500, 250);
     setModal(true);
-    
+
     setupUi();
-    
+
     // Start download after dialog is shown
     if (!destination.isEmpty()) {
         QTimer::singleShot(100, this, [this]() { startDownload(); });
@@ -46,17 +47,39 @@ DownloadDialog::~DownloadDialog() {
     }
 }
 
+void DownloadDialog::configureForEdition(const GameEdition& edition) {
+    m_editionId = edition.id;
+    m_downloadUrl = edition.clientDownloadUrl;
+    m_archiveFormat = edition.archiveFormat;
+    m_expectedSize = edition.clientExpectedSize;
+    m_expectedSha256 = edition.clientExpectedSha256.toLower();
+    m_requireHash = edition.requireHashBeforeExtract;
+    m_exeCandidates = edition.clientExeCandidates;
+    if (m_realmlistAddress.isEmpty()) {
+        m_realmlistAddress = edition.defaultRealmlist;
+    }
+    setWindowTitle(tr("Téléchargement du Client — %1").arg(edition.displayName));
+}
+
+QString DownloadDialog::archivePath() const {
+    const QString suffix = (m_archiveFormat == QLatin1String("tar.gz"))
+                               ? QStringLiteral(".tar.gz")
+                               : QStringLiteral(".zip");
+    return m_destination + "/SylvaniaClient_" + m_editionId + "_temp" + suffix;
+}
+
 void DownloadDialog::setupUi() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(15);
-    mainLayout->setContentsMargins(20, 20, 20, 20);
-    
+    mainLayout->setSpacing(SylvaniaConstants::kSpaceMd);
+    mainLayout->setContentsMargins(SylvaniaConstants::kSpaceLg, SylvaniaConstants::kSpaceLg,
+                                   SylvaniaConstants::kSpaceLg, SylvaniaConstants::kSpaceLg);
+
     // Status
     m_statusLabel = new QLabel(tr("Préparation du téléchargement..."), this);
     m_statusLabel->setAlignment(Qt::AlignCenter);
     m_statusLabel->setStyleSheet("color: #d4af37; font-size: 14px; font-weight: bold;");
     mainLayout->addWidget(m_statusLabel);
-    
+
     // Progress bar
     m_progressBar = new QProgressBar(this);
     m_progressBar->setMinimum(0);
@@ -79,28 +102,28 @@ void DownloadDialog::setupUi() {
         }
     )");
     mainLayout->addWidget(m_progressBar);
-    
+
     // Info layout
     QHBoxLayout* infoLayout = new QHBoxLayout();
-    
+
     m_speedLabel = new QLabel(tr("Vitesse: --"), this);
     m_sizeLabel = new QLabel(tr("Taille: --"), this);
     m_etaLabel = new QLabel(tr("Temps restant: --"), this);
-    
+
     QString labelStyle = "color: #888888; font-size: 12px;";
     m_speedLabel->setStyleSheet(labelStyle);
     m_sizeLabel->setStyleSheet(labelStyle);
     m_etaLabel->setStyleSheet(labelStyle);
-    
+
     infoLayout->addWidget(m_speedLabel);
     infoLayout->addStretch();
     infoLayout->addWidget(m_sizeLabel);
     infoLayout->addStretch();
     infoLayout->addWidget(m_etaLabel);
-    
+
     mainLayout->addLayout(infoLayout);
     mainLayout->addStretch();
-    
+
     // Cancel button
     m_cancelButton = new QPushButton(tr("Annuler"), this);
     m_cancelButton->setStyleSheet(R"(
@@ -118,112 +141,160 @@ void DownloadDialog::setupUi() {
                 stop:0 #6a5a3d, stop:0.5 #4a3a2d, stop:1 #3a2a1d);
         }
     )");
-    
+
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     buttonLayout->addWidget(m_cancelButton);
     buttonLayout->addStretch();
     mainLayout->addLayout(buttonLayout);
-    
+
     connect(m_cancelButton, &QPushButton::clicked, this, &DownloadDialog::onCancelClicked);
-    
+
     // Dialog style
     setStyleSheet("QDialog { background-color: #1a1a2e; }");
+}
+
+bool DownloadDialog::checkDiskSpace(qint64 requiredBytes) {
+    if (requiredBytes <= 0) return true;
+    const QStorageInfo storage(m_destination);
+    const qint64 available = storage.bytesAvailable();
+    if (available >= 0 && available < requiredBytes) {
+        failDownload(tr("Espace disque insuffisant: %1 libres, %2 requis (archive + extraction).")
+                         .arg(formatBytes(available), formatBytes(requiredBytes)));
+        return false;
+    }
+    return true;
+}
+
+void DownloadDialog::failDownload(const QString& message, const QString& fileToRemove) {
+    // Stop a still-running transfer first; m_cancelled suppresses the error
+    // handler so the user sees exactly one failure message and one
+    // downloadFinished(false) signal.
+    if (m_reply && m_reply->isRunning()) {
+        m_cancelled = true;
+        m_reply->abort();
+    }
+    if (m_file) {
+        m_file->close();
+        m_file.reset();
+    }
+    if (!fileToRemove.isEmpty()) {
+        QFile::remove(fileToRemove);
+    }
+    QMessageBox::critical(this, tr("Erreur de téléchargement"), message);
+    emit downloadFinished(false, message);
+    reject();
 }
 
 void DownloadDialog::startDownload(const QString& directory) {
     if (!directory.isEmpty()) {
         m_destination = directory;
     }
-    
+
     if (m_destination.isEmpty()) {
         emit downloadFinished(false, tr("Destination non spécifiée"));
         reject();
         return;
     }
-    
+
     // Ensure destination directory exists and is writable
     QDir dir(m_destination);
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
-            QMessageBox::critical(this, tr("Erreur de permission"), tr("Impossible de créer le dossier de destination.\nVérifiez vos droits d'administrateur."));
-            emit downloadFinished(false, tr("Erreur de permission lors de la création du dossier"));
-            reject();
+            failDownload(tr("Impossible de créer le dossier de destination.\nVérifiez vos droits d'administrateur."));
             return;
         }
     }
-    
+
     QFileInfo dirInfo(m_destination);
     if (!dirInfo.isWritable()) {
-        QMessageBox::critical(this, tr("Erreur de permission"), tr("Impossible d'écrire dans le dossier de destination.\nVérifiez vos droits d'administrateur."));
-        emit downloadFinished(false, tr("Erreur de permission d'écriture"));
-        reject();
+        failDownload(tr("Impossible d'écrire dans le dossier de destination.\nVérifiez vos droits d'administrateur."));
         return;
     }
-    
-    // Create temp file for download
-    QString zipPath = m_destination + "/WoWClient_temp.zip";
-    m_file = std::make_unique<QFile>(zipPath);
-    
+
+    // Free-space gate before anything is transferred: archive + extracted
+    // tree coexist during installation, hence the multiplier.
+    if (m_expectedSize > 0) {
+        m_diskSpaceChecked = true;
+        if (!checkDiskSpace(static_cast<qint64>(
+                m_expectedSize * SylvaniaConstants::kClientDiskSpaceFactor))) {
+            return;
+        }
+    }
+
+    // Create temp file: the stream is written straight to disk as it arrives,
+    // never buffered in memory (Legion clients weigh several GB).
+    m_file = std::make_unique<QFile>(archivePath());
+
     if (!m_file->open(QIODevice::WriteOnly)) {
-        QMessageBox::critical(this, tr("Erreur"), tr("Impossible de créer le fichier de téléchargement."));
-        emit downloadFinished(false, tr("Impossible de créer le fichier de téléchargement"));
-        reject();
+        failDownload(tr("Impossible de créer le fichier de téléchargement"));
         return;
     }
-    
+
     m_statusLabel->setText(tr("Connexion au serveur..."));
-    
+
     QNetworkRequest request{QUrl(m_downloadUrl)};
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::SameOriginRedirectPolicy);
-    
+
     m_reply = m_networkManager->get(request);
-    
+
     connect(m_reply, &QNetworkReply::downloadProgress,
             this, &DownloadDialog::onDownloadProgress);
     connect(m_reply, &QNetworkReply::finished,
             this, &DownloadDialog::onDownloadFinished);
     connect(m_reply, &QNetworkReply::errorOccurred,
             this, &DownloadDialog::onDownloadError);
-    
+
     // Also connect readyRead to write data as it arrives
     connect(m_reply, &QNetworkReply::readyRead, this, [this]() {
         if (m_file && m_file->isOpen()) {
             m_file->write(m_reply->readAll());
         }
     });
-    
+
     m_speedTimer.start();
 }
 
 void DownloadDialog::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal) {
     m_receivedBytes = bytesReceived;
     m_totalBytes = bytesTotal;
-    
+
+    // If the expected size was unknown, gate on the server-announced size as
+    // soon as it is known (done once).
+    if (!m_diskSpaceChecked && bytesTotal > 0) {
+        m_diskSpaceChecked = true;
+        if (!checkDiskSpace(static_cast<qint64>(
+                bytesTotal * SylvaniaConstants::kClientDiskSpaceFactor))) {
+            if (m_reply) m_reply->abort();
+            return;
+        }
+    }
+
     if (bytesTotal > 0) {
         int progress = static_cast<int>((bytesReceived * 100) / bytesTotal);
         m_progressBar->setValue(progress);
-        
+        emit progressChanged(progress);
+
         m_statusLabel->setText(tr("Téléchargement en cours... %1%").arg(progress));
         m_sizeLabel->setText(tr("Taille: %1 / %2")
             .arg(formatBytes(bytesReceived))
             .arg(formatBytes(bytesTotal)));
     }
-    
+
     updateSpeed(bytesReceived);
 }
 
 void DownloadDialog::updateSpeed(qint64 bytesReceived) {
     qint64 elapsed = m_speedTimer.elapsed();
-    
+
     if (elapsed > 1000) { // Update every second
         qint64 bytesPerSecond = ((bytesReceived - m_lastReceivedBytes) * 1000) / elapsed;
         m_lastReceivedBytes = bytesReceived;
         m_speedTimer.restart();
-        
+
         m_speedLabel->setText(tr("Vitesse: %1/s").arg(formatBytes(bytesPerSecond)));
-        
+
         // Calculate ETA
         if (bytesPerSecond > 0 && m_totalBytes > 0) {
             qint64 remaining = m_totalBytes - bytesReceived;
@@ -235,53 +306,89 @@ void DownloadDialog::updateSpeed(qint64 bytesReceived) {
 
 void DownloadDialog::onDownloadFinished() {
     if (m_cancelled) return;
-    
+
     if (m_reply->error() != QNetworkReply::NoError) {
         return; // Error handler will take care of it
     }
-    
+
     // Close the file
     if (m_file) {
         m_file->close();
     }
-    
-    QString zipPath = m_destination + "/WoWClient_temp.zip";
-    
+
     m_statusLabel->setText(tr("Vérification de l'intégrité du fichier..."));
     m_progressBar->setMaximum(0); // Indeterminate mode
     m_progressBar->setMinimum(0);
-    
+    emit progressChanged(-1);
+
     // Force UI update
     QCoreApplication::processEvents();
-    
-    // Verify Hash asynchronously
-    verifyHash(zipPath);
+
+    verifyIntegrity(archivePath());
 }
 
-void DownloadDialog::verifyHash(const QString& filePath) {
+void DownloadDialog::verifyIntegrity(const QString& filePath) {
+    // 1) Expected size, when known. Checked before hashing — cheap and final.
+    if (m_expectedSize > 0) {
+        const qint64 actualSize = QFileInfo(filePath).size();
+        if (actualSize != m_expectedSize) {
+            failDownload(tr("Fichier corrompu: taille inattendue (%1 au lieu de %2). "
+                            "Le fichier a été supprimé.")
+                             .arg(formatBytes(actualSize), formatBytes(m_expectedSize)),
+                         filePath);
+            return;
+        }
+    }
+
+    // 2) SHA-256 — REQUIRED for editions flagged requireHashBeforeExtract:
+    // if the expected hash is not configured, the archive is never extracted
+    // (no silent degradation to "pas de vérif").
+    if (m_expectedSha256.isEmpty()) {
+        if (m_requireHash) {
+            failDownload(tr("Le hash SHA-256 attendu du client n'est pas encore configuré: "
+                            "extraction refusée par sécurité. Le fichier téléchargé a été "
+                            "supprimé. Mettez le launcher à jour."),
+                         filePath);
+            return;
+        }
+        // Legacy WotLK endpoint publishes no hash; log and continue.
+        qWarning() << "Aucun hash attendu configuré pour" << m_editionId
+                   << "- extraction sans comparaison.";
+    }
+
     QFutureWatcher<QByteArray>* watcher = new QFutureWatcher<QByteArray>(this);
     connect(watcher, &QFutureWatcher<QByteArray>::finished, this, [this, watcher, filePath]() {
-        QByteArray hash = watcher->result();
+        const QByteArray hash = watcher->result();
         watcher->deleteLater();
-        
-        qDebug() << "Downloaded file SHA-256:" << hash.toHex();
-        // Here we could compare with an expected hash from headers if provided
-        
+        if (m_cancelled) return;
+
+        const QString actualHex = QString::fromLatin1(hash.toHex()).toLower();
+        qDebug() << "Downloaded file SHA-256:" << actualHex;
+
+        if (!m_expectedSha256.isEmpty()) {
+            if (hash.isEmpty() || actualHex != m_expectedSha256) {
+                failDownload(tr("Fichier corrompu: le hash SHA-256 ne correspond pas. "
+                                "Le fichier a été supprimé."),
+                             filePath);
+                return;
+            }
+        }
+
         // Setup extraction progress indication
         m_statusLabel->setText(tr("Extraction des fichiers en cours..."));
         m_speedLabel->setText(tr("Veuillez patienter..."));
         m_sizeLabel->setText("");
         m_etaLabel->setText("");
-        
+
         QCoreApplication::processEvents();
-        
+
         // Extract in a timer to allow UI update
         QTimer::singleShot(200, this, [this, filePath]() {
-            extractZip(filePath);
+            extractArchive(filePath);
         });
     });
-    
-    // Compute SHA-256 hash
+
+    // Compute SHA-256 hash off the UI thread.
     QFuture<QByteArray> future = QtConcurrent::run([filePath]() {
         QFile f(filePath);
         if (f.open(QFile::ReadOnly)) {
@@ -292,18 +399,87 @@ void DownloadDialog::verifyHash(const QString& filePath) {
         }
         return QByteArray();
     });
-    
+
     watcher->setFuture(future);
 }
 
-void DownloadDialog::extractZip(const QString& zipPath) {
+void DownloadDialog::extractArchive(const QString& archivePath) {
+    if (m_archiveFormat == QLatin1String("tar.gz")) {
+        preflightTarGz(archivePath);
+    } else {
+        extractZip(archivePath);
+    }
+}
+
+void DownloadDialog::preflightTarGz(const QString& archivePath) {
+    // Anti path-traversal: list the archive entries and reject anything that
+    // would land outside the destination once extracted.
+    QProcess* process = new QProcess(this);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SYL_SRC", QDir::toNativeSeparators(archivePath));
+    process->setProcessEnvironment(env);
+
+    m_statusLabel->setText(tr("Analyse de l'archive..."));
+
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, process, archivePath](int exitCode, QProcess::ExitStatus exitStatus) {
+        const QString listing = QString::fromLocal8Bit(process->readAllStandardOutput());
+        process->deleteLater();
+
+        if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+            failDownload(tr("Archive illisible: impossible de lister son contenu."), archivePath);
+            return;
+        }
+
+        const QStringList entries = listing.split('\n', Qt::SkipEmptyParts);
+        if (entries.isEmpty()) {
+            failDownload(tr("Archive vide ou illisible."), archivePath);
+            return;
+        }
+        for (QString entry : entries) {
+            entry = entry.trimmed();
+            const QString normalized = QDir::fromNativeSeparators(entry);
+            const bool absolute = normalized.startsWith(QLatin1Char('/')) ||
+                                  QRegularExpression(QStringLiteral("^[A-Za-z]:")).match(normalized).hasMatch();
+            const bool traversal = normalized == QLatin1String("..") ||
+                                   normalized.startsWith(QLatin1String("../")) ||
+                                   normalized.contains(QLatin1String("/../")) ||
+                                   normalized.endsWith(QLatin1String("/.."));
+            if (absolute || traversal) {
+                failDownload(tr("Archive rejetée: entrée dangereuse détectée (%1). "
+                                "Le fichier a été supprimé.").arg(entry),
+                             archivePath);
+                return;
+            }
+        }
+
+        extractTarGz(archivePath);
+    });
+
+    connect(process, &QProcess::errorOccurred, this, [this, process, archivePath](QProcess::ProcessError) {
+        process->deleteLater();
+        failDownload(tr("Erreur lors de l'extraction: impossible de lancer PowerShell"), archivePath);
+    });
+
+    process->start("powershell", SylvaniaConstants::listTarGzArgs());
+}
+
+void DownloadDialog::extractZip(const QString& archivePath) {
+    runExtractionProcess(archivePath, SylvaniaConstants::extractArchiveArgs());
+}
+
+void DownloadDialog::extractTarGz(const QString& archivePath) {
+    runExtractionProcess(archivePath, SylvaniaConstants::extractTarGzArgs());
+}
+
+void DownloadDialog::runExtractionProcess(const QString& archivePath, const QStringList& args) {
     QProcess* process = new QProcess(this);
 
     // C1: paths flow via environment variables instead of being interpolated
     // into the PowerShell command string -> no shell-injection surface even
     // when the destination path contains quotes, $() or backticks.
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("SYL_SRC", QDir::toNativeSeparators(zipPath));
+    env.insert("SYL_SRC", QDir::toNativeSeparators(archivePath));
     env.insert("SYL_DST", QDir::toNativeSeparators(m_destination));
     process->setProcessEnvironment(env);
 
@@ -316,26 +492,14 @@ void DownloadDialog::extractZip(const QString& zipPath) {
     m_speedLabel->setText(tr("Veuillez patienter..."));
     m_sizeLabel->setText("");
     m_etaLabel->setText("");
+    emit progressChanged(-1);
 
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, process, zipPath](int exitCode, QProcess::ExitStatus exitStatus) {
+            this, [this, process, archivePath](int exitCode, QProcess::ExitStatus exitStatus) {
         process->deleteLater();
 
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-            m_progressBar->setRange(0, 100);
-            m_progressBar->setValue(100);
-            m_statusLabel->setText(tr("Extraction terminée!"));
-
-            // Remove temp zip file
-            QFile::remove(zipPath);
-
-            // Generate Config.wtf if not skipped
-            if (!m_skipConfigWtf) {
-                generateConfigWtf();
-            }
-
-            emit downloadFinished(true, tr("Téléchargement et extraction terminés!"));
-            accept();
+            onExtractionSucceeded(archivePath);
         } else {
             emit downloadFinished(false, tr("Erreur lors de l'extraction: %1")
                 .arg(QString::fromLocal8Bit(process->readAllStandardError())));
@@ -349,12 +513,30 @@ void DownloadDialog::extractZip(const QString& zipPath) {
         reject();
     });
 
-    process->start("powershell", SylvaniaConstants::extractArchiveArgs());
+    process->start("powershell", args);
+}
+
+void DownloadDialog::onExtractionSucceeded(const QString& archivePath) {
+    m_progressBar->setRange(0, 100);
+    m_progressBar->setValue(100);
+    m_statusLabel->setText(tr("Extraction terminée!"));
+    emit progressChanged(100);
+
+    // Remove temp archive
+    QFile::remove(archivePath);
+
+    // Generate the launch config if not skipped
+    if (!m_skipConfigWtf) {
+        generateConfigWtf();
+    }
+
+    emit downloadFinished(true, tr("Téléchargement et extraction terminés!"));
+    accept();
 }
 
 void DownloadDialog::onDownloadError(QNetworkReply::NetworkError error) {
     if (m_cancelled) return;
-    
+
     QString errorMsg;
     switch (error) {
         case QNetworkReply::ConnectionRefusedError:
@@ -369,30 +551,31 @@ void DownloadDialog::onDownloadError(QNetworkReply::NetworkError error) {
         default:
             errorMsg = tr("Erreur réseau: ") + m_reply->errorString();
     }
-    
-    QMessageBox::critical(this, tr("Erreur de téléchargement"), errorMsg);
-    
+
     if (m_file) {
         m_file->close();
         m_file->remove();
+        m_file.reset();
     }
-    
+
+    QMessageBox::critical(this, tr("Erreur de téléchargement"), errorMsg);
     emit downloadFinished(false, errorMsg);
     reject();
 }
 
 void DownloadDialog::onCancelClicked() {
     m_cancelled = true;
-    
+
     if (m_reply) {
         m_reply->abort();
     }
-    
+
     if (m_file) {
         m_file->close();
         m_file->remove();
+        m_file.reset();
     }
-    
+
     emit downloadFinished(false, tr("Téléchargement annulé"));
     reject();
 }
@@ -400,7 +583,7 @@ void DownloadDialog::onCancelClicked() {
 QString DownloadDialog::formatBytes(qint64 bytes) const {
     int unitIndex = 0;
     double size = static_cast<double>(bytes);
-    
+
     while (size >= 1024 && unitIndex < 3) {
         size /= 1024;
         unitIndex++;
@@ -413,7 +596,7 @@ QString DownloadDialog::formatBytes(qint64 bytes) const {
         case 2: unit = tr("Mo"); break;
         case 3: unit = tr("Go"); break;
     }
-    
+
     return QString::number(size, 'f', 2) + " " + unit;
 }
 
@@ -429,9 +612,9 @@ QString DownloadDialog::formatDuration(qint64 seconds) const {
 
 void DownloadDialog::generateConfigWtf() {
     QString targetPath = m_destination;
-    
-    // Search for the actual WoW directory (containing Wow.exe)
-    QDirIterator it(m_destination, QStringList() << "Wow.exe", QDir::Files, QDirIterator::Subdirectories);
+
+    // Search for the actual client directory (containing the edition's exe).
+    QDirIterator it(m_destination, m_exeCandidates, QDir::Files, QDirIterator::Subdirectories);
     if (it.hasNext()) {
         targetPath = QFileInfo(it.next()).absolutePath();
     }
@@ -442,11 +625,28 @@ void DownloadDialog::generateConfigWtf() {
         dir.mkpath(".");
     }
 
+    const QString locale = (m_language == "en") ? QStringLiteral("enUS") : QStringLiteral("frFR");
+    const QString host = ConfigManager::hostFromAddress(m_realmlistAddress);
+
     // C3: atomic write so a crash mid-write can't leave a half-written Config.wtf.
     QSaveFile configFile(wtfPath + "/Config.wtf");
-    if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream out(&configFile);
-        QString locale = (m_language == "en") ? "enUS" : "frFR";
+    if (!configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return;
+    }
+    QTextStream out(&configFile);
+
+    if (m_editionId == QLatin1String("legion")) {
+        // Legion (7.3.5) launch config: the login server is SET portal; the
+        // 3.3.5 realmList/realmName keys don't apply.
+        out << "SET portal \"" << host << "\"\n";
+        out << "SET textLocale \"" << locale << "\"\n";
+        out << "SET audioLocale \"" << locale << "\"\n";
+        out << "SET agentUILocale \"" << locale << "\"\n";
+        out << "SET readTOS \"1\"\n";
+        out << "SET readEULA \"1\"\n";
+        out << "SET gxWindow \"1\"\n";
+        out << "SET gxMaximize \"1\"\n";
+    } else {
         out << "SET locale \"" << locale << "\"\n";
         out << "SET hwDetect \"0\"\n";
         out << "SET gxRefresh \"60\"\n";
@@ -472,8 +672,8 @@ void DownloadDialog::generateConfigWtf() {
         out << "SET uiScale \"0.75999999046326\"\n";
         out << "SET useUiScale \"1\"\n";
         out << "SET checkAddonVersion \"0\"\n";
-        out << "SET Sound_VoiceChatInputDriverName \"RÃ©glage du systÃ¨me\"\n";
-        out << "SET Sound_VoiceChatOutputDriverName \"RÃ©glage du systÃ¨me\"\n";
+        out << "SET Sound_VoiceChatInputDriverName \"Réglage du système\"\n";
+        out << "SET Sound_VoiceChatOutputDriverName \"Réglage du système\"\n";
         out << "SET movieSubtitle \"1\"\n";
         out << "SET Sound_SFXVolume \"0.5\"\n";
         out << "SET dbCompress \"0\"\n";
@@ -494,7 +694,7 @@ void DownloadDialog::generateConfigWtf() {
         out << "SET timingMethod \"2\"\n";
         out << "SET ffxSpecial \"0\"\n";
         out << "SET groundEffectDensity \"64\"\n";
-        out << "SET realmList \"sylvania-servergame.com\"\n";
+        out << "SET realmList \"" << host << "\"\n";
         out << "SET realmName \"The Kingdom of Sylvania\"\n";
         out << "SET specular \"1\"\n";
         out << "SET Sound_MasterVolume \"0.60000002384186\"\n";
@@ -503,7 +703,7 @@ void DownloadDialog::generateConfigWtf() {
         out << "SET gxMultisample \"8\"\n";
         out << "SET shadowLevel \"0\"\n";
         out << "SET extShadowQuality \"5\"\n";
-        out.flush();
-        configFile.commit();
     }
+    out.flush();
+    configFile.commit();
 }

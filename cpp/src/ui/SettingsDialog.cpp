@@ -1,5 +1,7 @@
 #include "SettingsDialog.h"
 #include "ConfigManager.h"
+#include "GameEdition.h"
+#include "Constants.h"
 #include "SoundManager.h"
 #include "PathUtils.h"
 #include "HdPatchManager.h"
@@ -194,6 +196,10 @@ void SettingsDialog::setupUi() {
         }
     )");
     mainLayout->addWidget(m_downloadEnUsButton);
+    // The enUS language pack is a 3.3.5-only asset; hide the button for
+    // editions that don't ship it (e.g. Legion), mirroring the HD-patch gating.
+    m_downloadEnUsButton->setVisible(
+        GameEdition::byId(m_config->activeEditionId()).supportsEnUsPack);
 
     // Appearance section
     QLabel* appearanceTitle = new QLabel(tr("Apparence"), this);
@@ -769,9 +775,8 @@ void SettingsDialog::onDownloadEnUsClicked() {
         return;
     }
 
-    QString enUsUrl = "https://sylvania-servergame.com/enus-download.php";
     DownloadDialog* dlDialog = new DownloadDialog(this, wowPath + "/Data");
-    dlDialog->setDownloadUrl(enUsUrl);
+    dlDialog->setDownloadUrl(QString::fromUtf8(SylvaniaConstants::kEnUsPackUrl));
     dlDialog->setSkipConfigWtf(true);
     dlDialog->setWindowTitleText(tr("Téléchargement du Pack Anglais"));
 

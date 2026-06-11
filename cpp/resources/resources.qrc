@@ -6,6 +6,7 @@
     </qresource>
     <qresource prefix="/addons">
         <file alias="manifest">addons.json</file>
+        <file alias="manifest_legion">addons_legion.json</file>
     </qresource>
     <qresource prefix="/sounds">
         <file alias="launch">../../Asset/Sounds/launch.mp3</file>

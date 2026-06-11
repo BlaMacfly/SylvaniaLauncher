@@ -1,62 +1,50 @@
 #include "WowButton.h"
-#include <QCursor>
 
-WowButton::WowButton(const QString& text, QWidget* parent)
-    : QPushButton(text, parent)
+WowButton::WowButton(QWidget* parent)
+    : QPushButton(parent)
 {
-    setFixedSize(80, 80);
     setCursor(Qt::PointingHandCursor);
-    updateStyle();
+    updateLabel();
 }
 
-void WowButton::setNotification(bool hasNotification) {
-    if (m_hasNotification != hasNotification) {
-        m_hasNotification = hasNotification;
-        updateStyle();
+void WowButton::setState(State state) {
+    m_state = state;
+    if (m_state != State::Downloading) {
+        m_progress = -1;
+    }
+    // Authoritative on enabled-ness: callers may have disabled the button for
+    // an unrelated operation (e.g. an HD-patch install disables it directly),
+    // so re-assert it on every setState — even when the state is unchanged —
+    // otherwise the button could stay greyed out after such an operation ends.
+    setEnabled(m_state != State::Downloading);
+    updateLabel();
+}
+
+void WowButton::setDownloadProgress(int percent) {
+    m_progress = percent;
+    if (m_state == State::Downloading) {
+        updateLabel();
     }
 }
 
-bool WowButton::hasNotification() const {
-    return m_hasNotification;
+void WowButton::retranslate() {
+    updateLabel();
 }
 
-void WowButton::updateStyle() {
-    QString notificationStyle;
-    if (m_hasNotification) {
-        notificationStyle = R"(
-            QPushButton {
-                border: 2px solid #ff9900 !important;
-            }
-        )";
+void WowButton::updateLabel() {
+    switch (m_state) {
+    case State::Install:
+        setText(tr("INSTALLER"));
+        break;
+    case State::Downloading:
+        if (m_progress >= 0) {
+            setText(tr("TÉLÉCHARGEMENT… %1%").arg(m_progress));
+        } else {
+            setText(tr("INSTALLATION…"));
+        }
+        break;
+    case State::Play:
+        setText(tr("JOUER"));
+        break;
     }
-
-    setStyleSheet(notificationStyle + R"(
-        QPushButton {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #5a4a2d, stop:0.5 #3a2a1d, stop:1 #2a1a0d);
-            color: #d4af37;
-            border: 1px solid #7a6a4d;
-            border-radius: 15px;
-            padding: 8px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        QPushButton:hover {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #6a5a3d, stop:0.5 #4a3a2d, stop:1 #3a2a1d);
-            border: 1px solid #8a7a5d;
-        }
-        QPushButton:pressed {
-            background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #2a1a0d, stop:0.5 #3a2a1d, stop:1 #5a4a2d);
-            padding-left: 9px;
-            padding-top: 9px;
-        }
-        QPushButton:disabled {
-            background-color: #444444;
-            color: #888888;
-            border: 2px solid #555555;
-        }
-    )");
 }

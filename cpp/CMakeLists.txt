@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(SylvaniaLauncher VERSION 2.9 LANGUAGES CXX)
+project(SylvaniaLauncher VERSION 3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,6 +35,9 @@ set(SOURCES
     src/core/HdPatchManager.cpp
     src/core/AddonRegistry.cpp
     src/core/AddonManifest.cpp
+    src/core/GameEdition.cpp
+    src/core/ReminderService.cpp
+    src/ui/ButtonStyles.cpp
 )
 
 # Header files
@@ -54,6 +57,9 @@ set(HEADERS
     src/core/HdPatchManager.h
     src/core/AddonRegistry.h
     src/core/AddonManifest.h
+    src/core/GameEdition.h
+    src/core/ReminderService.h
+    src/ui/ButtonStyles.h
 )
 
 # Resources

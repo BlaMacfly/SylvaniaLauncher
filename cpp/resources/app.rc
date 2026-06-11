@@ -3,8 +3,8 @@
 1 ICON "icon.ico"
 
 VS_VERSION_INFO VERSIONINFO
-    FILEVERSION     2,9,0,0
-    PRODUCTVERSION  2,9,0,0
+    FILEVERSION     3,0,0,0
+    PRODUCTVERSION  3,0,0,0
     FILEOS          VOS__WINDOWS32
     FILETYPE        VFT_APP
 BEGIN
@@ -13,13 +13,13 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "CompanyName",      "Sylvania"
-            VALUE "FileDescription",  "Sylvania Launcher - World of Warcraft 3.3.5"
-            VALUE "FileVersion",      "2.9.0.0"
+            VALUE "FileDescription",  "Sylvania Launcher - World of Warcraft (WotLK 3.3.5 / Legion 7.3.5)"
+            VALUE "FileVersion",      "3.0.0.0"
             VALUE "InternalName",     "SylvaniaLauncher"
-            VALUE "LegalCopyright",   "Copyright (C) 2025 Sylvania - GPLv3"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 Sylvania - GPLv3"
             VALUE "OriginalFilename", "SylvaniaLauncher.exe"
             VALUE "ProductName",      "Sylvania Launcher"
-            VALUE "ProductVersion",   "2.9.0.0"
+            VALUE "ProductVersion",   "3.0.0.0"
         END
     END
     BLOCK "VarFileInfo"

@@ -1,5 +1,4 @@
 #include "AddonManifest.h"
-#include "Constants.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -7,8 +6,12 @@
 #include <QJsonArray>
 #include <QNetworkRequest>
 
-AddonManifest::AddonManifest(QObject* parent)
+AddonManifest::AddonManifest(const QString& manifestUrl,
+                             const QString& embeddedResource,
+                             QObject* parent)
     : QObject(parent)
+    , m_manifestUrl(manifestUrl)
+    , m_embeddedResource(embeddedResource)
     , m_network(std::make_unique<QNetworkAccessManager>(this))
 {
 }
@@ -55,8 +58,8 @@ std::vector<ManifestAddon> AddonManifest::parse(const QByteArray& json, bool* ok
     return result;
 }
 
-std::vector<ManifestAddon> AddonManifest::embedded() {
-    QFile file(QStringLiteral(":/addons/manifest"));
+std::vector<ManifestAddon> AddonManifest::embedded() const {
+    QFile file(m_embeddedResource);
     if (file.open(QIODevice::ReadOnly)) {
         const QByteArray data = file.readAll();
         file.close();
@@ -69,7 +72,7 @@ void AddonManifest::fetch() {
     // Guard against overlapping fetches.
     if (m_reply) return;
 
-    QNetworkRequest request{QUrl(QString::fromUtf8(SylvaniaConstants::kAddonManifestUrl))};
+    QNetworkRequest request{QUrl(m_manifestUrl)};
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::SameOriginRedirectPolicy);
 
