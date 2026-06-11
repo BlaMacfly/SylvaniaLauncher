@@ -651,8 +651,12 @@ void MainWindow::updateServerInfo() {
 
     if (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) {
         m_serverNameLabel->setText(tr("Serveur: %1").arg(entries[activeIndex].name));
-        m_realmlistLabel->setText(tr("Realmlist: %1")
-            .arg(ConfigManager::hostFromAddress(entries[activeIndex].address)));
+        const QString host = ConfigManager::hostFromAddress(entries[activeIndex].address);
+        // Legion connects via a "portal"; WotLK via a "realmlist".
+        m_realmlistLabel->setText(
+            activeEdition().id == QLatin1String("legion")
+                ? tr("Portal: %1").arg(host)
+                : tr("Realmlist: %1").arg(host));
     }
 }
 
