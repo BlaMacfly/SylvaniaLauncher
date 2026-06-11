@@ -294,8 +294,11 @@ void SettingsDialog::setupUi() {
     )");
     mainLayout->addWidget(m_soundCheckbox);
 
-    // Patch Management Section (Visible if WoW path is set)
-    if (!m_config->getWowPath().isEmpty()) {
+    // Patch Management Section: only for editions that support the HD patch
+    // (WotLK 3.3.5). Legion 7.3.5 already embeds those assets natively, so the
+    // whole section — master ON/OFF + per-feature toggles — is hidden there.
+    if (GameEdition::byId(m_config->activeEditionId()).supportsHdPatch
+        && !m_config->getWowPath().isEmpty()) {
         setupPatchUI(mainLayout);
     }
 
