@@ -44,6 +44,15 @@ constexpr long long kMaxImportBytes = 10LL * 1024 * 1024;  // notes import cap (
 // archive size (archive + extracted tree coexist during installation).
 constexpr double kClientDiskSpaceFactor = 2.5;
 
+// --- Segmented download (large clients) ---------------------------------
+// Multi-GB clients are fetched in HTTP Range segments rather than one giant
+// streamed response: each segment is an ordinary GET, the download is
+// resumable (offset = bytes already on disk), and a flaky segment is retried
+// without restarting from zero. Only used when the total size is known AND the
+// server supports byte ranges (206); otherwise a single stream is used.
+constexpr long long kDownloadSegmentBytes = 32LL * 1024 * 1024;  // 32 MiB
+constexpr int kDownloadSegmentRetries = 5;     // consecutive no-progress retries
+
 // --- Network ------------------------------------------------------------
 inline constexpr const char* kServerHost = "sylvania-servergame.com";
 inline constexpr const char* kHdPatchUrl =

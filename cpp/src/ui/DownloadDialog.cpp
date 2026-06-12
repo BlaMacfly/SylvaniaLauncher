@@ -222,10 +222,23 @@ void DownloadDialog::startDownload(const QString& directory) {
         }
     }
 
-    // Create temp file: the stream is written straight to disk as it arrives,
-    // never buffered in memory (Legion clients weigh several GB).
-    m_file = std::make_unique<QFile>(archivePath());
+    m_speedTimer.start();
 
+    // Sized clients use the robust, resumable segmented downloader; endpoints
+    // of unknown size (e.g. the WotLK enUS pack) use a single stream.
+    if (m_expectedSize > 0) {
+        startSegmentedDownload();
+    } else {
+        startSingleStream();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Single streamed download (unknown size)
+// ---------------------------------------------------------------------------
+void DownloadDialog::startSingleStream() {
+    // Written straight to disk as it arrives, never buffered in memory.
+    m_file = std::make_unique<QFile>(archivePath());
     if (!m_file->open(QIODevice::WriteOnly)) {
         failDownload(tr("Impossible de créer le fichier de téléchargement"));
         return;
@@ -246,14 +259,147 @@ void DownloadDialog::startDownload(const QString& directory) {
     connect(m_reply, &QNetworkReply::errorOccurred,
             this, &DownloadDialog::onDownloadError);
 
-    // Also connect readyRead to write data as it arrives
     connect(m_reply, &QNetworkReply::readyRead, this, [this]() {
         if (m_file && m_file->isOpen()) {
             m_file->write(m_reply->readAll());
         }
     });
+}
 
-    m_speedTimer.start();
+// ---------------------------------------------------------------------------
+// Segmented, resumable download (known size + server byte-range support)
+// ---------------------------------------------------------------------------
+void DownloadDialog::startSegmentedDownload() {
+    // Resume: if a partial file is already on disk, continue from its end. A
+    // stale file larger than expected (or a complete one that later fails the
+    // hash) is handled below.
+    qint64 existing = 0;
+    const QFileInfo fi(archivePath());
+    if (fi.exists()) existing = fi.size();
+    if (existing > m_expectedSize) existing = 0;  // garbage -> restart fresh
+    m_downloadOffset = existing;
+
+    // Append when resuming, truncate when starting fresh.
+    const QIODevice::OpenMode mode = (existing > 0)
+        ? (QIODevice::WriteOnly | QIODevice::Append)
+        : QIODevice::WriteOnly;
+    m_file = std::make_unique<QFile>(archivePath());
+    if (!m_file->open(mode)) {
+        failDownload(tr("Impossible de créer le fichier de téléchargement"));
+        return;
+    }
+
+    // Already fully on disk: skip straight to verification (the hash check
+    // will catch a corrupt leftover and trigger one fresh re-download).
+    if (m_downloadOffset >= m_expectedSize) {
+        m_file->close();
+        m_progressBar->setMaximum(0);
+        emit progressChanged(-1);
+        verifyIntegrity(archivePath());
+        return;
+    }
+
+    m_segmentRetries = 0;
+    m_statusLabel->setText(tr("Connexion au serveur..."));
+    requestNextSegment();
+}
+
+void DownloadDialog::requestNextSegment() {
+    if (m_cancelled) return;
+
+    if (m_downloadOffset >= m_expectedSize) {
+        // Every byte fetched: flush and verify.
+        if (m_file) m_file->close();
+        m_progressBar->setMaximum(0);   // indeterminate during hashing
+        emit progressChanged(-1);
+        verifyIntegrity(archivePath());
+        return;
+    }
+
+    const qint64 segSize = m_segmentSize > 0 ? m_segmentSize
+                                             : SylvaniaConstants::kDownloadSegmentBytes;
+    const qint64 start = m_downloadOffset;
+    const qint64 end = qMin(start + segSize, m_expectedSize) - 1;  // inclusive
+
+    QNetworkRequest request{QUrl(m_downloadUrl)};
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::SameOriginRedirectPolicy);
+    request.setRawHeader("Range",
+        QStringLiteral("bytes=%1-%2").arg(start).arg(end).toUtf8());
+
+    m_reply = m_networkManager->get(request);
+
+    // Write bytes as they arrive; m_downloadOffset always equals the number of
+    // bytes safely on disk, so a mid-segment failure simply resumes from there
+    // (no duplicated or skipped bytes).
+    connect(m_reply, &QNetworkReply::readyRead, this, [this]() {
+        if (m_reply) writeChunk(m_reply->readAll());
+    });
+    connect(m_reply, &QNetworkReply::finished, this, &DownloadDialog::onSegmentFinished);
+}
+
+bool DownloadDialog::writeChunk(const QByteArray& data) {
+    if (data.isEmpty()) return true;
+    if (!m_file || !m_file->isOpen()) return false;
+
+    const qint64 written = m_file->write(data);
+    if (written != data.size()) {
+        // Short write = disk full / IO error. Stop now rather than produce a
+        // silently corrupt file.
+        failDownload(tr("Erreur d'écriture sur le disque (espace insuffisant ?). "
+                        "Le téléchargement a été interrompu."));
+        return false;
+    }
+    m_downloadOffset += written;
+    return true;
+}
+
+void DownloadDialog::onSegmentFinished() {
+    if (m_cancelled || !m_reply) return;
+
+    QNetworkReply* reply = m_reply;
+    m_reply = nullptr;
+    const qint64 offsetBefore = m_downloadOffset;
+
+    const bool ok = reply->error() == QNetworkReply::NoError;
+    // Drain any bytes still buffered on the reply before discarding it.
+    if (ok && m_file && m_file->isOpen()) {
+        if (!writeChunk(reply->readAll())) { reply->deleteLater(); return; }
+    }
+    const QString netError = reply->errorString();
+    reply->deleteLater();
+    if (m_cancelled) return;  // writeChunk may have failed the download
+
+    if (ok) {
+        m_segmentRetries = 0;
+        updateDownloadUi();
+        requestNextSegment();
+        return;
+    }
+
+    // Error: retry the remaining range. If the segment made partial progress,
+    // that counts (offset advanced), so reset the retry budget.
+    if (m_downloadOffset > offsetBefore) {
+        m_segmentRetries = 0;
+    } else if (++m_segmentRetries > SylvaniaConstants::kDownloadSegmentRetries) {
+        failDownload(tr("Erreur réseau pendant le téléchargement : %1").arg(netError));
+        return;
+    }
+    // Brief backoff, then resume from the current offset.
+    m_statusLabel->setText(tr("Reprise du téléchargement…"));
+    QTimer::singleShot(1500, this, [this]() { if (!m_cancelled) requestNextSegment(); });
+}
+
+void DownloadDialog::updateDownloadUi() {
+    const int progress = m_expectedSize > 0
+        ? static_cast<int>((m_downloadOffset * 100) / m_expectedSize) : 0;
+    m_progressBar->setRange(0, 100);
+    m_progressBar->setValue(progress);
+    emit progressChanged(progress);
+    m_statusLabel->setText(tr("Téléchargement en cours... %1%").arg(progress));
+    m_sizeLabel->setText(tr("Taille: %1 / %2")
+        .arg(formatBytes(m_downloadOffset), formatBytes(m_expectedSize)));
+    updateSpeed(m_downloadOffset);
 }
 
 void DownloadDialog::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal) {
@@ -372,6 +518,13 @@ void DownloadDialog::verifyIntegrity(const QString& filePath) {
                              filePath);
                 return;
             }
+        }
+
+        // Self-test: integrity confirmed, stop before extraction.
+        if (m_verifyOnly) {
+            emit downloadFinished(true, tr("Intégrité vérifiée."));
+            accept();
+            return;
         }
 
         // Setup extraction progress indication

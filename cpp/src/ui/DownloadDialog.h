@@ -44,6 +44,12 @@ public:
 
   void startDownload(const QString &directory = "");
   QString getDestination() const { return m_destination; }
+  // Tunable for the segmented downloader (smaller in tests). 0 = use the
+  // SylvaniaConstants default.
+  void setSegmentSize(qint64 bytes) { m_segmentSize = bytes; }
+  // Stop after the integrity check succeeds (no extraction). Used by the
+  // headless download self-test.
+  void setVerifyOnly(bool v) { m_verifyOnly = v; }
   void setSkipConfigWtf(bool skip) { m_skipConfigWtf = skip; }
   void setLanguage(const QString &lang) { m_language = lang; }
   // Address written into the generated launch config (realmList / portal).
@@ -65,6 +71,21 @@ protected:
   void generateConfigWtf();
   void failDownload(const QString &message, const QString &fileToRemove = QString());
   bool checkDiskSpace(qint64 requiredBytes);
+
+  // --- Download strategies ------------------------------------------------
+  // Single streamed GET (used when the total size is unknown, e.g. the WotLK
+  // enUS pack endpoint).
+  void startSingleStream();
+  // Resumable, segmented HTTP Range download (used for sized clients). Robust
+  // against the corruption/latency seen on very large single-stream responses.
+  void startSegmentedDownload();
+  void requestNextSegment();
+  void onSegmentFinished();
+  // Appends a chunk to m_file, advancing m_downloadOffset; returns false (and
+  // fails the download) on a short/failed disk write.
+  bool writeChunk(const QByteArray &data);
+  void updateDownloadUi();
+
   QString archivePath() const;
   QString formatBytes(qint64 bytes) const;
   QString formatDuration(qint64 seconds) const;
@@ -102,6 +123,12 @@ private:
   bool m_cancelled = false;
   bool m_skipConfigWtf = false;
   bool m_diskSpaceChecked = false;
+  bool m_verifyOnly = false;       // self-test: stop after integrity check
+
+  // Segmented-download state.
+  qint64 m_segmentSize = 0;        // 0 = SylvaniaConstants default
+  qint64 m_downloadOffset = 0;     // bytes confirmed written = current file size
+  int m_segmentRetries = 0;        // consecutive failures with no progress
 
   // UI Elements
   QLabel *m_statusLabel = nullptr;

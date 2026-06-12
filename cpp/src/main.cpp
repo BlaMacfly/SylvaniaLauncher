@@ -19,7 +19,47 @@
 
 #include "core/GameEdition.h"
 #include "ui/MainWindow.h"
+#include "ui/DownloadDialog.h"
 #include "utils/PathUtils.h"
+
+#include <QObject>
+#include <QStringList>
+#include <QTextStream>
+
+// Headless self-test for the segmented downloader:
+//   SylvaniaLauncher.exe --selftest-download=<url>;<size>;<sha256>;<segBytes>;<dir>
+// Downloads the file via the real DownloadDialog code path (segmented + resume
+// + integrity), verifies size/hash, prints OK/FAIL and exits. No window shown.
+static int runDownloadSelfTest(QApplication& app, const QString& spec) {
+    const QStringList p = spec.split(';');
+    if (p.size() < 5) { qWarning() << "selftest: spec invalide"; return 2; }
+
+    GameEdition ed = GameEdition::legion();   // start from a real edition
+    ed.clientDownloadUrl = p[0];
+    ed.clientExpectedSize = p[1].toLongLong();
+    ed.clientExpectedSha256 = p[2].toLower();
+    ed.requireHashBeforeExtract = true;
+    const qint64 seg = p[3].toLongLong();
+    const QString dir = p[4];
+
+    auto* dlg = new DownloadDialog(nullptr, QString());  // empty dest = no auto-start
+    dlg->configureForEdition(ed);
+    dlg->setSegmentSize(seg);
+    dlg->setVerifyOnly(true);
+
+    int rc = 1;
+    QTextStream out(stdout);
+    QObject::connect(dlg, &DownloadDialog::downloadFinished, &app,
+                     [&](bool ok, const QString& msg) {
+        out << (ok ? "SELFTEST OK: " : "SELFTEST FAIL: ") << msg << "\n";
+        out.flush();
+        rc = ok ? 0 : 1;
+        app.quit();
+    });
+    dlg->startDownload(dir);
+    app.exec();
+    return rc;
+}
 
 // Reads the persisted active edition without spinning up a full ConfigManager,
 // so the correct taskbar icon is set before any window exists. The value is
@@ -55,6 +95,13 @@ int main(int argc, char* argv[]) {
     // icon instead.
     SetCurrentProcessExplicitAppUserModelID(L"sylvania.launcher");
 #endif
+
+    // Headless download self-test (developer use; no UI).
+    for (const QString& arg : app.arguments()) {
+        if (arg.startsWith(QStringLiteral("--selftest-download="))) {
+            return runDownloadSelfTest(app, arg.section('=', 1));
+        }
+    }
 
     // Set application icon from the active edition's theme.
     const GameEdition& edition = peekActiveEdition();
