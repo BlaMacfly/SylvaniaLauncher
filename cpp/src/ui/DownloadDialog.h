@@ -60,9 +60,6 @@ protected:
   void extractArchive(const QString &archivePath);
   void extractZip(const QString &archivePath);
   void extractTarGz(const QString &archivePath);
-  // Runs "tar -tzf" and rejects any entry whose path is absolute, contains
-  // "..", or carries a drive letter — zip-slip / path-traversal guard.
-  void preflightTarGz(const QString &archivePath);
   void runExtractionProcess(const QString &archivePath, const QStringList &args);
   void onExtractionSucceeded(const QString &archivePath);
   void generateConfigWtf();

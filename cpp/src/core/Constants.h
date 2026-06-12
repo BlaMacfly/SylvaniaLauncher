@@ -134,18 +134,18 @@ inline QStringList extractArchiveArgs() {
 // the ZIP path: SYL_SRC / SYL_DST flow through QProcess environment variables
 // and are never interpolated into the command string.
 
-// Lists the archive entries (one path per line on stdout). Used for the
-// anti path-traversal pre-check before any extraction.
-inline QStringList listTarGzArgs() {
-    return QStringList()
-        << "-NoProfile"
-        << "-ExecutionPolicy" << "Bypass"
-        << "-Command"
-        << "& tar.exe -tzf $env:SYL_SRC;"
-           "exit $LASTEXITCODE";
-}
-
 // Extracts gzip+tar into the destination directory.
+//
+// Anti path-traversal: bsdtar (libarchive) is SECURE BY DEFAULT. Without the
+// -P / --absolute-paths flag it strips any leading "/" and refuses entries
+// that use ".." to escape the destination — so a single extraction pass is
+// safe. We deliberately do NOT pre-list the archive (tar -tzf) first: on a
+// multi-GB client that means fully decompressing the whole stream twice
+// (once to list, once to extract), which is slow enough to look like a hang.
+//
+// tar's stderr is intentionally NOT redirected to $null so a real failure
+// (disk space, unreadable entry, long path) is captured by the QProcess and
+// surfaced to the user instead of a blank error.
 inline QStringList extractTarGzArgs() {
     return QStringList()
         << "-NoProfile"
@@ -154,7 +154,7 @@ inline QStringList extractTarGzArgs() {
         << "$src=$env:SYL_SRC; $dst=$env:SYL_DST;"
            "if (-not (Test-Path -LiteralPath $dst)) {"
            " New-Item -ItemType Directory -Force -Path $dst | Out-Null };"
-           "& tar.exe -xzf $src -C $dst 2>$null;"
+           "& tar.exe -xzf $src -C $dst;"
            "exit $LASTEXITCODE";
 }
 

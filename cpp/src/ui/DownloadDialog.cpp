@@ -405,63 +405,12 @@ void DownloadDialog::verifyIntegrity(const QString& filePath) {
 
 void DownloadDialog::extractArchive(const QString& archivePath) {
     if (m_archiveFormat == QLatin1String("tar.gz")) {
-        preflightTarGz(archivePath);
+        // Single pass: bsdtar is safe-by-default (no -P), so we don't pre-list
+        // the archive — that would decompress a multi-GB client twice.
+        extractTarGz(archivePath);
     } else {
         extractZip(archivePath);
     }
-}
-
-void DownloadDialog::preflightTarGz(const QString& archivePath) {
-    // Anti path-traversal: list the archive entries and reject anything that
-    // would land outside the destination once extracted.
-    QProcess* process = new QProcess(this);
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("SYL_SRC", QDir::toNativeSeparators(archivePath));
-    process->setProcessEnvironment(env);
-
-    m_statusLabel->setText(tr("Analyse de l'archive..."));
-
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, process, archivePath](int exitCode, QProcess::ExitStatus exitStatus) {
-        const QString listing = QString::fromLocal8Bit(process->readAllStandardOutput());
-        process->deleteLater();
-
-        if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-            failDownload(tr("Archive illisible: impossible de lister son contenu."), archivePath);
-            return;
-        }
-
-        const QStringList entries = listing.split('\n', Qt::SkipEmptyParts);
-        if (entries.isEmpty()) {
-            failDownload(tr("Archive vide ou illisible."), archivePath);
-            return;
-        }
-        for (QString entry : entries) {
-            entry = entry.trimmed();
-            const QString normalized = QDir::fromNativeSeparators(entry);
-            const bool absolute = normalized.startsWith(QLatin1Char('/')) ||
-                                  QRegularExpression(QStringLiteral("^[A-Za-z]:")).match(normalized).hasMatch();
-            const bool traversal = normalized == QLatin1String("..") ||
-                                   normalized.startsWith(QLatin1String("../")) ||
-                                   normalized.contains(QLatin1String("/../")) ||
-                                   normalized.endsWith(QLatin1String("/.."));
-            if (absolute || traversal) {
-                failDownload(tr("Archive rejetée: entrée dangereuse détectée (%1). "
-                                "Le fichier a été supprimé.").arg(entry),
-                             archivePath);
-                return;
-            }
-        }
-
-        extractTarGz(archivePath);
-    });
-
-    connect(process, &QProcess::errorOccurred, this, [this, process, archivePath](QProcess::ProcessError) {
-        process->deleteLater();
-        failDownload(tr("Erreur lors de l'extraction: impossible de lancer PowerShell"), archivePath);
-    });
-
-    process->start("powershell", SylvaniaConstants::listTarGzArgs());
 }
 
 void DownloadDialog::extractZip(const QString& archivePath) {
@@ -501,8 +450,15 @@ void DownloadDialog::runExtractionProcess(const QString& archivePath, const QStr
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
             onExtractionSucceeded(archivePath);
         } else {
-            emit downloadFinished(false, tr("Erreur lors de l'extraction: %1")
-                .arg(QString::fromLocal8Bit(process->readAllStandardError())));
+            // Surface the real reason: tar's stderr (disk space, unreadable
+            // entry, path too long...) plus the exit code. The archive is kept
+            // so the user can retry the extraction without re-downloading.
+            QString detail = QString::fromLocal8Bit(process->readAllStandardError()).trimmed();
+            if (detail.isEmpty())
+                detail = QString::fromLocal8Bit(process->readAllStandardOutput()).trimmed();
+            if (detail.isEmpty())
+                detail = tr("code de sortie %1").arg(exitCode);
+            emit downloadFinished(false, tr("Erreur lors de l'extraction : %1").arg(detail));
             reject();
         }
     });
