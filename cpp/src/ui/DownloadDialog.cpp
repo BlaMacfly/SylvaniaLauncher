@@ -293,8 +293,7 @@ void DownloadDialog::startSegmentedDownload() {
     // will catch a corrupt leftover and trigger one fresh re-download).
     if (m_downloadOffset >= m_expectedSize) {
         m_file->close();
-        m_progressBar->setMaximum(0);
-        emit progressChanged(-1);
+        showVerifyingState();
         verifyIntegrity(archivePath());
         return;
     }
@@ -314,8 +313,7 @@ void DownloadDialog::requestNextSegment() {
     if (m_downloadOffset >= m_expectedSize) {
         // Every byte fetched: flush and verify.
         if (m_file) m_file->close();
-        m_progressBar->setMaximum(0);   // indeterminate during hashing
-        emit progressChanged(-1);
+        showVerifyingState();
         verifyIntegrity(archivePath());
         return;
     }
@@ -479,6 +477,16 @@ void DownloadDialog::onDownloadFinished() {
     QCoreApplication::processEvents();
 
     verifyIntegrity(archivePath());
+}
+
+void DownloadDialog::showVerifyingState() {
+    m_progressBar->setRange(0, 0);   // indeterminate marquee
+    emit progressChanged(-1);
+    m_statusLabel->setText(tr("Vérification de l'intégrité (SHA-256)…"));
+    m_speedLabel->setText(tr("Cela peut prendre quelques minutes pour un gros client."));
+    m_sizeLabel->setText("");
+    m_etaLabel->setText("");
+    QCoreApplication::processEvents();   // repaint before the long hash starts
 }
 
 void DownloadDialog::verifyIntegrity(const QString& filePath) {

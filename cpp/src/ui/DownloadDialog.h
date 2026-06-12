@@ -89,6 +89,9 @@ protected:
   QString archivePath() const;
   QString formatBytes(qint64 bytes) const;
   QString formatDuration(qint64 seconds) const;
+  // Switches the dialog to the "verifying integrity" state (indeterminate bar
+  // + explanatory text) before the SHA-256 of a multi-GB client is computed.
+  void showVerifyingState();
   void verifyIntegrity(const QString &filePath);
 
 private slots:
