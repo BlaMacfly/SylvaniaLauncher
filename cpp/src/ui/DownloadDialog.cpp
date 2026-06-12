@@ -300,6 +300,10 @@ void DownloadDialog::startSegmentedDownload() {
     }
 
     m_segmentRetries = 0;
+    // Seed the speed baseline at the resume offset so the first second's rate
+    // isn't a spike of "all bytes already on disk".
+    m_lastReceivedBytes = m_downloadOffset;
+    m_speedTimer.restart();
     m_statusLabel->setText(tr("Connexion au serveur..."));
     requestNextSegment();
 }
@@ -331,9 +335,10 @@ void DownloadDialog::requestNextSegment() {
 
     // Write bytes as they arrive; m_downloadOffset always equals the number of
     // bytes safely on disk, so a mid-segment failure simply resumes from there
-    // (no duplicated or skipped bytes).
+    // (no duplicated or skipped bytes). Refresh the UI live (progress, speed,
+    // ETA) within the segment, not only when it completes.
     connect(m_reply, &QNetworkReply::readyRead, this, [this]() {
-        if (m_reply) writeChunk(m_reply->readAll());
+        if (m_reply && writeChunk(m_reply->readAll())) updateDownloadUi();
     });
     connect(m_reply, &QNetworkReply::finished, this, &DownloadDialog::onSegmentFinished);
 }
@@ -391,6 +396,9 @@ void DownloadDialog::onSegmentFinished() {
 }
 
 void DownloadDialog::updateDownloadUi() {
+    // updateSpeed() derives the ETA from m_totalBytes; the segmented path uses
+    // the known expected size as the total.
+    m_totalBytes = m_expectedSize;
     const int progress = m_expectedSize > 0
         ? static_cast<int>((m_downloadOffset * 100) / m_expectedSize) : 0;
     m_progressBar->setRange(0, 100);
