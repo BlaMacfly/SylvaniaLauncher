@@ -77,6 +77,10 @@ private:
     // window/taskbar/tray icon, background, accent, HD gating, realmlist,
     // stats and the primary button state. Called at startup and on toggle.
     void applyEdition();
+    // Windows: force the running taskbar button to repaint with the edition
+    // icon (WM_SETICON). Qt's setWindowIcon doesn't always refresh a taskbar
+    // button once the app has been pinned. No-op on other platforms.
+    void applyTaskbarIcon(const QString& icoPath);
     void applyTheme(const QString& bgName);
     ButtonStyles::ThemeTokens themeTokensFor(const QString& bgName) const;
     QString pickRandomBackground(const QString& exclude = QString()) const;

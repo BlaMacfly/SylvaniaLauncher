@@ -36,6 +36,10 @@
 #include <QGuiApplication>
 #include <QSystemTrayIcon>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 namespace {
 
 // Per-background palette: panel chrome + the two button gradients consumed by
@@ -201,6 +205,7 @@ void MainWindow::applyEdition() {
     setWindowIcon(icon);
     qApp->setWindowIcon(icon);
     if (m_trayIcon) m_trayIcon->setIcon(icon);
+    applyTaskbarIcon(iconPath);
 
     // Background: each edition has its own dynamic pool. getBackground() is
     // per-edition, so this restores the edition's last-used background; the
@@ -212,6 +217,41 @@ void MainWindow::applyEdition() {
     m_hdButton->setVisible(edition.supportsHdPatch);
 
     retranslateUi();
+}
+
+void MainWindow::applyTaskbarIcon(const QString& icoPath) {
+#ifdef Q_OS_WIN
+    // The pinned taskbar button is bound to the AppUserModelID and Qt's
+    // setWindowIcon() doesn't reliably repaint it on an in-process edition
+    // switch. Sending WM_SETICON with a freshly loaded HICON forces Windows to
+    // refresh the running button's icon. Previous HICONs are destroyed so we
+    // don't leak one per switch.
+    static HICON s_big = nullptr;
+    static HICON s_small = nullptr;
+
+    if (!QFile::exists(icoPath)) return;
+    const std::wstring path = QDir::toNativeSeparators(icoPath).toStdWString();
+
+    HICON big = static_cast<HICON>(LoadImageW(nullptr, path.c_str(), IMAGE_ICON,
+                                              0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE));
+    HICON small = static_cast<HICON>(LoadImageW(nullptr, path.c_str(), IMAGE_ICON,
+                                                GetSystemMetrics(SM_CXSMICON),
+                                                GetSystemMetrics(SM_CYSMICON),
+                                                LR_LOADFROMFILE));
+    const HWND hwnd = reinterpret_cast<HWND>(winId());
+    if (big) {
+        SendMessageW(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(big));
+        if (s_big) DestroyIcon(s_big);
+        s_big = big;
+    }
+    if (small) {
+        SendMessageW(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(small));
+        if (s_small) DestroyIcon(s_small);
+        s_small = small;
+    }
+#else
+    Q_UNUSED(icoPath);
+#endif
 }
 
 void MainWindow::onEditionToggleClicked() {
