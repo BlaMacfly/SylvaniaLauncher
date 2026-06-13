@@ -155,6 +155,16 @@ inline QStringList extractArchiveArgs() {
 // tar's stderr is intentionally NOT redirected to $null so a real failure
 // (disk space, unreadable entry, long path) is captured by the QProcess and
 // surfaced to the user instead of a blank error.
+//
+// --strip-components=1 drops the leading "./" component every entry carries
+// (the client archive is built with `tar czf x.tar.gz .`, so every path is
+// "./Wow.exe", "./Data/...", plus a bare "./" self-entry). Dropping it is a
+// no-op for the file layout — "./Wow.exe" and "Wow.exe" resolve to the same
+// place — but it removes the "./" self-entry, which is what broke extraction
+// to a drive root: bsdtar uses extended-length "\\?\" paths where "." is a
+// LITERAL name, so the self-entry became "\\?\G:\." and Windows rejected it
+// ("Can't create '\\?\G:\.': Permission denied"). All real files extracted,
+// but tar then exited non-zero and the whole install was reported as failed.
 inline QStringList extractTarGzArgs() {
     return QStringList()
         << "-NoProfile"
@@ -163,7 +173,7 @@ inline QStringList extractTarGzArgs() {
         << "$src=$env:SYL_SRC; $dst=$env:SYL_DST;"
            "if (-not (Test-Path -LiteralPath $dst)) {"
            " New-Item -ItemType Directory -Force -Path $dst | Out-Null };"
-           "& tar.exe -xzf $src -C $dst;"
+           "& tar.exe -xzf $src --strip-components=1 -C $dst;"
            "exit $LASTEXITCODE";
 }
 
