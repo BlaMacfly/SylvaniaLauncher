@@ -58,6 +58,8 @@ void DownloadDialog::configureForEdition(const GameEdition& edition) {
     if (m_realmlistAddress.isEmpty()) {
         m_realmlistAddress = edition.defaultRealmlist;
     }
+    // Embedded per-chunk integrity manifest (enables on-the-fly chunk repair).
+    loadChunkManifest(edition.chunkManifestResource);
     setWindowTitle(tr("Téléchargement du Client — %1").arg(edition.displayName));
 }
 
@@ -269,38 +271,85 @@ void DownloadDialog::startSingleStream() {
 // ---------------------------------------------------------------------------
 // Segmented, resumable download (known size + server byte-range support)
 // ---------------------------------------------------------------------------
+void DownloadDialog::loadChunkManifest(const QString& resourcePath) {
+    m_haveChunks = false;
+    m_chunkHashes.clear();
+    m_chunkSize = 0;
+    if (resourcePath.isEmpty()) return;
+
+    QFile f(resourcePath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+    const QList<QByteArray> lines = f.readAll().split('\n');
+    if (lines.isEmpty() || lines.first().trimmed() != "SYLCHUNKS1") return;
+
+    qint64 size = 0, chunk = 0;
+    int i = 1;
+    for (; i < lines.size(); ++i) {
+        const QByteArray l = lines[i].trimmed();
+        if (l.startsWith("size=")) size = l.mid(5).toLongLong();
+        else if (l.startsWith("chunk=")) chunk = l.mid(6).toLongLong();
+        else break;  // first non-header line = first hash
+    }
+    if (chunk <= 0) return;
+
+    QStringList hashes;
+    for (; i < lines.size(); ++i) {
+        const QByteArray l = lines[i].trimmed();
+        if (l.size() == 64) hashes << QString::fromLatin1(l).toLower();
+    }
+
+    // The manifest must describe exactly the client we expect.
+    if (size != m_expectedSize) {
+        qWarning() << "Manifeste de blocs ignoré: taille" << size << "!=" << m_expectedSize;
+        return;
+    }
+    const qint64 expectedCount = (size + chunk - 1) / chunk;
+    if (hashes.size() != expectedCount) {
+        qWarning() << "Manifeste de blocs ignoré: " << hashes.size()
+                   << "blocs au lieu de" << expectedCount;
+        return;
+    }
+
+    m_chunkSize = chunk;
+    m_chunkHashes = hashes;
+    m_segmentSize = chunk;    // one download segment == one verifiable chunk
+    m_haveChunks = true;
+    qDebug() << "Manifeste de blocs chargé:" << hashes.size() << "blocs de" << chunk << "octets";
+}
+
 void DownloadDialog::startSegmentedDownload() {
-    // Resume: if a partial file is already on disk, continue from its end. A
-    // stale file larger than expected (or a complete one that later fails the
-    // hash) is handled below.
     qint64 existing = 0;
     const QFileInfo fi(archivePath());
     if (fi.exists()) existing = fi.size();
     if (existing > m_expectedSize) existing = 0;  // garbage -> restart fresh
+    // Resume must land on a whole-chunk boundary so each segment maps to one
+    // chunk hash; drop any partial trailing chunk from a previous run.
+    if (m_haveChunks && m_chunkSize > 0 && existing < m_expectedSize) {
+        existing = (existing / m_chunkSize) * m_chunkSize;
+    }
     m_downloadOffset = existing;
 
-    // Append when resuming, truncate when starting fresh.
-    const QIODevice::OpenMode mode = (existing > 0)
-        ? (QIODevice::WriteOnly | QIODevice::Append)
-        : QIODevice::WriteOnly;
+    // ReadWrite keeps already-downloaded (and previously verified) bytes; we
+    // then trim to the aligned offset and append from there.
     m_file = std::make_unique<QFile>(archivePath());
-    if (!m_file->open(mode)) {
+    if (!m_file->open(QIODevice::ReadWrite)) {
         failDownload(tr("Impossible de créer le fichier de téléchargement"));
         return;
     }
+    if (!m_file->resize(m_downloadOffset) || !m_file->seek(m_downloadOffset)) {
+        failDownload(tr("Impossible de préparer le fichier de téléchargement"));
+        return;
+    }
 
-    // Already fully on disk: skip straight to verification (the hash check
-    // will catch a corrupt leftover and trigger one fresh re-download).
     if (m_downloadOffset >= m_expectedSize) {
-        m_file->close();
-        showVerifyingState();
-        verifyIntegrity(archivePath());
+        onDownloadAssembled();
         return;
     }
 
     m_segmentRetries = 0;
-    // Seed the speed baseline at the resume offset so the first second's rate
-    // isn't a spike of "all bytes already on disk".
+    m_segBuffer.clear();
+    // Seed the speed baseline at the resume offset so the first second isn't a
+    // spike of "all bytes already on disk".
     m_lastReceivedBytes = m_downloadOffset;
     m_speedTimer.restart();
     m_statusLabel->setText(tr("Connexion au serveur..."));
@@ -311,10 +360,7 @@ void DownloadDialog::requestNextSegment() {
     if (m_cancelled) return;
 
     if (m_downloadOffset >= m_expectedSize) {
-        // Every byte fetched: flush and verify.
-        if (m_file) m_file->close();
-        showVerifyingState();
-        verifyIntegrity(archivePath());
+        onDownloadAssembled();
         return;
     }
 
@@ -322,6 +368,9 @@ void DownloadDialog::requestNextSegment() {
                                              : SylvaniaConstants::kDownloadSegmentBytes;
     const qint64 start = m_downloadOffset;
     const qint64 end = qMin(start + segSize, m_expectedSize) - 1;  // inclusive
+
+    m_segBuffer.clear();
+    m_segBuffer.reserve(end - start + 1);
 
     QNetworkRequest request{QUrl(m_downloadUrl)};
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
@@ -331,29 +380,25 @@ void DownloadDialog::requestNextSegment() {
 
     m_reply = m_networkManager->get(request);
 
-    // Write bytes as they arrive; m_downloadOffset always equals the number of
-    // bytes safely on disk, so a mid-segment failure simply resumes from there
-    // (no duplicated or skipped bytes). Refresh the UI live (progress, speed,
-    // ETA) within the segment, not only when it completes.
+    // Buffer the segment in memory; it is committed to disk only after passing
+    // its chunk hash. The UI tracks committed + in-flight bytes.
     connect(m_reply, &QNetworkReply::readyRead, this, [this]() {
-        if (m_reply && writeChunk(m_reply->readAll())) updateDownloadUi();
+        if (m_reply) { m_segBuffer.append(m_reply->readAll()); updateDownloadUi(); }
     });
     connect(m_reply, &QNetworkReply::finished, this, &DownloadDialog::onSegmentFinished);
 }
 
-bool DownloadDialog::writeChunk(const QByteArray& data) {
-    if (data.isEmpty()) return true;
+bool DownloadDialog::commitSegmentBuffer() {
+    if (m_segBuffer.isEmpty()) return true;
     if (!m_file || !m_file->isOpen()) return false;
-
-    const qint64 written = m_file->write(data);
-    if (written != data.size()) {
-        // Short write = disk full / IO error. Stop now rather than produce a
-        // silently corrupt file.
+    const qint64 written = m_file->write(m_segBuffer);
+    if (written != m_segBuffer.size()) {
         failDownload(tr("Erreur d'écriture sur le disque (espace insuffisant ?). "
                         "Le téléchargement a été interrompu."));
         return false;
     }
     m_downloadOffset += written;
+    m_segBuffer.clear();
     return true;
 }
 
@@ -362,50 +407,101 @@ void DownloadDialog::onSegmentFinished() {
 
     QNetworkReply* reply = m_reply;
     m_reply = nullptr;
-    const qint64 offsetBefore = m_downloadOffset;
 
     const bool ok = reply->error() == QNetworkReply::NoError;
-    // Drain any bytes still buffered on the reply before discarding it.
-    if (ok && m_file && m_file->isOpen()) {
-        if (!writeChunk(reply->readAll())) { reply->deleteLater(); return; }
-    }
+    if (ok) m_segBuffer.append(reply->readAll());  // drain any remaining bytes
     const QString netError = reply->errorString();
     reply->deleteLater();
-    if (m_cancelled) return;  // writeChunk may have failed the download
+    if (m_cancelled) return;
 
-    if (ok) {
-        m_segmentRetries = 0;
-        updateDownloadUi();
-        requestNextSegment();
+    // Re-fetch the SAME chunk on failure/corruption (bounded retries). Because
+    // unverified bytes are never written, a retry simply re-requests the chunk
+    // from m_downloadOffset — no duplicated or skipped bytes.
+    auto retryOrFail = [this](const QString& why) {
+        m_segBuffer.clear();
+        if (++m_segmentRetries > SylvaniaConstants::kDownloadSegmentRetries) {
+            failDownload(why);
+            return;
+        }
+        m_statusLabel->setText(tr("Reprise du téléchargement…"));
+        QTimer::singleShot(1500, this, [this]() { if (!m_cancelled) requestNextSegment(); });
+    };
+
+    if (!ok) {
+        retryOrFail(tr("Erreur réseau pendant le téléchargement : %1").arg(netError));
         return;
     }
 
-    // Error: retry the remaining range. If the segment made partial progress,
-    // that counts (offset advanced), so reset the retry budget.
-    if (m_downloadOffset > offsetBefore) {
-        m_segmentRetries = 0;
-    } else if (++m_segmentRetries > SylvaniaConstants::kDownloadSegmentRetries) {
-        failDownload(tr("Erreur réseau pendant le téléchargement : %1").arg(netError));
+    // Verify this segment against its expected chunk hash (the core fix: a
+    // corrupted chunk is caught and re-fetched immediately instead of failing
+    // the whole multi-GB download at the very end).
+    if (m_haveChunks) {
+        const qint64 idx = m_downloadOffset / m_chunkSize;
+        const QString got = QString::fromLatin1(
+            QCryptographicHash::hash(m_segBuffer, QCryptographicHash::Sha256).toHex());
+        const QString exp = idx < m_chunkHashes.size() ? m_chunkHashes.at(idx) : QString();
+        if (idx >= m_chunkHashes.size() || got != exp) {
+            qWarning() << "Bloc" << idx << "invalide (tentative" << m_segmentRetries
+                       << "): reçu" << got.left(12) << "attendu" << exp.left(12);
+            retryOrFail(tr("Bloc %1 corrompu après plusieurs tentatives "
+                           "(le manifeste est peut-être périmé).").arg(idx));
+            return;
+        }
+    }
+
+    if (!commitSegmentBuffer()) return;  // disk error already reported
+    m_segmentRetries = 0;
+    updateDownloadUi();
+    requestNextSegment();
+}
+
+void DownloadDialog::onDownloadAssembled() {
+    if (m_file) { m_file->flush(); m_file->close(); }
+
+    // Cheap final size sanity (the per-chunk hashes already guarantee content).
+    if (m_expectedSize > 0 && QFileInfo(archivePath()).size() != m_expectedSize) {
+        failDownload(tr("Fichier corrompu: taille inattendue. Le fichier a été supprimé."),
+                     archivePath());
         return;
     }
-    // Brief backoff, then resume from the current offset.
-    m_statusLabel->setText(tr("Reprise du téléchargement…"));
-    QTimer::singleShot(1500, this, [this]() { if (!m_cancelled) requestNextSegment(); });
+
+    if (m_haveChunks) {
+        // Every chunk passed its hash → the whole file is correct by
+        // construction; skip the slow multi-GB re-hash and go to extraction.
+        if (m_verifyOnly) {
+            emit downloadFinished(true, tr("Intégrité vérifiée."));
+            accept();
+            return;
+        }
+        m_progressBar->setRange(0, 100);
+        m_progressBar->setValue(100);
+        emit progressChanged(100);
+        m_statusLabel->setText(tr("Intégrité vérifiée (par blocs). Extraction…"));
+        QCoreApplication::processEvents();
+        QTimer::singleShot(200, this, [this]() { extractArchive(archivePath()); });
+        return;
+    }
+
+    // No chunk manifest → fall back to a whole-file hash check.
+    showVerifyingState();
+    verifyIntegrity(archivePath());
 }
 
 void DownloadDialog::updateDownloadUi() {
     // updateSpeed() derives the ETA from m_totalBytes; the segmented path uses
-    // the known expected size as the total.
+    // the known expected size as the total. "live" = committed-on-disk bytes
+    // plus the segment still buffered in memory.
     m_totalBytes = m_expectedSize;
+    const qint64 live = m_downloadOffset + m_segBuffer.size();
     const int progress = m_expectedSize > 0
-        ? static_cast<int>((m_downloadOffset * 100) / m_expectedSize) : 0;
+        ? static_cast<int>((live * 100) / m_expectedSize) : 0;
     m_progressBar->setRange(0, 100);
     m_progressBar->setValue(progress);
     emit progressChanged(progress);
     m_statusLabel->setText(tr("Téléchargement en cours... %1%").arg(progress));
     m_sizeLabel->setText(tr("Taille: %1 / %2")
-        .arg(formatBytes(m_downloadOffset), formatBytes(m_expectedSize)));
-    updateSpeed(m_downloadOffset);
+        .arg(formatBytes(live), formatBytes(m_expectedSize)));
+    updateSpeed(live);
 }
 
 void DownloadDialog::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal) {

@@ -57,6 +57,7 @@ const GameEdition& GameEdition::legion() {
         // archive is downloaded but NEVER extracted (no silent degradation).
         ed.requireHashBeforeExtract = true;
         ed.archiveFormat = QStringLiteral("tar.gz");
+        ed.chunkManifestResource = QStringLiteral(":/client/legion_chunks");
         ed.addonManifestUrl = QString::fromUtf8(SylvaniaConstants::kLegionAddonManifestUrl);
         ed.embeddedManifestResource = QStringLiteral(":/addons/manifest_legion");
         ed.addonDownloadHost = QString::fromUtf8(SylvaniaConstants::kLegionAddonHost);

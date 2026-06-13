@@ -9,6 +9,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QStringList>
+#include <QByteArray>
 #include <memory>
 
 struct GameEdition;
@@ -50,6 +51,9 @@ public:
   // Stop after the integrity check succeeds (no extraction). Used by the
   // headless download self-test.
   void setVerifyOnly(bool v) { m_verifyOnly = v; }
+  // Self-test: load a per-chunk manifest from an arbitrary file path (call
+  // after configureForEdition, which sets the expected size used to validate).
+  void loadChunkManifestFromFile(const QString& path) { loadChunkManifest(path); }
   void setSkipConfigWtf(bool skip) { m_skipConfigWtf = skip; }
   void setLanguage(const QString &lang) { m_language = lang; }
   // Address written into the generated launch config (realmList / portal).
@@ -76,14 +80,21 @@ protected:
   // Single streamed GET (used when the total size is unknown, e.g. the WotLK
   // enUS pack endpoint).
   void startSingleStream();
-  // Resumable, segmented HTTP Range download (used for sized clients). Robust
-  // against the corruption/latency seen on very large single-stream responses.
+  // Resumable, segmented HTTP Range download (used for sized clients). Each
+  // segment is buffered in memory, verified against its per-chunk SHA-256
+  // (when a chunk manifest is present), committed to disk only once correct,
+  // and re-fetched if corrupted — so a rare corruption over a multi-hour
+  // download is repaired on the fly instead of discarding the whole file.
   void startSegmentedDownload();
   void requestNextSegment();
   void onSegmentFinished();
-  // Appends a chunk to m_file, advancing m_downloadOffset; returns false (and
-  // fails the download) on a short/failed disk write.
-  bool writeChunk(const QByteArray &data);
+  // Writes the verified segment buffer to disk, advancing m_downloadOffset;
+  // returns false (and fails the download) on a short/failed disk write.
+  bool commitSegmentBuffer();
+  // Called once every byte is downloaded + verified.
+  void onDownloadAssembled();
+  // Loads an embedded per-chunk SHA-256 manifest; sets m_haveChunks on success.
+  void loadChunkManifest(const QString &resourcePath);
   void updateDownloadUi();
 
   QString archivePath() const;
@@ -130,8 +141,15 @@ private:
 
   // Segmented-download state.
   qint64 m_segmentSize = 0;        // 0 = SylvaniaConstants default
-  qint64 m_downloadOffset = 0;     // bytes confirmed written = current file size
-  int m_segmentRetries = 0;        // consecutive failures with no progress
+  qint64 m_downloadOffset = 0;     // bytes confirmed (verified) on disk
+  int m_segmentRetries = 0;        // consecutive failures/corruptions for the current chunk
+  QByteArray m_segBuffer;          // current segment, buffered until verified
+
+  // Per-chunk integrity manifest (embedded). When present, every segment is
+  // checked against m_chunkHashes[offset / m_chunkSize] before being committed.
+  bool m_haveChunks = false;
+  qint64 m_chunkSize = 0;
+  QStringList m_chunkHashes;       // lowercase hex SHA-256, one per chunk, in order
 
   // UI Elements
   QLabel *m_statusLabel = nullptr;

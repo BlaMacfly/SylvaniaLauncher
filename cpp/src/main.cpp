@@ -34,6 +34,15 @@ static int runDownloadSelfTest(QApplication& app, const QString& spec) {
     const QStringList p = spec.split(';');
     if (p.size() < 5) { qWarning() << "selftest: spec invalide"; return 2; }
 
+    // Route qDebug/qWarning to a log file (the GUI subsystem has no console).
+    static QString s_logPath = p[4] + "/selftest.log";
+    qInstallMessageHandler([](QtMsgType, const QMessageLogContext&, const QString& m) {
+        QFile lf(s_logPath);
+        if (lf.open(QIODevice::Append | QIODevice::Text)) {
+            QTextStream(&lf) << m << "\n";
+        }
+    });
+
     GameEdition ed = GameEdition::legion();   // start from a real edition
     ed.clientDownloadUrl = p[0];
     ed.clientExpectedSize = p[1].toLongLong();
@@ -46,6 +55,11 @@ static int runDownloadSelfTest(QApplication& app, const QString& spec) {
     dlg->configureForEdition(ed);
     dlg->setSegmentSize(seg);
     dlg->setVerifyOnly(true);
+    // Optional 6th field: a per-chunk manifest path (tests the chunk-verified
+    // download path against a matching slice of the real client).
+    if (p.size() >= 6 && !p[5].isEmpty()) {
+        dlg->loadChunkManifestFromFile(p[5]);
+    }
 
     int rc = 1;
     QTextStream out(stdout);

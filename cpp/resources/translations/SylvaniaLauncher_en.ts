@@ -465,228 +465,249 @@ Removed folders: %2</translation>
       <translation>WoW Client Download</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="61" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="63" />
       <source>Téléchargement du Client — %1</source>
       <translation>Client Download — %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="78" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="80" />
       <source>Préparation du téléchargement...</source>
       <translation>Preparing download...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="109" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="111" />
       <source>Vitesse: --</source>
       <translation>Speed: --</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="110" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="112" />
       <source>Taille: --</source>
       <translation>Size: --</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="111" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="113" />
       <source>Temps restant: --</source>
       <translation>Time remaining: --</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="128" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="130" />
       <source>Annuler</source>
       <translation>Cancel</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="162" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="164" />
       <source>Espace disque insuffisant: %1 libres, %2 requis (archive + extraction).</source>
       <translation>Insufficient disk space: %1 free, %2 required (archive + extraction).</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="195" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="197" />
       <source>Destination non spécifiée</source>
       <translation>Destination not specified</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="204" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="206" />
       <source>Impossible de créer le dossier de destination.
 Vérifiez vos droits d'administrateur.</source>
       <translation>Unable to create the destination folder.
 Check your administrator rights.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="211" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="213" />
       <source>Impossible d'écrire dans le dossier de destination.
 Vérifiez vos droits d'administrateur.</source>
       <translation>Unable to write to the destination folder.
 Check your administrator rights.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="243" />
-      <location filename="../../src/ui/DownloadDialog.cpp" line="288" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="245" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="336" />
       <source>Impossible de créer le fichier de téléchargement</source>
       <translation>Unable to create the download file</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="247" />
-      <location filename="../../src/ui/DownloadDialog.cpp" line="306" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="249" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="355" />
       <source>Connexion au serveur...</source>
       <translation>Connecting to server...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="352" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="340" />
+      <source>Impossible de préparer le fichier de téléchargement</source>
+      <translation>Unable to prepare the download file</translation>
+    </message>
+    <message>
+      <location filename="../../src/ui/DownloadDialog.cpp" line="396" />
       <source>Erreur d'écriture sur le disque (espace insuffisant ?). Le téléchargement a été interrompu.</source>
       <translation>Disk write error (out of space?). The download was interrupted.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="388" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="431" />
       <source>Erreur réseau pendant le téléchargement : %1</source>
       <translation>Network error during download: %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="392" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="426" />
       <source>Reprise du téléchargement…</source>
       <translation>Resuming download…</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="405" />
-      <location filename="../../src/ui/DownloadDialog.cpp" line="431" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="446" />
+      <source>Bloc %1 corrompu après plusieurs tentatives (le manifeste est peut-être périmé).</source>
+      <translation>Block %1 corrupted after several attempts (the manifest may be outdated).</translation>
+    </message>
+    <message>
+      <location filename="../../src/ui/DownloadDialog.cpp" line="463" />
+      <source>Fichier corrompu: taille inattendue. Le fichier a été supprimé.</source>
+      <translation>Corrupted file: unexpected size. The file has been deleted.</translation>
+    </message>
+    <message>
+      <location filename="../../src/ui/DownloadDialog.cpp" line="479" />
+      <source>Intégrité vérifiée (par blocs). Extraction…</source>
+      <translation>Integrity verified (per-block). Extracting…</translation>
+    </message>
+    <message>
+      <location filename="../../src/ui/DownloadDialog.cpp" line="501" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="527" />
       <source>Téléchargement en cours... %1%</source>
       <translation>Downloading... %1%</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="406" />
-      <location filename="../../src/ui/DownloadDialog.cpp" line="432" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="502" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="528" />
       <source>Taille: %1 / %2</source>
       <translation>Size: %1 / %2</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="448" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="544" />
       <source>Vitesse: %1/s</source>
       <translation>Speed: %1/s</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="454" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="550" />
       <source>Temps restant: %1</source>
       <translation>Time remaining: %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="471" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="567" />
       <source>Vérification de l'intégrité du fichier...</source>
       <translation>Verifying file integrity...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="485" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="581" />
       <source>Vérification de l'intégrité (SHA-256)…</source>
       <translation>Verifying integrity (SHA-256)…</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="486" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="582" />
       <source>Cela peut prendre quelques minutes pour un gros client.</source>
       <translation>This may take a few minutes for a large client.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="497" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="593" />
       <source>Fichier corrompu: taille inattendue (%1 au lieu de %2). Le fichier a été supprimé.</source>
       <translation>Corrupted file: unexpected size (%1 instead of %2). The file has been deleted.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="510" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="606" />
       <source>Le hash SHA-256 attendu du client n'est pas encore configuré: extraction refusée par sécurité. Le fichier téléchargé a été supprimé. Mettez le launcher à jour.</source>
       <translation>The client's expected SHA-256 hash is not configured yet: extraction refused for safety. The downloaded file has been deleted. Please update the launcher.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="532" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="628" />
       <source>Fichier corrompu: le hash SHA-256 ne correspond pas. Le fichier a été supprimé.</source>
       <translation>Corrupted file: the SHA-256 hash does not match. The file has been deleted.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="541" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="472" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="637" />
       <source>Intégrité vérifiée.</source>
       <translation>Integrity verified.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="547" />
-      <location filename="../../src/ui/DownloadDialog.cpp" line="609" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="643" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="705" />
       <source>Extraction des fichiers en cours...</source>
       <translation>Extracting files...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="548" />
-      <location filename="../../src/ui/DownloadDialog.cpp" line="610" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="644" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="706" />
       <source>Veuillez patienter...</source>
       <translation>Please wait...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="647" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="743" />
       <source>Extraction terminée!</source>
       <translation>Extraction complete!</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="658" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="754" />
       <source>Téléchargement et extraction terminés!</source>
       <translation>Download and extraction complete!</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="637" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="733" />
       <source>Erreur lors de l'extraction: impossible de lancer PowerShell</source>
       <translation>Extraction error: unable to launch PowerShell</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="668" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="764" />
       <source>Connexion refusée par le serveur</source>
       <translation>Connection refused by server</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="671" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="767" />
       <source>Serveur introuvable</source>
       <translation>Server not found</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="674" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="770" />
       <source>Délai de connexion dépassé</source>
       <translation>Connection timeout</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="677" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="773" />
       <source>Erreur réseau: </source>
       <translation>Network error: </translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="184" />
-      <location filename="../../src/ui/DownloadDialog.cpp" line="686" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="186" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="782" />
       <source>Erreur de téléchargement</source>
       <translation>Download error</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="629" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="725" />
       <source>code de sortie %1</source>
       <translation>exit code %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="630" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="726" />
       <source>Erreur lors de l'extraction : %1</source>
       <translation>Extraction error: %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="704" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="800" />
       <source>Téléchargement annulé</source>
       <translation>Download cancelled</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="719" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="815" />
       <source>o</source>
       <translation>B</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="720" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="816" />
       <source>Ko</source>
       <translation>KB</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="721" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="817" />
       <source>Mo</source>
       <translation>MB</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="722" />
+      <location filename="../../src/ui/DownloadDialog.cpp" line="818" />
       <source>Go</source>
       <translation>GB</translation>
     </message>

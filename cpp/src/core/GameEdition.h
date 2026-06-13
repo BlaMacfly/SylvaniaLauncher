@@ -34,6 +34,11 @@ struct GameEdition {
     QString clientExpectedSha256;     // lowercase hex; empty = unknown
     bool    requireHashBeforeExtract = false; // true -> extraction refused while hash unknown/mismatching
     QString archiveFormat;            // "zip" | "tar.gz"
+    // Optional embedded per-chunk SHA-256 manifest (resource path). When set,
+    // the downloader verifies every segment against its chunk hash and
+    // re-fetches only the corrupted chunk — so a rare corruption over a very
+    // long download is repaired on the fly instead of discarding everything.
+    QString chunkManifestResource;
 
     // Addons (the two manifests are never mixed).
     QString addonManifestUrl;
