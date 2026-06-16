@@ -46,8 +46,15 @@ const GameEdition& GameEdition::legion() {
         ed.id = QStringLiteral("legion");
         ed.displayName = QStringLiteral("WoW Legion 7.3.5");
         ed.windowTitle = QStringLiteral("Sylvania Launcher - World of Warcraft Legion 7.3.5");
-        // Exact exe name still to be confirmed (§9); both common names are probed.
-        ed.clientExeCandidates = {QStringLiteral("Wow.exe"), QStringLiteral("Wow-64.exe")};
+        // The Sylvania Legion client ships a patched 64-bit launcher. It is
+        // probed first so a vanilla Wow.exe (if also present) is never launched
+        // by mistake; the others are fallbacks. Detection/launch is
+        // case-insensitive on Windows.
+        ed.clientExeCandidates = {
+            QStringLiteral("Wow-64_Patched.exe"),
+            QStringLiteral("Wow-64.exe"),
+            QStringLiteral("Wow.exe")
+        };
         ed.defaultRealmName = QStringLiteral("Sylvania Legion");
         ed.defaultRealmlist = QString::fromUtf8(SylvaniaConstants::kLegionDefaultPortal);
         ed.clientDownloadUrl = QString::fromUtf8(SylvaniaConstants::kLegionClientUrl);
