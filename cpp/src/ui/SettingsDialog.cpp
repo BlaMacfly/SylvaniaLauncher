@@ -590,7 +590,11 @@ void SettingsDialog::updateButtonsState() {
 
 void SettingsDialog::saveSettings() {
     m_config->setWowPath(m_pathEdit->text());
-    m_soundManager->setMuted(!m_soundCheckbox->isChecked());
+    // Apply to the running SoundManager AND persist to config.json — otherwise
+    // the choice is lost and sound re-enables itself on the next launch.
+    const bool soundOn = m_soundCheckbox->isChecked();
+    m_soundManager->setMuted(!soundOn);
+    m_config->setSoundEnabled(soundOn);
     m_config->setBackground(m_backgroundCombo->currentData().toString());
     m_config->setRandomBackgroundEnabled(m_randomBgButton->isChecked());
 

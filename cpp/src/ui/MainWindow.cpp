@@ -108,6 +108,10 @@ MainWindow::MainWindow(QWidget* parent)
     setMinimumSize(SylvaniaConstants::kMainWindowMinWidth,
                    SylvaniaConstants::kMainWindowMinHeight);
 
+    // Restore the persisted sound preference: SoundManager starts unmuted, so
+    // without this an "off" choice would silently re-enable on each launch.
+    m_soundManager->setEnabled(m_config->isSoundEnabled());
+
     setupUi();
     connectSignals();
 
