@@ -18,6 +18,7 @@
 #endif
 
 #include "core/GameEdition.h"
+#include "core/BuildInfoPatcher.h"
 #include "ui/MainWindow.h"
 #include "ui/DownloadDialog.h"
 #include "utils/PathUtils.h"
@@ -110,10 +111,14 @@ int main(int argc, char* argv[]) {
     SetCurrentProcessExplicitAppUserModelID(L"sylvania.launcher");
 #endif
 
-    // Headless download self-test (developer use; no UI).
+    // Headless self-tests (developer use; no UI).
     for (const QString& arg : app.arguments()) {
         if (arg.startsWith(QStringLiteral("--selftest-download="))) {
             return runDownloadSelfTest(app, arg.section('=', 1));
+        }
+        if (arg.startsWith(QStringLiteral("--selftest-buildinfo="))) {
+            QString err;
+            return patchBuildInfoCdn(arg.section('=', 1), &err) ? 0 : 1;
         }
     }
 

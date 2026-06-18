@@ -11,6 +11,7 @@
 #include "NotesManager.h"
 #include "ReminderService.h"
 #include "GameEdition.h"
+#include "BuildInfoPatcher.h"
 #include "PathUtils.h"
 #include "HdPatchManager.h"
 #include "Constants.h"
@@ -798,8 +799,21 @@ void MainWindow::playGame() {
     saveStats();
     updateStats();
 
-    // Launch the game
     const QString workDir = QFileInfo(exePath).absolutePath();
+
+    // Legion (CASC 7.3.5): Blizzard's CDN is dead, so repoint the client's
+    // .build.info to our mirror before launch — otherwise missing files fail to
+    // stream (CASC init failure / crash #132). No-op for WotLK (no .build.info).
+    // Non-blocking: a failure is logged/shown but never prevents launching.
+    if (activeEdition().id == QLatin1String("legion")) {
+        QString cdnErr;
+        if (!patchBuildInfoCdn(workDir, &cdnErr)) {
+            qWarning() << "Patch CDN .build.info:" << cdnErr;
+            m_statusLabel->setText(tr("Attention : CDN du client non reconfiguré (%1).").arg(cdnErr));
+        }
+    }
+
+    // Launch the game
     bool started = QProcess::startDetached(exePath, {}, workDir);
 
     if (started) {

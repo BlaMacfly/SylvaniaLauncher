@@ -94,6 +94,14 @@ inline constexpr const char* kLegionDefaultPortal = "164.132.43.2";
 // carrying it to kLegionDefaultPortal (one-time, Legion-scoped) so early
 // configs pick up the correct value.
 inline constexpr const char* kLegionPlaceholderPortal = "sylvania-servergame.com";
+
+// --- CASC CDN mirror (Legion 7.3.5) -------------------------------------
+// Blizzard's 7.3.5 CDN is dead (404), so the client can't stream missing
+// files. Before launch we repoint the "CDN Hosts"/"CDN Servers" fields of the
+// client's .build.info to our mirror (reverse-proxy to the wow.tools archive).
+// Change these two values if the mirror moves.
+inline constexpr const char* kCdnMirrorHost = "legendesylvania.com";
+inline constexpr const char* kCdnMirrorServers = "http://legendesylvania.com/";
 // Legion addon manifest (own list — never mixed with WotLK's). The recommended
 // addons live on legendesylvania.com; until a JSON manifest is published at
 // this URL the launcher falls back to the embedded copy (:/addons/manifest_legion).

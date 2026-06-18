@@ -823,192 +823,197 @@ Check your administrator rights.</translation>
   <context>
     <name>MainWindow</name>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="503" />
+      <location filename="../../src/ui/MainWindow.cpp" line="504" />
       <source>Chargement...</source>
       <translation>Loading...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="547" />
+      <location filename="../../src/ui/MainWindow.cpp" line="548" />
       <source>Changer la langue (FR/EN)</source>
       <translation>Change language (FR/EN)</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="562" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1230" />
+      <location filename="../../src/ui/MainWindow.cpp" line="563" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1253" />
       <source>Serveur</source>
       <translation>Server</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="693" />
+      <location filename="../../src/ui/MainWindow.cpp" line="694" />
       <source>Serveur: %1</source>
       <translation>Server: %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="699" />
+      <location filename="../../src/ui/MainWindow.cpp" line="700" />
       <source>Realmlist: %1</source>
       <translation>Realmlist: %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="654" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1220" />
+      <location filename="../../src/ui/MainWindow.cpp" line="655" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1243" />
       <source>RÉGLAGES</source>
       <translation>SETTINGS</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="656" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1221" />
+      <location filename="../../src/ui/MainWindow.cpp" line="657" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1244" />
       <source>NOTES</source>
       <translation>NOTES</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="659" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1222" />
+      <location filename="../../src/ui/MainWindow.cpp" line="660" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1245" />
       <source>QUITTER</source>
       <translation>QUIT</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="586" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1231" />
+      <location filename="../../src/ui/MainWindow.cpp" line="587" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1254" />
       <source>Statistiques de Jeu</source>
       <translation>Game Statistics</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="590" />
+      <location filename="../../src/ui/MainWindow.cpp" line="591" />
       <source>Temps de jeu: 0h 0min</source>
       <translation>Play time: 0h 0min</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="594" />
+      <location filename="../../src/ui/MainWindow.cpp" line="595" />
       <source>Lancements: 0</source>
       <translation>Launches: 0</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="655" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1223" />
+      <location filename="../../src/ui/MainWindow.cpp" line="656" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1246" />
       <source>ADDONS</source>
       <translation>ADDONS</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="657" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1224" />
+      <location filename="../../src/ui/MainWindow.cpp" line="658" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1247" />
       <source>SERVEURS</source>
       <translation>SERVERS</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="658" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1219" />
+      <location filename="../../src/ui/MainWindow.cpp" line="659" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1242" />
       <source>PATCH HD</source>
       <translation>HD PATCH</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="707" />
-      <location filename="../../src/ui/MainWindow.cpp" line="1149" />
+      <location filename="../../src/ui/MainWindow.cpp" line="708" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1172" />
       <source>Temps de jeu: %1h %2min</source>
       <translation>Play time: %1h %2min</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="710" />
+      <location filename="../../src/ui/MainWindow.cpp" line="711" />
       <source>Lancements: %1</source>
       <translation>Launches: %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="714" />
+      <location filename="../../src/ui/MainWindow.cpp" line="715" />
       <source>Dernière session: </source>
       <translation>Last session: </translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="714" />
+      <location filename="../../src/ui/MainWindow.cpp" line="715" />
       <source>dd/MM/yyyy hh:mm</source>
       <translation>MM/dd/yyyy hh:mm</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1226" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1249" />
       <source>⇄ Passer à Legion</source>
       <translation>⇄ Switch to Legion</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1227" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1250" />
       <source>⇄ Passer à WotLK</source>
       <translation>⇄ Switch to WotLK</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1228" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1251" />
       <source>Basculer entre WoW 3.3.5a et WoW Legion 7.x</source>
       <translation>Toggle between WoW 3.3.5a and WoW Legion 7.x</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1235" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1258" />
       <source>© 2026 Sylvania Launcher v3.0 — %1</source>
       <translation>© 2026 Sylvania Launcher v3.0 — %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="598" />
-      <location filename="../../src/ui/MainWindow.cpp" line="716" />
+      <location filename="../../src/ui/MainWindow.cpp" line="599" />
+      <location filename="../../src/ui/MainWindow.cpp" line="717" />
       <source>Dernière session: --</source>
       <translation>Last session: --</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="260" />
+      <location filename="../../src/ui/MainWindow.cpp" line="261" />
       <source>Changement d'édition</source>
       <translation>Edition switch</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="261" />
+      <location filename="../../src/ui/MainWindow.cpp" line="262" />
       <source>Impossible de changer d'édition pendant une installation.</source>
       <translation>Cannot switch edition while an installation is in progress.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="698" />
+      <location filename="../../src/ui/MainWindow.cpp" line="699" />
       <source>Portal: %1</source>
       <translation>Portal: %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="745" />
+      <location filename="../../src/ui/MainWindow.cpp" line="746" />
       <source>Client %1 non détecté — cliquez sur INSTALLER.</source>
       <translation>%1 client not detected — click INSTALL.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="757" />
+      <location filename="../../src/ui/MainWindow.cpp" line="758" />
       <source>%1 est installé. Prêt à jouer sur %2!</source>
       <translation>%1 is installed. Ready to play on %2!</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="783" />
+      <location filename="../../src/ui/MainWindow.cpp" line="784" />
       <source>Exécutable du jeu non trouvé!
 Veuillez vérifier le chemin d'installation.</source>
       <translation>Game executable not found!
 Please check the installation path.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="816" />
+      <location filename="../../src/ui/MainWindow.cpp" line="812" />
+      <source>Attention : CDN du client non reconfiguré (%1).</source>
+      <translation>Warning: client CDN not reconfigured (%1).</translation>
+    </message>
+    <message>
+      <location filename="../../src/ui/MainWindow.cpp" line="833" />
       <source>Choisir l'emplacement d'installation — %1</source>
       <translation>Choose the installation location — %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="825" />
+      <location filename="../../src/ui/MainWindow.cpp" line="842" />
       <source>Installation de %1 en cours...</source>
       <translation>Installing %1...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="883" />
-      <location filename="../../src/ui/MainWindow.cpp" line="890" />
-      <location filename="../../src/ui/MainWindow.cpp" line="927" />
-      <location filename="../../src/ui/MainWindow.cpp" line="929" />
+      <location filename="../../src/ui/MainWindow.cpp" line="900" />
+      <location filename="../../src/ui/MainWindow.cpp" line="907" />
+      <location filename="../../src/ui/MainWindow.cpp" line="944" />
+      <location filename="../../src/ui/MainWindow.cpp" line="946" />
       <source>Patch HD</source>
       <translation>HD Patch</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="890" />
+      <location filename="../../src/ui/MainWindow.cpp" line="907" />
       <source>L'installation du Patch HD est déjà en cours.</source>
       <translation>HD Patch installation is already in progress.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="896" />
+      <location filename="../../src/ui/MainWindow.cpp" line="913" />
       <source>Patch HD Détecté</source>
       <translation>HD Patch Detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="897" />
+      <location filename="../../src/ui/MainWindow.cpp" line="914" />
       <source>Le Patch HD semble déjà installé sur votre client.
 
 Voulez-vous tout de même le réinstaller ou forcer une mise à jour ?</source>
@@ -1017,58 +1022,58 @@ Voulez-vous tout de même le réinstaller ou forcer une mise à jour ?</source>
 Do you want to reinstall it or force an update anyway?</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="927" />
+      <location filename="../../src/ui/MainWindow.cpp" line="944" />
       <source>Patch HD installé avec succès.</source>
       <translation>HD Patch installed successfully.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="929" />
+      <location filename="../../src/ui/MainWindow.cpp" line="946" />
       <source>Erreur lors de l'installation : </source>
       <translation>Error during installation: </translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="944" />
+      <location filename="../../src/ui/MainWindow.cpp" line="961" />
       <source>Préparation de l'installation...</source>
       <translation>Preparing installation...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="852" />
+      <location filename="../../src/ui/MainWindow.cpp" line="869" />
       <source>Téléchargement terminé</source>
       <translation>Download completed</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="866" />
+      <location filename="../../src/ui/MainWindow.cpp" line="883" />
       <source>Erreur de téléchargement</source>
       <translation>Download error</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="782" />
-      <location filename="../../src/ui/MainWindow.cpp" line="808" />
+      <location filename="../../src/ui/MainWindow.cpp" line="783" />
+      <location filename="../../src/ui/MainWindow.cpp" line="825" />
       <source>Erreur</source>
       <translation>Error</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="806" />
+      <location filename="../../src/ui/MainWindow.cpp" line="820" />
       <source>World of Warcraft lancé! Bon jeu!</source>
       <translation>World of Warcraft launched! Enjoy!</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="808" />
+      <location filename="../../src/ui/MainWindow.cpp" line="825" />
       <source>Impossible de lancer World of Warcraft.</source>
       <translation>Unable to launch World of Warcraft.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="884" />
+      <location filename="../../src/ui/MainWindow.cpp" line="901" />
       <source>Vous devez d'abord installer ou configurer l'emplacement du client World of Warcraft avant d'installer le Patch HD.</source>
       <translation>You must first install or configure the World of Warcraft client location before installing the HD Patch.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1124" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1141" />
       <source>World of Warcraft en cours d'exécution...</source>
       <translation>World of Warcraft is running...</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1137" />
+      <location filename="../../src/ui/MainWindow.cpp" line="1154" />
       <source>Session terminée! Temps joué: %1 min</source>
       <translation>Session ended! Time played: %1 min</translation>
     </message>
