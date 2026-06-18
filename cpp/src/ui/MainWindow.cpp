@@ -804,6 +804,9 @@ void MainWindow::playGame() {
 
     if (started) {
         m_statusLabel->setText(tr("World of Warcraft lancé! Bon jeu!"));
+        // Get out of the way while the game runs; the launcher restores itself
+        // when the game process exits (see handleWowRunningState).
+        showMinimized();
     } else {
         QMessageBox::warning(this, tr("Erreur"), tr("Impossible de lancer World of Warcraft."));
     }
@@ -1138,6 +1141,12 @@ void MainWindow::handleWowRunningState(bool running) {
         }
 
         m_sessionStartTime = QDateTime();
+
+        // Bring the launcher back once the game has closed (mirrors the
+        // minimize-on-launch in playGame).
+        showNormal();
+        raise();
+        activateWindow();
     }
     else if (running && m_wowRunning) {
         // Update live play time display
