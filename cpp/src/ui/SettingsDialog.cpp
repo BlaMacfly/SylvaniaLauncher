@@ -794,8 +794,11 @@ void SettingsDialog::onDownloadEnUsClicked() {
 }
 
 void SettingsDialog::onOkClicked() {
-    m_soundManager->play("button");
+    // Apply settings (including the new sound mute state) FIRST, then play the
+    // confirmation click: re-enabling sound is now audibly confirmed instead of
+    // being swallowed by the still-muted state at click time.
     saveSettings();
+    m_soundManager->play("button");
     emit settingsChanged();
     accept();
 }
