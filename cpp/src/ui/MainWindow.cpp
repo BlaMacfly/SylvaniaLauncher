@@ -28,6 +28,7 @@
 #include <QGridLayout>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QProgressDialog>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -828,39 +829,16 @@ void MainWindow::playGame() {
 
     // Launch the game
 #ifdef Q_OS_LINUX
-    // On Linux the Windows client runs through the bundled Wine runtime.
-    bool started = false;
-    {
-        WineManager wineManager;
-        if (!wineManager.isReady()) {
-            m_statusLabel->setText(tr("Configuration du moteur de jeu (Wine)..."));
-            QCoreApplication::processEvents();
-
-            connect(&wineManager, &WineManager::downloadProgress, this,
-                    [this](int percent, const QString& status) {
-                Q_UNUSED(percent);
-                m_statusLabel->setText(status);
-                QCoreApplication::processEvents();
-            });
-            connect(&wineManager, &WineManager::error, this, [this](const QString& message) {
-                QMessageBox::warning(this, tr("Erreur Wine"),
-                    tr("Impossible de configurer Wine: %1").arg(message));
-            });
-
-            wineManager.downloadAndInstall();
-
-            if (!wineManager.isReady()) {
-                refreshPrimaryState();
-                return; // Installation failed
-            }
-        }
-        started = wineManager.launchExe(exePath, workDir);
-    }
+    // On Linux the Windows client runs through the EMBEDDED Wine runtime;
+    // the first launch initialises the WINEPREFIX asynchronously with a
+    // progress dialog (it can take 30 s or more).
+    launchViaWine(exePath, workDir);
 #else
-    bool started = QProcess::startDetached(exePath, {}, workDir);
+    finishGameLaunch(QProcess::startDetached(exePath, {}, workDir));
 #endif
+}
 
-
+void MainWindow::finishGameLaunch(bool started) {
     if (started) {
         m_statusLabel->setText(tr("World of Warcraft lancé! Bon jeu!"));
         // Get out of the way while the game runs; the launcher restores itself
@@ -870,6 +848,66 @@ void MainWindow::playGame() {
         QMessageBox::warning(this, tr("Erreur"), tr("Impossible de lancer World of Warcraft."));
     }
 }
+
+#ifdef Q_OS_LINUX
+void MainWindow::launchViaWine(const QString& exePath, const QString& workDir) {
+    if (!m_wineManager) {
+        m_wineManager = std::make_unique<WineManager>();
+    }
+
+    if (!m_wineManager->isWineBundled()) {
+        QMessageBox::critical(this, tr("Erreur Wine"),
+            tr("Le moteur Wine embarqué est introuvable.\n"
+               "L'AppImage semble incomplète ou corrompue — retéléchargez le launcher."));
+        return;
+    }
+
+    // Fast path: prefix already initialised on a previous run — reuse it.
+    if (m_wineManager->isPrefixValid()) {
+        finishGameLaunch(m_wineManager->launchExe(exePath, workDir));
+        return;
+    }
+
+    // First launch (or corrupt prefix): initialise asynchronously. This can
+    // take 30 s or more, so show a modal progress dialog instead of freezing.
+    auto* progress = new QProgressDialog(
+        tr("Initialisation du moteur de jeu (Wine)…"), QString(), 0, 100, this);
+    progress->setWindowTitle(tr("Premier lancement"));
+    progress->setWindowModality(Qt::WindowModal);
+    progress->setCancelButton(nullptr);
+    progress->setMinimumDuration(0);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
+    progress->setValue(1);
+
+    // Progress connection is scoped to the dialog: it dies with it.
+    connect(m_wineManager.get(), &WineManager::initProgress, progress,
+            [progress](int percent, const QString& status) {
+        progress->setLabelText(status);
+        progress->setValue(qBound(1, percent, 99));
+    });
+
+    connect(m_wineManager.get(), &WineManager::initFinished, this,
+            [this, progress, exePath, workDir](bool success, const QString& message) {
+        // One-shot: drop every connection made for this launch attempt so a
+        // retry doesn't stack handlers.
+        disconnect(m_wineManager.get(), &WineManager::initFinished, this, nullptr);
+        progress->close();
+        progress->deleteLater();
+
+        if (!success) {
+            QMessageBox::critical(this, tr("Erreur Wine"), message);
+            m_statusLabel->setText(tr("Échec de l'initialisation de Wine."));
+            refreshPrimaryState();
+            return;
+        }
+        m_statusLabel->setText(tr("Moteur de jeu prêt."));
+        finishGameLaunch(m_wineManager->launchExe(exePath, workDir));
+    });
+
+    m_wineManager->initializePrefix();
+}
+#endif // Q_OS_LINUX
 
 void MainWindow::startClientInstall() {
     const GameEdition& edition = activeEdition();

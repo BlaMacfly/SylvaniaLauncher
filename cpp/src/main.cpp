@@ -19,6 +19,9 @@
 
 #include "core/GameEdition.h"
 #include "core/BuildInfoPatcher.h"
+#ifdef Q_OS_LINUX
+#include "core/WineManager.h"
+#endif
 #include "ui/MainWindow.h"
 #include "ui/DownloadDialog.h"
 #include "utils/PathUtils.h"
@@ -121,6 +124,15 @@ int main(int argc, char* argv[]) {
             return patchBuildInfoCdn(arg.section('=', 1), &err) ? 0 : 1;
         }
     }
+
+#ifdef Q_OS_LINUX
+    // --debug re-enables Wine logging (WINEDEBUG default) and captures the
+    // wine/wineboot output into the logs directory. Production default stays
+    // WINEDEBUG=-all.
+    if (app.arguments().contains(QStringLiteral("--debug"))) {
+        WineManager::setDebugMode(true);
+    }
+#endif
 
     // Set application icon from the active edition's theme.
     const GameEdition& edition = peekActiveEdition();

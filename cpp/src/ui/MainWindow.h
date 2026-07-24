@@ -91,6 +91,13 @@ private:
     void refreshPrimaryState();
     void startClientInstall();
     void playGame();
+    // Shared post-launch step (status text, minimize-on-launch / error box).
+    void finishGameLaunch(bool started);
+#ifdef Q_OS_LINUX
+    // Launch through the embedded Wine runtime, initialising the WINEPREFIX
+    // asynchronously (with a progress dialog) on first run.
+    void launchViaWine(const QString& exePath, const QString& workDir);
+#endif
     void loadStats();
     void saveStats();
     void handleWowRunningState(bool running);
@@ -114,6 +121,11 @@ private:
     std::unique_ptr<SoundManager> m_soundManager;
     std::unique_ptr<NotesManager> m_notesManager;
     std::unique_ptr<ReminderService> m_reminderService;
+#ifdef Q_OS_LINUX
+    // Member (not stack-local): the asynchronous prefix initialisation must
+    // outlive the click handler that started it.
+    std::unique_ptr<class WineManager> m_wineManager;
+#endif
 
     // UI Elements - Header
     QLabel* m_logoLabel = nullptr;
