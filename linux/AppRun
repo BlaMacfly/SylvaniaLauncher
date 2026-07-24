@@ -5,7 +5,13 @@
 SELF="$(readlink -f "$0")"
 APPDIR="$(dirname "$SELF")"
 
-# Set up library paths
+# WineManager locates the embedded Wine runtime through APPDIR
+# ($APPDIR/usr/wine). The AppImage runtime normally exports it, but running
+# an extracted AppDir directly (./AppDir/AppRun) must work too.
+export APPDIR
+
+# Set up library paths (launcher only — WineManager scrubs these before any
+# Wine call so Wine never inherits the launcher's bundled libraries)
 export PATH="${APPDIR}/usr/bin:${PATH}"
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
 

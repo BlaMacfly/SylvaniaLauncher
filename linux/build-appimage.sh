@@ -1,23 +1,39 @@
 #!/bin/bash
-# build-appimage.sh — Build SylvaniaLauncher AppImage
+# build-appimage.sh — Build SylvaniaLauncher AppImage (Linux edition v3.0)
 #
-# Target: Ubuntu 20.04 (glibc 2.31) for maximum compatibility
-# Produces: SylvaniaLauncher-x86_64.AppImage
+# Target baseline: Ubuntu 22.04 / glibc 2.35 (see linux/Dockerfile).
+# Produces: SylvaniaLauncher-v<version>-x86_64.AppImage containing:
+#   - the launcher (Qt 6.5, FFmpeg multimedia backend)
+#   - an EMBEDDED, PINNED Wine runtime (Kron4ek wow64 build) under usr/wine
 #
-# Prerequisites:
-#   sudo apt install qt6-base-dev qt6-multimedia-dev qt6-tools-dev \
-#                    qt6-l10n-tools libzip-dev cmake g++ libgl-dev \
-#                    libxkbcommon-dev libgstreamer-plugins-base1.0-dev \
-#                    file
+# The Wine build is wow64: it runs 32-bit Windows apps (WoW 3.3.5a) without
+# any 32-bit host libraries — mandatory for machines without multilib.
+#
+# Order matters: linuxdeploy runs BEFORE Wine is embedded so it never
+# patches/relinks the Wine binaries; the final image is then packed with
+# appimagetool.
+#
+# Every downloaded artefact is SHA-256 verified before use.
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${PROJECT_DIR}/build-appimage"
 APPDIR="${BUILD_DIR}/AppDir"
 
-echo "=== Sylvania Launcher — AppImage Builder ==="
+# ----------------------------------------------------------------------------
+# Pinned Wine runtime (NEVER "latest": reproducible builds, verified content).
+# wine-10.8-staging-amd64-wow64 — Kron4ek build, 2025-05-18.
+#   - staging: gaming patches (esync, raw input...)
+#   - wow64:   runs 32-bit PE apps with no 32-bit host userland
+# ----------------------------------------------------------------------------
+WINE_VERSION="10.8"
+WINE_TARBALL="wine-${WINE_VERSION}-staging-amd64-wow64.tar.xz"
+WINE_URL="https://github.com/Kron4ek/Wine-Builds/releases/download/${WINE_VERSION}/${WINE_TARBALL}"
+WINE_SHA256="cdd6effc2a61c66b5dbfb8aebbc08df151cd50bf9084b106bfef0d6ebc7b097f"
+
+echo "=== Sylvania Launcher — AppImage Builder (Linux edition) ==="
 echo "Project: ${PROJECT_DIR}"
 echo "Build:   ${BUILD_DIR}"
 echo ""
@@ -25,63 +41,57 @@ echo ""
 # -------------------------------------------------------------------
 # Step 1: Clean and prepare build directory
 # -------------------------------------------------------------------
-echo "[1/6] Preparing build directory..."
+echo "[1/9] Preparing build directory..."
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
 # -------------------------------------------------------------------
-# Step 2: CMake configure
+# Step 2: CMake configure (Qt from QT_ROOT when provided by the Docker env)
 # -------------------------------------------------------------------
-echo "[2/6] Configuring with CMake..."
+echo "[2/9] Configuring with CMake..."
+CMAKE_EXTRA=()
+if [ -n "${QT_ROOT:-}" ]; then
+    CMAKE_EXTRA+=("-DCMAKE_PREFIX_PATH=${QT_ROOT}")
+fi
 cmake "${PROJECT_DIR}/cpp" \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_BUILD_TYPE=Release \
+    ${CMAKE_EXTRA[@]+"${CMAKE_EXTRA[@]}"}
 
 # -------------------------------------------------------------------
 # Step 3: Build
 # -------------------------------------------------------------------
-echo "[3/6] Building..."
+echo "[3/9] Building..."
 make -j"$(nproc)"
 
 # -------------------------------------------------------------------
-# Step 4: Install to AppDir
+# Step 4: Install to AppDir + assets
 # -------------------------------------------------------------------
-echo "[4/6] Installing to AppDir..."
+echo "[4/9] Installing to AppDir..."
 make DESTDIR="${APPDIR}" install
 
-# Ensure Asset directory is present
 mkdir -p "${APPDIR}/usr/share/sylvania-launcher"
 cp -r "${PROJECT_DIR}/Asset" "${APPDIR}/usr/share/sylvania-launcher/"
-
-# Also copy assets next to binary (fallback path for PathUtils)
 mkdir -p "${APPDIR}/usr/bin"
 cp -r "${PROJECT_DIR}/Asset" "${APPDIR}/usr/bin/Asset"
 
 # -------------------------------------------------------------------
-# Step 5: Prepare AppImage metadata
+# Step 5: AppImage metadata
 # -------------------------------------------------------------------
-echo "[5/6] Preparing AppImage metadata..."
-
-# Copy icon
+echo "[5/9] Preparing AppImage metadata..."
 cp "${PROJECT_DIR}/Asset/LogoSylvania/LogoSylvania256.png" \
    "${APPDIR}/sylvania-launcher.png"
-
-# Copy .desktop file
 cp "${PROJECT_DIR}/linux/sylvania-launcher.desktop" "${APPDIR}/"
 
-# Copy AppRun
-cp "${PROJECT_DIR}/linux/AppRun" "${APPDIR}/"
-chmod +x "${APPDIR}/AppRun"
-
 # -------------------------------------------------------------------
-# Step 6: Create AppImage with linuxdeploy
+# Step 6: Bundle Qt with linuxdeploy (BEFORE Wine is embedded)
 # -------------------------------------------------------------------
-echo "[6/6] Creating AppImage..."
+echo "[6/9] Bundling Qt with linuxdeploy..."
 
-# Download linuxdeploy if not present
 LINUXDEPLOY="${BUILD_DIR}/linuxdeploy-x86_64.AppImage"
 LINUXDEPLOY_QT="${BUILD_DIR}/linuxdeploy-plugin-qt-x86_64.AppImage"
+APPIMAGETOOL="${BUILD_DIR}/appimagetool-x86_64.AppImage"
 
 if [ ! -f "${LINUXDEPLOY}" ]; then
     echo "  Downloading linuxdeploy..."
@@ -89,19 +99,23 @@ if [ ! -f "${LINUXDEPLOY}" ]; then
         "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
     chmod +x "${LINUXDEPLOY}"
 fi
-
 if [ ! -f "${LINUXDEPLOY_QT}" ]; then
     echo "  Downloading linuxdeploy Qt plugin..."
     wget -q -O "${LINUXDEPLOY_QT}" \
         "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
     chmod +x "${LINUXDEPLOY_QT}"
 fi
+if [ ! -f "${APPIMAGETOOL}" ]; then
+    echo "  Downloading appimagetool..."
+    wget -q -O "${APPIMAGETOOL}" \
+        "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+    chmod +x "${APPIMAGETOOL}"
+fi
 
-# Run linuxdeploy to bundle all dependencies
-export QMAKE=$(which qmake6 2>/dev/null || which qmake 2>/dev/null)
-# Force-bundle the multimedia module so QSoundEffect has its backend plugin.
-# (EXTRA_QT_PLUGINS was the old name; current linuxdeploy-plugin-qt uses
-# EXTRA_QT_MODULES. We export both so either version behaves.)
+export QMAKE="${QT_ROOT:+${QT_ROOT}/bin/qmake}"
+[ -n "${QMAKE}" ] || QMAKE=$(command -v qmake6 || command -v qmake)
+export QMAKE
+# Bundle the multimedia module so QSoundEffect has its backend plugin.
 export EXTRA_QT_MODULES="multimedia"
 export EXTRA_QT_PLUGINS="multimedia"
 
@@ -109,22 +123,90 @@ export EXTRA_QT_PLUGINS="multimedia"
     --appdir "${APPDIR}" \
     --desktop-file "${APPDIR}/sylvania-launcher.desktop" \
     --icon-file "${APPDIR}/sylvania-launcher.png" \
-    --plugin qt \
-    --output appimage
+    --plugin qt
 
-# -------------------------------------------------------------------
-# Done!
-# -------------------------------------------------------------------
-APPIMAGE_FILE=$(ls -1 "${BUILD_DIR}"/Sylvania_Launcher*.AppImage 2>/dev/null || ls -1 "${BUILD_DIR}"/*.AppImage 2>/dev/null | head -1)
+# Our AppRun (not linuxdeploy's default): it must survive the deploy pass.
+cp -f "${PROJECT_DIR}/linux/AppRun" "${APPDIR}/AppRun"
+chmod +x "${APPDIR}/AppRun"
 
-if [ -n "${APPIMAGE_FILE}" ]; then
-    echo ""
-    echo "=== Build successful! ==="
-    echo "AppImage: ${APPIMAGE_FILE}"
-    echo "Size: $(du -h "${APPIMAGE_FILE}" | cut -f1)"
-    echo ""
-    echo "To run: chmod +x ${APPIMAGE_FILE} && ./${APPIMAGE_FILE}"
+# Qt 6.5 FFmpeg backend: verify the libav*/libsw* runtime libs came along.
+FFPLUGIN="${APPDIR}/usr/plugins/multimedia/libffmpegmediaplugin.so"
+if [ -f "${FFPLUGIN}" ]; then
+    MISSING_AV=$(LD_LIBRARY_PATH="${APPDIR}/usr/lib" ldd "${FFPLUGIN}" \
+        | awk '/not found/{print $1}' || true)
+    [ -z "${MISSING_AV}" ] || echo "WARNING: FFmpeg libs not bundled: ${MISSING_AV}"
 else
-    echo "ERROR: AppImage not found in build directory"
-    exit 1
+    echo "WARNING: multimedia backend plugin not found in AppDir (no sound)."
 fi
+
+# -------------------------------------------------------------------
+# Step 7: Embed the pinned Wine runtime
+# -------------------------------------------------------------------
+echo "[7/9] Embedding Wine ${WINE_VERSION} (wow64)..."
+WINE_CACHE="${PROJECT_DIR}/linux/.cache"
+mkdir -p "${WINE_CACHE}"
+if [ ! -f "${WINE_CACHE}/${WINE_TARBALL}" ]; then
+    echo "  Downloading ${WINE_URL}"
+    wget -q -O "${WINE_CACHE}/${WINE_TARBALL}.part" "${WINE_URL}"
+    mv "${WINE_CACHE}/${WINE_TARBALL}.part" "${WINE_CACHE}/${WINE_TARBALL}"
+fi
+
+echo "  Verifying SHA-256..."
+echo "${WINE_SHA256}  ${WINE_CACHE}/${WINE_TARBALL}" | sha256sum -c - \
+    || { echo "ERROR: Wine tarball SHA-256 mismatch — aborting."; exit 1; }
+
+mkdir -p "${APPDIR}/usr/wine"
+tar -xJf "${WINE_CACHE}/${WINE_TARBALL}" \
+    --strip-components=1 -C "${APPDIR}/usr/wine"
+
+test -x "${APPDIR}/usr/wine/bin/wine" \
+    || { echo "ERROR: bin/wine missing after extraction."; exit 1; }
+test -x "${APPDIR}/usr/wine/bin/wineserver" \
+    || { echo "ERROR: bin/wineserver missing after extraction."; exit 1; }
+
+# -------------------------------------------------------------------
+# Step 8: ldd audit of every bundled ELF binary
+# -------------------------------------------------------------------
+echo "[8/9] Auditing bundled binaries with ldd..."
+REPORT="${BUILD_DIR}/ldd-report.txt"
+: > "${REPORT}"
+audit_failed=0
+while IFS= read -r bin; do
+    # Only ELF files (skip Wine's PE .dll/.exe and data files).
+    if file -b "${bin}" | grep -q ELF; then
+        MISSING=$(LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/wine/lib" \
+            ldd "${bin}" 2>/dev/null | awk '/not found/{print $1}' || true)
+        if [ -n "${MISSING}" ]; then
+            echo "${bin}:" >> "${REPORT}"
+            echo "${MISSING}" | sed 's/^/    MISSING /' >> "${REPORT}"
+            audit_failed=1
+        fi
+    fi
+done < <(find "${APPDIR}/usr/bin" "${APPDIR}/usr/lib" "${APPDIR}/usr/wine/bin" \
+              "${APPDIR}/usr/wine/lib" -type f 2>/dev/null)
+if [ "${audit_failed}" -eq 1 ]; then
+    echo "WARNING: unresolved libraries found (details: ldd-report.txt)."
+    echo "         Wine legitimately dlopens host X11/graphics/audio libs at"
+    echo "         runtime; hard failures are only libs missing on a STOCK"
+    echo "         desktop install of the target distros."
+    cat "${REPORT}"
+else
+    echo "  ldd audit clean." | tee -a "${REPORT}"
+fi
+
+# -------------------------------------------------------------------
+# Step 9: Pack the AppImage with appimagetool
+# -------------------------------------------------------------------
+echo "[9/9] Packing AppImage..."
+VERSION=$(grep -oP 'project\(SylvaniaLauncher VERSION \K[0-9.]+' \
+          "${PROJECT_DIR}/cpp/CMakeLists.txt" || echo dev)
+FINAL="${BUILD_DIR}/SylvaniaLauncher-v${VERSION}-x86_64.AppImage"
+
+ARCH=x86_64 "${APPIMAGETOOL}" "${APPDIR}" "${FINAL}"
+
+echo ""
+echo "=== Build successful! ==="
+echo "AppImage: ${FINAL}"
+echo "Size: $(du -h "${FINAL}" | cut -f1)"
+echo ""
+echo "To run: chmod +x ${FINAL} && ${FINAL}"

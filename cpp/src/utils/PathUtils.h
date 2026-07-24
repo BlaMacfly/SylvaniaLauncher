@@ -112,19 +112,6 @@ inline QString resolveFileCaseInsensitive(const QString& dir, const QString& fil
 
 #ifdef Q_OS_LINUX
 /**
- * @brief Get the Wine-GE installation directory (Linux only)
- * @return Path to ~/.local/share/Sylvania Launcher/wine-ge
- */
-inline QString getWineDir() {
-    QString wineDir = getAppDataDir() + "/wine-ge";
-    QDir dir(wineDir);
-    if (!dir.exists()) {
-        dir.mkpath(".");
-    }
-    return wineDir;
-}
-
-/**
  * @brief Get the WINEPREFIX directory (Linux only)
  * @return Path to ~/.local/share/Sylvania Launcher/wineprefix
  */

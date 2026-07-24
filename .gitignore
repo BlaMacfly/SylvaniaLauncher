@@ -39,6 +39,7 @@ build/
 build-appimage/
 *.AppImage
 docker-build.log
+linux/.cache/
 
 # Claude Code session data
 .claude/

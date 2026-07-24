@@ -7,9 +7,9 @@ on:
 
 jobs:
   build-appimage:
-    name: Build AppImage (Ubuntu 20.04)
-    runs-on: ubuntu-20.04
-    
+    name: Build AppImage (Ubuntu 22.04, Qt 6.5.3, embedded Wine)
+    runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,83 +17,47 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            cmake g++ \
-            qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-l10n-tools \
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ make pkg-config file wget xz-utils \
+            desktop-file-utils patchelf python3-pip \
             libzip-dev \
-            libgl-dev libglu1-mesa-dev \
+            libgl-dev libglu1-mesa-dev libopengl0 \
             libxkbcommon-dev libxkbcommon-x11-0 \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-            libfuse2 \
-            file wget
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
+            libfontconfig1 libfreetype6 \
+            libfuse2 zsync
 
-      - name: Download linuxdeploy tools
+      - name: Install Qt 6.5.3 (aqtinstall)
         run: |
-          wget -q -O linuxdeploy-x86_64.AppImage \
-            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          wget -q -O linuxdeploy-plugin-qt-x86_64.AppImage \
-            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-          chmod +x linuxdeploy*.AppImage
-          # Move to build directory (will be created by cmake)
-          mkdir -p build-appimage
-          mv linuxdeploy*.AppImage build-appimage/
+          pip3 install "aqtinstall==3.1.18"
+          aqt install-qt linux desktop 6.5.3 gcc_64 \
+            -m qtmultimedia qtimageformats \
+            -O "${HOME}/qt"
+          echo "QT_ROOT=${HOME}/qt/6.5.3/gcc_64" >> "$GITHUB_ENV"
+          echo "${HOME}/qt/6.5.3/gcc_64/bin" >> "$GITHUB_PATH"
 
-      - name: Configure with CMake
-        run: |
-          cd build-appimage
-          cmake ../cpp \
-            -DCMAKE_INSTALL_PREFIX=/usr \
-            -DCMAKE_BUILD_TYPE=Release
+      - name: Cache pinned Wine tarball
+        uses: actions/cache@v4
+        with:
+          path: linux/.cache
+          key: wine-10.8-staging-amd64-wow64
 
-      - name: Build
-        run: |
-          cd build-appimage
-          make -j$(nproc)
-
-      - name: Prepare AppDir
-        run: |
-          cd build-appimage
-          APPDIR=AppDir
-          
-          # Install binary
-          make DESTDIR=${APPDIR} install
-          
-          # Copy assets
-          mkdir -p ${APPDIR}/usr/share/sylvania-launcher
-          cp -r ../Asset ${APPDIR}/usr/share/sylvania-launcher/
-          cp -r ../Asset ${APPDIR}/usr/bin/Asset
-          
-          # Copy metadata
-          cp ../Asset/LogoSylvania/LogoSylvania256.png ${APPDIR}/sylvania-launcher.png
-          cp ../linux/sylvania-launcher.desktop ${APPDIR}/
-          cp ../linux/AppRun ${APPDIR}/
-          chmod +x ${APPDIR}/AppRun
-
-      - name: Create AppImage
-        run: |
-          cd build-appimage
-          export QMAKE=$(which qmake6 2>/dev/null || which qmake 2>/dev/null)
-          export EXTRA_QT_PLUGINS="multimedia"
-          
-          ./linuxdeploy-x86_64.AppImage \
-            --appdir AppDir \
-            --desktop-file AppDir/sylvania-launcher.desktop \
-            --icon-file AppDir/sylvania-launcher.png \
-            --plugin qt \
-            --output appimage
-
-      - name: Rename AppImage
-        run: |
-          cd build-appimage
-          APPIMAGE=$(ls *.AppImage | grep -v linuxdeploy | head -1)
-          VERSION=${GITHUB_REF_NAME:-dev}
-          mv "${APPIMAGE}" "SylvaniaLauncher-${VERSION}-x86_64.AppImage"
+      - name: Build AppImage (single source of truth: linux/build-appimage.sh)
+        run: bash linux/build-appimage.sh
 
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
           name: SylvaniaLauncher-Linux-AppImage
           path: build-appimage/SylvaniaLauncher-*-x86_64.AppImage
+
+      - name: Upload ldd audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ldd-report
+          path: build-appimage/ldd-report.txt
+          if-no-files-found: ignore
 
       - name: Upload to Release (if tag push)
         if: startsWith(github.ref, 'refs/tags/v')

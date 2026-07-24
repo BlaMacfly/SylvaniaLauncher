@@ -2,9 +2,9 @@
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Platform: Linux x86_64](https://img.shields.io/badge/Platform-Linux%20x86__64-informational)
-![Version](https://img.shields.io/badge/version-v2.8-success)
+![Version](https://img.shields.io/badge/version-v3.0-success)
 
-🎮 **Launcher officiel pour le serveur World of Warcraft 3.3.5 — Sylvania**, version native Linux distribuée en **AppImage**.
+🎮 **Launcher officiel des serveurs World of Warcraft Sylvania** — WotLK 3.3.5a **et** Legion 7.3.5 (« 2 launchers en 1 »), version native Linux distribuée en **AppImage** avec **Wine embarqué**.
 
 > 🪟 **Vous êtes sous Windows ?** La version Windows se trouve sur la branche [`master`](https://github.com/BlaMacfly/SylvaniaLauncher/tree/master).
 > Cette branche `linux` ne concerne que l'édition Linux.
@@ -25,65 +25,57 @@
 
 ## Spécificités de l'édition Linux
 
-- 📦 **Format AppImage** : un seul fichier, aucune installation système requise.
-- 🍷 **Wine-GE intégré et automatique** : au premier lancement du jeu, le launcher télécharge
-  [Wine-GE](https://github.com/GloriousEggroll/wine-ge-custom) et l'installe dans un **préfixe Wine isolé**
-  (aucun `wine` système requis, votre `~/.wine` n'est pas touché).
+- 📦 **Format AppImage** : un seul fichier, aucune installation système requise — **ni Wine ni Qt** ne doivent être installés sur la machine.
+- 🍷 **Wine embarqué dans l'AppImage** (version figée [Kron4ek Wine 10.8 staging wow64](https://github.com/Kron4ek/Wine-Builds), vérifiée SHA-256 au build) :
+  - mode **WoW64** : exécute le client 32 bits **sans bibliothèques 32 bits système** ;
+  - **préfixe Wine isolé** dans votre dossier utilisateur (votre `~/.wine` n'est jamais touché) ;
+  - initialisation au premier lancement avec progression affichée, réutilisé ensuite tel quel ;
+  - aucun téléchargement de Wine au runtime.
 - 🎮 **DXVK** activé automatiquement si le patch HD fournit `d3d9.dll` (rendu Direct3D 9 → Vulkan).
-- 🗂️ **Gestion des chemins insensible à la casse** (le système de fichiers Linux est sensible à la casse) :
-  `Wow.exe` / `WoW.exe` / `wow.exe`, dossier `Data`/`data`, etc.
-- 📚 **Extraction native via libzip** (pas de dépendance à PowerShell).
-- 🔊 **Sons** via `QSoundEffect` (backend Qt Multimedia embarqué dans l'AppImage).
+- 🗂️ **Gestion des chemins insensible à la casse** (`Wow.exe` / `WoW.exe` / `wow.exe`…).
+- 📚 **Extraction native via libzip** (pas de dépendance à PowerShell), protégée contre le zip-slip.
+- 🔊 **Sons** via `QSoundEffect` (backend FFmpeg de Qt Multimedia embarqué dans l'AppImage).
+- 🐛 **Mode debug** : lancez avec `--debug` pour capturer les journaux Wine dans `logs/wine.log`.
 
-## Fonctionnalités
+## Fonctionnalités (parité v3.0 Windows)
 
-- 🎮 **Lancement du jeu** via Wine-GE, avec configuration automatique du realmlist
-- 📥 **Téléchargement du client WoW 3.3.5** avec progression en temps réel
-- 💎 **Patch HD Sylvania** : installation automatique (dossiers `Data`, `Interface` + DXVK)
-- 🧩 **Gestion modulaire des patchs HD** : activez/désactivez chaque élément (arbres, eau, sorts…)
+- 🎭 **Deux éditions dans un seul launcher** : WoW 3.3.5a (WotLK) et WoW Legion 7.3.5, avec thèmes, fonds d'écran, addons et configuration distincts
+- 🎮 **Lancement du jeu** via le Wine embarqué, realmlist (WotLK) ou portal (Legion) configuré automatiquement
+- 📥 **Téléchargement segmenté des clients** (HTTP Range) : reprise après interruption, vérification **SHA-256 avant extraction**, réparation par chunk
+- 🌐 **CDN Legion repointé** automatiquement (`.build.info`) vers le miroir Sylvania
+- 💎 **Patch HD Sylvania** (WotLK) : installation automatique, gestion modulaire des patchs
 - 🧬 **ARAC** (All Races All Classes) : activable/désactivable
-- 🖼️ **Fond d'écran aléatoire** : option ON/OFF
+- 🧱 **Gestionnaire d'AddOns** piloté par manifeste JSON distant (fallback embarqué, hôte de téléchargement verrouillé)
+- 🖼️ **Fond d'écran aléatoire** par édition : option ON/OFF
 - ⚙️ **Auto-configuration** : génération du `Config.wtf` optimal
-- 📊 **Statistiques de jeu** : temps de jeu, nombre de lancements
-- 📝 **Notes personnelles** style post-it avec couleurs
+- 📊 **Statistiques de jeu** par édition : temps de jeu, nombre de lancements
+- 📝 **Notes personnelles** style post-it avec couleurs + rappels (notifications)
 - 🌐 **Internationalisation** (Français / Anglais)
 - 🔄 **Gestion des serveurs** + migration automatique des anciens realmlist
-- 🧱 **Gestionnaire d'AddOns**
-
-## Version actuelle
-
-**v2.8** — application native C++ / Qt 6, alignée sur les fonctionnalités de la version Windows.
-
-### Nouveautés v2.8
-- 💎 Refonte du gestionnaire de Patch HD (localisation robuste de la racine du client dans l'archive)
-- 🧬 Nouveau bouton ARAC (All Races All Classes)
-- 🖼️ Fond d'écran aléatoire en option ON/OFF
-- 🔄 Migration automatique des anciens hôtes de realmlist au démarrage
-- ⚡ Surveillance du processus de jeu non bloquante, extraction durcie
 
 ## Installation
 
-1. **Téléchargez** l'AppImage depuis la [release v2.8](https://github.com/BlaMacfly/SylvaniaLauncher/releases/tag/v2.8) :
-   [`SylvaniaLauncher-v2.8-x86_64.AppImage`](https://github.com/BlaMacfly/SylvaniaLauncher/releases/download/v2.8/SylvaniaLauncher-v2.8-x86_64.AppImage)
+1. **Téléchargez** l'AppImage depuis les [releases](https://github.com/BlaMacfly/SylvaniaLauncher/releases) : `SylvaniaLauncher-v3.0-x86_64.AppImage`
 
 2. **Rendez-la exécutable** :
    ```bash
-   chmod +x SylvaniaLauncher-v2.8-x86_64.AppImage
+   chmod +x SylvaniaLauncher-v3.0-x86_64.AppImage
    ```
    *(ou : clic droit → Propriétés → Permissions → « Autoriser l'exécution du fichier comme un programme »)*
 
 3. **Lancez-la** :
    ```bash
-   ./SylvaniaLauncher-v2.8-x86_64.AppImage
+   ./SylvaniaLauncher-v3.0-x86_64.AppImage
    ```
 
-Au premier lancement de WoW, Wine-GE est téléchargé et configuré automatiquement (prévoir quelques centaines de Mo).
+Au premier lancement du jeu, le préfixe Wine est initialisé automatiquement (30 s à 1 min, progression affichée). Les lancements suivants sont immédiats.
 
 ## Configuration requise
 
-- Linux **x86_64**, distribution récente (**2024+**, glibc ≥ 2.39 — l'AppImage est compilée sur Ubuntu 24.04 / Qt 6.4)
+- Linux **x86_64**, glibc ≥ **2.35** (Ubuntu 22.04+, Debian 12+, Fedora 36+, Arch/Manjaro récents…)
 - GPU avec pilotes OpenGL/Vulkan à jour (Mesa, NVIDIA…)
-- Connexion Internet (téléchargement de Wine-GE et du client)
+- Serveur graphique X11 ou XWayland
+- Connexion Internet (téléchargement du client et des addons)
 - Permissions d'écriture sur le dossier du jeu (patchs, mises à jour)
 
 ## Emplacement des données
@@ -92,15 +84,15 @@ Toutes les données du launcher sont regroupées sous **un seul dossier** :
 
 ```
 ~/.local/share/Sylvania/Sylvania Launcher/
-├── config.json     # préférences
-├── data/           # données internes
-├── wine-ge/        # moteur Wine
+├── config.json     # préférences (par édition)
+├── data/           # données internes (notes, addons…)
+├── logs/           # journaux (wine-setup.log, wine.log en mode --debug)
 └── wineprefix/     # préfixe Wine isolé
 ```
 
 ## Désinstallation
 
-Supprimez l'AppImage, puis (pour tout nettoyer, Wine et préfixe compris) :
+Supprimez l'AppImage, puis (pour tout nettoyer, préfixe Wine compris) :
 
 ```bash
 rm -rf ~/.local/share/Sylvania/Sylvania\ Launcher/
@@ -110,7 +102,7 @@ rm -rf ~/.local/share/Sylvania/Sylvania\ Launcher/
 
 ### Méthode recommandée : Docker (reproductible)
 
-L'image de build (Ubuntu 24.04 + Qt 6.4 + libzip) est versionnée dans le dépôt.
+L'image de build (Ubuntu 22.04 + Qt 6.5.3 officiel + libzip) est versionnée dans le dépôt. Le Wine embarqué (version figée) est téléchargé et **vérifié SHA-256** pendant le build.
 
 ```bash
 # 1) Construire l'image de build
@@ -120,17 +112,11 @@ docker build -t sylvania-appimage -f linux/Dockerfile linux
 docker run --rm -v "${PWD}:/src" sylvania-appimage
 ```
 
-Résultat : `build-appimage/Sylvania_Launcher-x86_64.AppImage`.
+Résultat : `build-appimage/SylvaniaLauncher-v3.0-x86_64.AppImage` (+ `ldd-report.txt`, audit des dépendances embarquées).
 
-### Méthode native (Debian/Ubuntu 24.04+)
+### CI GitHub Actions
 
-```bash
-sudo apt install qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools \
-                 qt6-l10n-tools libzip-dev cmake g++ libgl-dev libxkbcommon-dev \
-                 libgstreamer-plugins-base1.0-dev file
-
-./linux/build-appimage.sh
-```
+Le workflow [`build-linux.yml`](.github/workflows/build-linux.yml) produit la même AppImage (runner Ubuntu 22.04, même script `linux/build-appimage.sh`) sur tag `v*` ou déclenchement manuel.
 
 ## Licence
 
@@ -149,4 +135,4 @@ Les contributions sont les bienvenues !
 
 ## Auteur
 
-© 2025 Sylvania - [sylvania-servergame.com](https://sylvania-servergame.com)
+© 2026 Sylvania - [sylvania-servergame.com](https://sylvania-servergame.com)
