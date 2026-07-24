@@ -86,6 +86,30 @@ inline QString getSoundsDir() {
     return getAssetsDir() + "/Sounds";
 }
 
+/**
+ * @brief Resolve a file inside a directory, case-insensitively on Linux.
+ *
+ * WoW client archives ship the executable as Wow.exe / WoW.exe / wow.exe
+ * indistinctly. NTFS resolves these to the same file, but Linux filesystems
+ * are case-sensitive, so every "does the client exe exist" probe must go
+ * through this helper instead of a bare QFile::exists().
+ *
+ * @return Absolute path of the match, or an empty string if absent.
+ */
+inline QString resolveFileCaseInsensitive(const QString& dir, const QString& fileName) {
+    const QString direct = dir + "/" + fileName;
+    if (QFile::exists(direct)) return direct;
+#ifdef Q_OS_LINUX
+    const QStringList entries = QDir(dir).entryList(QDir::Files);
+    for (const QString& entry : entries) {
+        if (entry.compare(fileName, Qt::CaseInsensitive) == 0) {
+            return dir + "/" + entry;
+        }
+    }
+#endif
+    return QString();
+}
+
 #ifdef Q_OS_LINUX
 /**
  * @brief Get the Wine-GE installation directory (Linux only)

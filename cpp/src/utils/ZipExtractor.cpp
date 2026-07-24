@@ -45,6 +45,9 @@ bool ZipExtractor::extractWithLibzip(const QString& zipPath, const QString& dest
         destDir.mkpath(".");
     }
 
+    // Canonical destination root used for the zip-slip containment check.
+    const QString destRoot = QDir(destPath).absolutePath() + "/";
+
     const int bufferSize = 65536; // 64KB buffer
     char buffer[bufferSize];
 
@@ -53,7 +56,21 @@ bool ZipExtractor::extractWithLibzip(const QString& zipPath, const QString& dest
         if (!name) continue;
 
         QString entryName = QString::fromUtf8(name);
-        QString fullPath = destPath + "/" + entryName;
+
+        // Zip-slip guard: refuse absolute entries and any path that resolves
+        // outside the destination ("../", "a/../../b", backslash variants).
+        // QDir::cleanPath collapses . and .. before the prefix check.
+        const QString normalized = QDir::cleanPath(QString(entryName).replace('\\', '/'));
+        if (normalized.startsWith('/') || normalized.startsWith("../")
+            || normalized == QLatin1String("..") || normalized.contains(":")) {
+            qWarning() << "ZipExtractor: skipping unsafe entry:" << entryName;
+            continue;
+        }
+        QString fullPath = QDir::cleanPath(destRoot + normalized);
+        if (!fullPath.startsWith(destRoot)) {
+            qWarning() << "ZipExtractor: skipping entry escaping destination:" << entryName;
+            continue;
+        }
 
         // Report progress
         if (onProgress) {
@@ -124,9 +141,14 @@ bool ZipExtractor::extractWithPowerShell(const QString& zipPath, const QString& 
     QTimer* progressTimer = new QTimer(parent);
     progressTimer->setInterval(5000);
 
-    QString command = QString(
-        "Expand-Archive -Path '%1' -DestinationPath '%2' -Force"
-    ).arg(zipPath).arg(destPath);
+    // Paths flow via env vars (never interpolated into the command string)
+    // -> no shell-injection surface, same pattern as Constants.h extractors.
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SYL_SRC", QDir::toNativeSeparators(zipPath));
+    env.insert("SYL_DST", QDir::toNativeSeparators(destPath));
+    process->setProcessEnvironment(env);
+    const QString command = QStringLiteral(
+        "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
 
     progressTimer->start();
 
@@ -171,11 +193,15 @@ bool ZipExtractor::extract(const QString& zipPath, const QString& destPath,
 #ifdef Q_OS_LINUX
     return extractWithLibzip(zipPath, destPath, onProgress);
 #else
-    // Synchronous PowerShell extraction for Windows
+    // Synchronous PowerShell extraction for Windows. Paths flow via env vars
+    // (never interpolated into the command string) -> no injection surface.
     QProcess process;
-    QString command = QString(
-        "Expand-Archive -Path '%1' -DestinationPath '%2' -Force"
-    ).arg(zipPath).arg(destPath);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SYL_SRC", QDir::toNativeSeparators(zipPath));
+    env.insert("SYL_DST", QDir::toNativeSeparators(destPath));
+    process.setProcessEnvironment(env);
+    const QString command = QStringLiteral(
+        "Expand-Archive -LiteralPath $env:SYL_SRC -DestinationPath $env:SYL_DST -Force");
 
     process.start("powershell", QStringList() << "-Command" << command);
     process.waitForFinished(-1);

@@ -12,7 +12,7 @@
 
 // Note serialization
 QJsonObject Note::toJson() const {
-    return QJsonObject{
+    QJsonObject obj{
         {"id", id},
         {"title", title},
         {"content", content},
@@ -23,6 +23,13 @@ QJsonObject Note::toJson() const {
         {"is_favorite", isFavorite},
         {"is_archived", isArchived}
     };
+    // v3.0 reminder fields — only written when a reminder exists, so pre-3.0
+    // launchers can still read the file (they ignore unknown keys anyway).
+    if (dueAt.isValid()) {
+        obj["due_at"] = dueAt.toString(Qt::ISODate);
+        obj["reminder_done"] = reminderDone;
+    }
+    return obj;
 }
 
 Note Note::fromJson(const QJsonObject& obj) {
@@ -31,17 +38,21 @@ Note Note::fromJson(const QJsonObject& obj) {
     note.title = obj.value("title").toString();
     note.content = obj.value("content").toString();
     note.category = obj.value("category").toString("general");
-    
+
     QJsonArray tagsArray = obj.value("tags").toArray();
     for (const QJsonValue& tag : tagsArray) {
         note.tags.append(tag.toString());
     }
-    
+
     note.createdAt = QDateTime::fromString(obj.value("created_at").toString(), Qt::ISODate);
     note.updatedAt = QDateTime::fromString(obj.value("updated_at").toString(), Qt::ISODate);
     note.isFavorite = obj.value("is_favorite").toBool(false);
     note.isArchived = obj.value("is_archived").toBool(false);
-    
+    // Validated on load: a malformed due_at yields an invalid QDateTime,
+    // i.e. "no reminder" — never a crash or a bogus notification.
+    note.dueAt = QDateTime::fromString(obj.value("due_at").toString(), Qt::ISODate);
+    note.reminderDone = obj.value("reminder_done").toBool(false);
+
     return note;
 }
 
@@ -134,6 +145,14 @@ void NotesManager::loadNotes() {
 
     QFile file(getNotesFilePath());
     if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        rebuildSearchIndex();
+        return;
+    }
+
+    // Same cap as imports: refuse to slurp a corrupted/oversized notes file
+    // into memory.
+    if (file.size() > SylvaniaConstants::kMaxImportBytes) {
+        qWarning() << "notes.json ignoré: taille hors limites (" << file.size() << ")";
         rebuildSearchIndex();
         return;
     }
@@ -243,11 +262,14 @@ bool NotesManager::saveCategories() {
 }
 
 std::optional<QString> NotesManager::createNote(const QString& title, const QString& content,
-                                                  const QString& category, const QStringList& tags) {
-    if (title.trimmed().isEmpty() || content.trimmed().isEmpty()) {
+                                                  const QString& category, const QStringList& tags,
+                                                  const QDateTime& dueAt) {
+    // Reject only a wholly empty note; a title-only or content-only post-it is
+    // valid (NotesWindow allows both, and updateNote tolerates empty content).
+    if (title.trimmed().isEmpty() && content.trimmed().isEmpty()) {
         return std::nullopt;
     }
-    
+
     Note note;
     note.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     note.title = title.trimmed();
@@ -258,6 +280,8 @@ std::optional<QString> NotesManager::createNote(const QString& title, const QStr
     note.updatedAt = QDateTime::currentDateTime();
     note.isFavorite = false;
     note.isArchived = false;
+    note.dueAt = dueAt;
+    note.reminderDone = false;
     
     m_notes.push_back(note);
     appendSearchIndexFor(note);
@@ -422,6 +446,66 @@ bool NotesManager::toggleArchive(const QString& noteId) {
     it->updatedAt = QDateTime::currentDateTime();
     
     return saveNotes();
+}
+
+bool NotesManager::setNoteDueDate(const QString& noteId, const QDateTime& dueAt) {
+    auto it = std::find_if(m_notes.begin(), m_notes.end(),
+                           [&noteId](const Note& n) { return n.id == noteId; });
+    if (it == m_notes.end()) return false;
+
+    it->dueAt = dueAt;
+    it->reminderDone = false;  // a (re)scheduled reminder notifies again
+    it->updatedAt = QDateTime::currentDateTime();
+
+    if (saveNotes()) {
+        emit noteUpdated(noteId);
+        emit notesChanged();
+        return true;
+    }
+    return false;
+}
+
+bool NotesManager::markReminderDone(const QString& noteId) {
+    auto it = std::find_if(m_notes.begin(), m_notes.end(),
+                           [&noteId](const Note& n) { return n.id == noteId; });
+    if (it == m_notes.end()) return false;
+
+    it->reminderDone = true;
+
+    if (saveNotes()) {
+        emit noteUpdated(noteId);
+        emit notesChanged();
+        return true;
+    }
+    return false;
+}
+
+std::vector<Note> NotesManager::dueReminders(const QDateTime& now) const {
+    std::vector<Note> result;
+    std::copy_if(m_notes.begin(), m_notes.end(), std::back_inserter(result),
+                 [&now](const Note& n) {
+                     return n.hasReminder() && !n.reminderDone &&
+                            !n.isArchived && n.dueAt <= now;
+                 });
+    return result;
+}
+
+std::vector<Note> NotesManager::notesWithReminders() const {
+    std::vector<Note> result;
+    std::copy_if(m_notes.begin(), m_notes.end(), std::back_inserter(result),
+                 [](const Note& n) { return n.hasReminder() && !n.isArchived; });
+    return result;
+}
+
+std::vector<Note> NotesManager::notesOnDay(const QDate& day) const {
+    std::vector<Note> result;
+    std::copy_if(m_notes.begin(), m_notes.end(), std::back_inserter(result),
+                 [&day](const Note& n) {
+                     if (n.isArchived) return false;
+                     return (n.createdAt.isValid() && n.createdAt.date() == day) ||
+                            (n.hasReminder() && n.dueAt.date() == day);
+                 });
+    return result;
 }
 
 const std::vector<NoteCategory>& NotesManager::getCategories() const {

@@ -39,3 +39,10 @@ build/
 build-appimage/
 *.AppImage
 docker-build.log
+
+# Claude Code session data
+.claude/
+
+# Scratch / packaging workspace
+cpp/scratch/
+release_build/

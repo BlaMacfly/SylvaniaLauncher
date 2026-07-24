@@ -1,5 +1,6 @@
 #include "RealmlistWindow.h"
 #include "ConfigManager.h"
+#include "GameEdition.h"
 
 #include <QLineEdit>
 #include <QHBoxLayout>
@@ -201,7 +202,8 @@ void RealmlistWindow::onServerSelected(QAbstractButton* button) {
 }
 
 void RealmlistWindow::onAddServer() {
-    ServerEditDialog dialog(this);
+    const bool legion = GameEdition::byId(m_config->activeEditionId()).id == QLatin1String("legion");
+    ServerEditDialog dialog(this, QString(), QString(), legion);
     
     if (dialog.exec() == QDialog::Accepted) {
         QString name = dialog.getName();
@@ -226,7 +228,8 @@ void RealmlistWindow::onEditServer() {
     if (m_selectedIndex >= static_cast<int>(entries.size())) return;
     
     const auto& entry = entries[m_selectedIndex];
-    ServerEditDialog dialog(this, entry.name, entry.address);
+    const bool legion = GameEdition::byId(m_config->activeEditionId()).id == QLatin1String("legion");
+    ServerEditDialog dialog(this, entry.name, entry.address, legion);
     
     if (dialog.exec() == QDialog::Accepted) {
         entries[m_selectedIndex].name = dialog.getName();
@@ -278,14 +281,15 @@ void RealmlistWindow::onApplyChanges() {
 }
 
 // ServerEditDialog implementation
-ServerEditDialog::ServerEditDialog(QWidget* parent, const QString& name, const QString& address)
+ServerEditDialog::ServerEditDialog(QWidget* parent, const QString& name,
+                                   const QString& address, bool legionPortal)
     : QDialog(parent)
 {
     setWindowTitle(tr("Configuration du Serveur"));
     setModal(true);
     setFixedSize(450, 240);
-    
-    setupUi(name, address);
+
+    setupUi(name, address, legionPortal);
     
     setStyleSheet(R"(
         QDialog {
@@ -324,21 +328,26 @@ ServerEditDialog::ServerEditDialog(QWidget* parent, const QString& name, const Q
     )");
 }
 
-void ServerEditDialog::setupUi(const QString& name, const QString& address) {
+void ServerEditDialog::setupUi(const QString& name, const QString& address, bool legionPortal) {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setSpacing(12);
     layout->setContentsMargins(25, 20, 25, 20);
-    
+
     // Name
     layout->addWidget(new QLabel(tr("Nom du serveur:"), this));
     m_nameEdit = new QLineEdit(name, this);
     m_nameEdit->setPlaceholderText(tr("Ex: Sylvania"));
     layout->addWidget(m_nameEdit);
-    
-    // Address
-    layout->addWidget(new QLabel(tr("Adresse (realmlist):"), this));
+
+    // Address — label + hint depend on the edition. Legion 7.3.5 uses a
+    // "portal" host (written as SET portal in Config.wtf); WotLK uses a
+    // classic "set realmlist" line.
+    layout->addWidget(new QLabel(
+        legionPortal ? tr("Adresse (portal):") : tr("Adresse (realmlist):"), this));
     m_addressEdit = new QLineEdit(address, this);
-    m_addressEdit->setPlaceholderText(tr("Ex: set realmlist sylvania-servergame.com"));
+    m_addressEdit->setPlaceholderText(
+        legionPortal ? tr("Ex: 164.132.43.2")
+                     : tr("Ex: set realmlist sylvania-servergame.com"));
     layout->addWidget(m_addressEdit);
     
     layout->addStretch();

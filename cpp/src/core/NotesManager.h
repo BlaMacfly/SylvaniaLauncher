@@ -11,6 +11,10 @@
 
 /**
  * @brief Note data structure
+ *
+ * v3.0: a note can carry a reminder (dueAt). The JSON schema is backward
+ * compatible — pre-3.0 notes simply have no "due_at"/"reminder_done" keys and
+ * load with an invalid dueAt (no reminder).
  */
 struct Note {
     QString id;
@@ -22,7 +26,11 @@ struct Note {
     QDateTime updatedAt;
     bool isFavorite = false;
     bool isArchived = false;
-    
+    QDateTime dueAt;            // invalid = no reminder
+    bool reminderDone = false;  // true once the reminder was notified
+
+    bool hasReminder() const { return dueAt.isValid(); }
+
     QJsonObject toJson() const;
     static Note fromJson(const QJsonObject& obj);
 };
@@ -65,13 +73,26 @@ public:
     // CRUD operations
     std::optional<QString> createNote(const QString& title, const QString& content,
                                        const QString& category = "general",
-                                       const QStringList& tags = {});
-    bool updateNote(const QString& noteId, 
+                                       const QStringList& tags = {},
+                                       const QDateTime& dueAt = QDateTime());
+    bool updateNote(const QString& noteId,
                     const QString& title = QString(),
                     const QString& content = QString(),
                     const QString& category = QString(),
                     const QStringList& tags = {});
     bool deleteNote(const QString& noteId);
+
+    // --- Reminders (v3.0) -------------------------------------------------
+    // Sets/clears the due date (invalid QDateTime = remove the reminder).
+    // Resets reminderDone so a re-scheduled note notifies again.
+    bool setNoteDueDate(const QString& noteId, const QDateTime& dueAt);
+    bool markReminderDone(const QString& noteId);
+    // Notes whose reminder is due (dueAt <= now, not yet notified, not archived).
+    std::vector<Note> dueReminders(const QDateTime& now) const;
+    // Notes carrying any reminder (for calendar decoration).
+    std::vector<Note> notesWithReminders() const;
+    // Notes "belonging" to a calendar day: created OR due that day.
+    std::vector<Note> notesOnDay(const QDate& day) const;
     
     // Retrieval
     std::optional<Note> getNoteById(const QString& noteId) const;

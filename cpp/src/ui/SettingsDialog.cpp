@@ -1,5 +1,7 @@
 #include "SettingsDialog.h"
 #include "ConfigManager.h"
+#include "GameEdition.h"
+#include "Constants.h"
 #include "SoundManager.h"
 #include "PathUtils.h"
 #include "HdPatchManager.h"
@@ -194,6 +196,10 @@ void SettingsDialog::setupUi() {
         }
     )");
     mainLayout->addWidget(m_downloadEnUsButton);
+    // The enUS language pack is a 3.3.5-only asset; hide the button for
+    // editions that don't ship it (e.g. Legion), mirroring the HD-patch gating.
+    m_downloadEnUsButton->setVisible(
+        GameEdition::byId(m_config->activeEditionId()).supportsEnUsPack);
 
     // Appearance section
     QLabel* appearanceTitle = new QLabel(tr("Apparence"), this);
@@ -206,14 +212,11 @@ void SettingsDialog::setupUi() {
     bgLabel->setStyleSheet("color: #ffffff; font-size: 12px;");
 
     m_backgroundCombo = new QComboBox(this);
-    m_backgroundCombo->addItem("Alliance", "Alliance");
-    m_backgroundCombo->addItem(tr("Arbre de Vie"), "Arbre de Vie");
-    m_backgroundCombo->addItem("Azeroth", "Azeroth");
-    m_backgroundCombo->addItem("Horde", "Horde");
-    m_backgroundCombo->addItem("Ilidan", "Ilidan");
-    m_backgroundCombo->addItem("Lich King", "Lich King");
-    m_backgroundCombo->addItem("Ragnaros", "Ragnaros");
-    m_backgroundCombo->addItem(tr("Taverne"), "Taverne");
+    // Populate from the ACTIVE edition's background pool (WotLK and Legion each
+    // have their own set). The base name doubles as the display label.
+    for (const QString& bg : GameEdition::byId(m_config->activeEditionId()).backgrounds) {
+        m_backgroundCombo->addItem(bg, bg);
+    }
     m_backgroundCombo->setStyleSheet(R"(
         QComboBox {
             background-color: #2a2a2a;
@@ -296,8 +299,11 @@ void SettingsDialog::setupUi() {
     )");
     mainLayout->addWidget(m_soundCheckbox);
 
-    // Patch Management Section (Visible if WoW path is set)
-    if (!m_config->getWowPath().isEmpty()) {
+    // Patch Management Section: only for editions that support the HD patch
+    // (WotLK 3.3.5). Legion 7.3.5 already embeds those assets natively, so the
+    // whole section — master ON/OFF + per-feature toggles — is hidden there.
+    if (GameEdition::byId(m_config->activeEditionId()).supportsHdPatch
+        && !m_config->getWowPath().isEmpty()) {
         setupPatchUI(mainLayout);
     }
 
@@ -593,7 +599,11 @@ void SettingsDialog::updateButtonsState() {
 
 void SettingsDialog::saveSettings() {
     m_config->setWowPath(m_pathEdit->text());
-    m_soundManager->setMuted(!m_soundCheckbox->isChecked());
+    // Apply to the running SoundManager AND persist to config.json — otherwise
+    // the choice is lost and sound re-enables itself on the next launch.
+    const bool soundOn = m_soundCheckbox->isChecked();
+    m_soundManager->setMuted(!soundOn);
+    m_config->setSoundEnabled(soundOn);
     m_config->setBackground(m_backgroundCombo->currentData().toString());
     m_config->setRandomBackgroundEnabled(m_randomBgButton->isChecked());
 
@@ -781,9 +791,8 @@ void SettingsDialog::onDownloadEnUsClicked() {
         return;
     }
 
-    QString enUsUrl = "https://sylvania-servergame.com/enus-download.php";
     DownloadDialog* dlDialog = new DownloadDialog(this, wowPath + "/Data");
-    dlDialog->setDownloadUrl(enUsUrl);
+    dlDialog->setDownloadUrl(QString::fromUtf8(SylvaniaConstants::kEnUsPackUrl));
     dlDialog->setSkipConfigWtf(true);
     dlDialog->setWindowTitleText(tr("Téléchargement du Pack Anglais"));
 
@@ -797,8 +806,11 @@ void SettingsDialog::onDownloadEnUsClicked() {
 }
 
 void SettingsDialog::onOkClicked() {
-    m_soundManager->play("button");
+    // Apply settings (including the new sound mute state) FIRST, then play the
+    // confirmation click: re-enabling sound is now audibly confirmed instead of
+    // being swallowed by the still-muted state at click time.
     saveSettings();
+    m_soundManager->play("button");
     emit settingsChanged();
     accept();
 }
