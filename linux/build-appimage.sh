@@ -118,6 +118,9 @@ export QMAKE
 # Bundle the multimedia module so QSoundEffect has its backend plugin.
 export EXTRA_QT_MODULES="multimedia"
 export EXTRA_QT_PLUGINS="multimedia"
+# linuxdeploy resolves DT_NEEDED through the loader: the official Qt libs
+# live outside the ldconfig paths (/opt/qt), so expose them explicitly.
+export LD_LIBRARY_PATH="${QT_ROOT:+${QT_ROOT}/lib:}${LD_LIBRARY_PATH:-}"
 
 "${LINUXDEPLOY}" \
     --appdir "${APPDIR}" \
@@ -125,9 +128,16 @@ export EXTRA_QT_PLUGINS="multimedia"
     --icon-file "${APPDIR}/sylvania-launcher.png" \
     --plugin qt
 
-# Our AppRun (not linuxdeploy's default): it must survive the deploy pass.
-cp -f "${PROJECT_DIR}/linux/AppRun" "${APPDIR}/AppRun"
+# Our AppRun (not linuxdeploy's default). linuxdeploy creates AppRun as a
+# SYMLINK to usr/bin/SylvaniaLauncher: a plain cp would write THROUGH the
+# symlink and destroy the launcher binary — remove the link first.
+rm -f "${APPDIR}/AppRun"
+cp "${PROJECT_DIR}/linux/AppRun" "${APPDIR}/AppRun"
 chmod +x "${APPDIR}/AppRun"
+test -x "${APPDIR}/usr/bin/SylvaniaLauncher" \
+    || { echo "ERROR: launcher binary missing from AppDir."; exit 1; }
+file -b "${APPDIR}/usr/bin/SylvaniaLauncher" | grep -q ELF \
+    || { echo "ERROR: usr/bin/SylvaniaLauncher is not an ELF binary."; exit 1; }
 
 # Qt 6.5 FFmpeg backend: verify the libav*/libsw* runtime libs came along.
 FFPLUGIN="${APPDIR}/usr/plugins/multimedia/libffmpegmediaplugin.so"
@@ -163,6 +173,14 @@ test -x "${APPDIR}/usr/wine/bin/wine" \
     || { echo "ERROR: bin/wine missing after extraction."; exit 1; }
 test -x "${APPDIR}/usr/wine/bin/wineserver" \
     || { echo "ERROR: bin/wineserver missing after extraction."; exit 1; }
+
+# Wine dlopens the host FreeType for its font engine; minimal installs may
+# lack it ("no TrueType fonts" warning). Bundle it (plus its deps) into the
+# wine lib dir, which is already on Wine's LD_LIBRARY_PATH. ~1 MB.
+for lib in libfreetype.so.6 libpng16.so.16 libbrotlidec.so.1 libbrotlicommon.so.1; do
+    cp -L "/lib/x86_64-linux-gnu/${lib}" "${APPDIR}/usr/wine/lib/" 2>/dev/null \
+        || echo "  note: ${lib} not found on build host (skipped)"
+done
 
 # -------------------------------------------------------------------
 # Step 8: ldd audit of every bundled ELF binary

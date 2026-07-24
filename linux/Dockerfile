@@ -58,6 +58,28 @@ RUN pip3 install --no-cache-dir "aqtinstall==3.1.18" \
         -m qtmultimedia qtimageformats \
         -O /opt/qt
 
+# Runtime libraries the OFFICIAL Qt binaries link against (DT_NEEDED): the
+# linker must resolve their symbols at build time. Separate layer on purpose:
+# it keeps the (long) Qt download layer cached when this list evolves.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libdbus-1-3 \
+        libpulse0 \
+        libegl1 \
+        libxrandr2 \
+        libxv1 \
+        libva2 \
+        libva-x11-2 \
+        libva-drm2 \
+        libvdpau1 \
+    && rm -rf /var/lib/apt/lists/* \
+    # Qt ships TWO multimedia backends; we only need FFmpeg (self-contained,
+    # bundled by linuxdeploy). Dropping the gstreamer plugin avoids dragging
+    # the whole GStreamer stack into the AppImage. Its CMake target files must
+    # go with it, otherwise find_package(Qt6 ... Multimedia) aborts on the
+    # dangling reference.
+    && rm -f /opt/qt/6.5.3/gcc_64/plugins/multimedia/libgstreamermediaplugin.so \
+             /opt/qt/6.5.3/gcc_64/lib/cmake/Qt6Multimedia/Qt6QGstreamerMediaPlugin*.cmake
+
 ENV QT_ROOT=/opt/qt/6.5.3/gcc_64
 ENV PATH="/opt/qt/6.5.3/gcc_64/bin:${PATH}"
 
