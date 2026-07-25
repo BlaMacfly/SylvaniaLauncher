@@ -33,6 +33,19 @@ WINE_TARBALL="wine-${WINE_VERSION}-staging-amd64-wow64.tar.xz"
 WINE_URL="https://github.com/Kron4ek/Wine-Builds/releases/download/${WINE_VERSION}/${WINE_TARBALL}"
 WINE_SHA256="cdd6effc2a61c66b5dbfb8aebbc08df151cd50bf9084b106bfef0d6ebc7b097f"
 
+# ----------------------------------------------------------------------------
+# Pinned DXVK (Direct3D 9 -> Vulkan). WoW 3.3.5a is a D3D9 title: through
+# Wine's default WineD3D it is translated to OpenGL, which costs a large part
+# of the frame rate — even more so under the wow64 build, where every call
+# crosses the 32->64 bit thunk. DXVK removes that bottleneck and is THE
+# performance fix for this client. Used only when the host exposes a Vulkan
+# driver; otherwise the launcher silently falls back to WineD3D.
+# ----------------------------------------------------------------------------
+DXVK_VERSION="3.0.2"
+DXVK_TARBALL="dxvk-${DXVK_VERSION}.tar.gz"
+DXVK_URL="https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/${DXVK_TARBALL}"
+DXVK_SHA256="9c538924110a7cdef871ca36dee218c0774124374ffdeb38af4b76be55bdf7c2"
+
 echo "=== Sylvania Launcher — AppImage Builder (Linux edition) ==="
 echo "Project: ${PROJECT_DIR}"
 echo "Build:   ${BUILD_DIR}"
@@ -197,6 +210,25 @@ test -x "${APPDIR}/usr/wine/bin/wine" \
     || { echo "ERROR: bin/wine missing after extraction."; exit 1; }
 test -x "${APPDIR}/usr/wine/bin/wineserver" \
     || { echo "ERROR: bin/wineserver missing after extraction."; exit 1; }
+
+# --- DXVK (D3D9 -> Vulkan) -------------------------------------------------
+echo "  Embedding DXVK ${DXVK_VERSION}..."
+if [ ! -f "${WINE_CACHE}/${DXVK_TARBALL}" ]; then
+    echo "  Downloading ${DXVK_URL}"
+    wget -q -O "${WINE_CACHE}/${DXVK_TARBALL}.part" "${DXVK_URL}"
+    mv "${WINE_CACHE}/${DXVK_TARBALL}.part" "${WINE_CACHE}/${DXVK_TARBALL}"
+fi
+echo "${DXVK_SHA256}  ${WINE_CACHE}/${DXVK_TARBALL}" | sha256sum -c - \
+    || { echo "ERROR: DXVK tarball SHA-256 mismatch — aborting."; exit 1; }
+
+mkdir -p "${APPDIR}/usr/dxvk"
+tar -xzf "${WINE_CACHE}/${DXVK_TARBALL}" \
+    --strip-components=1 -C "${APPDIR}/usr/dxvk"
+test -f "${APPDIR}/usr/dxvk/x32/d3d9.dll" \
+    || { echo "ERROR: DXVK x32/d3d9.dll missing after extraction."; exit 1; }
+# Version marker: WineManager compares it with the copy installed in the
+# user's prefix and refreshes the DLLs when the bundled DXVK is newer.
+echo "${DXVK_VERSION}" > "${APPDIR}/usr/dxvk/VERSION"
 
 # Wine dlopens the host FreeType for its font engine; minimal installs may
 # lack it ("no TrueType fonts" warning). Bundle it (plus its deps) into the
