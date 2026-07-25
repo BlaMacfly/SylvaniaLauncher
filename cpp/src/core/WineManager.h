@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QProcessEnvironment>
 
 /**
@@ -43,20 +44,37 @@ public:
     static void setDebugMode(bool enabled);
     static bool debugMode();
 
-    /// True if the embedded Wine runtime was found (AppImage intact).
+    /// True if the EMBEDDED Wine runtime was found (AppImage intact). False for
+    /// a distro package, which runs on the system's Wine instead — check
+    /// isWineAvailable() to know whether the game can be launched at all.
     bool isWineBundled() const;
 
-    /// True if the WINEPREFIX exists and looks healthy (system.reg + drive_c).
+    /// True when a usable Wine was found, embedded or system-wide.
+    bool isWineAvailable() const;
+
+    /// User-facing explanation when no Wine was found, worded for the kind of
+    /// build in use (damaged AppImage vs. distro package missing a dependency).
+    QString missingWineMessage() const;
+
+    /// True if the WINEPREFIX exists and is genuinely usable: registry hives,
+    /// drive_c, AND every system DLL the client needs. The DLL check matters —
+    /// a wineboot that failed to install one still leaves complete-looking
+    /// hives behind, and such a prefix would otherwise never be repaired.
     bool isPrefixValid() const;
 
-    /// Convenience: bundled runtime present AND prefix initialised.
-    bool isReady() const { return isWineBundled() && isPrefixValid(); }
+    /// Convenience: a Wine is usable AND the prefix is initialised.
+    bool isReady() const { return isWineAvailable() && isPrefixValid(); }
 
     QString wineBinary() const;      ///< .../bin/wine (empty if not bundled)
     QString wineServerBinary() const;///< .../bin/wineserver
     QString wineRoot() const;        ///< embedded runtime root directory
     QString winePrefix() const;      ///< persistent WINEPREFIX path
     QString wineLogPath() const;     ///< log file used in --debug mode
+
+    /// True when DXVK is bundled AND the host exposes a Vulkan driver, i.e.
+    /// the game can be rendered through D3D9 -> Vulkan instead of WineD3D's
+    /// D3D9 -> OpenGL translation (a very large frame-rate difference).
+    bool isDxvkUsable() const;
 
     /**
      * @brief Initialise (or repair) the WINEPREFIX asynchronously.
@@ -99,7 +117,24 @@ private:
     void finishInit(bool success, const QString& message);
     void startWineserverWait();
 
-    QString m_wineRoot;    ///< embedded Wine runtime root (empty if absent)
+    /// System DLLs missing from the prefix, as "system32/foo.dll" paths.
+    /// Empty on a healthy prefix.
+    QStringList missingSystemDlls() const;
+
+    /// User-facing explanation for a prefix that did not come out complete.
+    /// Distinguishes a damaged AppImage (the missing DLL is unreadable in the
+    /// bundle too) from a plain initialisation failure.
+    QString diagnoseIncompletePrefix() const;
+
+    /// Copy the bundled DXVK d3d9 into the prefix (no-op when already current).
+    /// Returns true when the prefix ends up with a usable DXVK d3d9.dll.
+    bool ensureDxvkInstalled();
+    /// Does the HOST provide a Vulkan loader plus at least one driver (ICD)?
+    static bool hasVulkanDriver();
+
+    QString m_wineRoot;    ///< Wine root in use (empty when none was found)
+    bool m_wineIsBundled = false;  ///< true when m_wineRoot is the embedded one
+    QString m_dxvkRoot;    ///< embedded DXVK root (empty if absent)
     QString m_prefixDir;   ///< persistent WINEPREFIX
     QProcess* m_initProcess = nullptr;  ///< wineboot/wineserver during init
 

@@ -855,10 +855,11 @@ void MainWindow::launchViaWine(const QString& exePath, const QString& workDir) {
         m_wineManager = std::make_unique<WineManager>();
     }
 
-    if (!m_wineManager->isWineBundled()) {
+    // Wine comes either embedded (AppImage) or from the distribution (pacman
+    // package); the message names the right fix for the build in use.
+    if (!m_wineManager->isWineAvailable()) {
         QMessageBox::critical(this, tr("Erreur Wine"),
-            tr("Le moteur Wine embarqué est introuvable.\n"
-               "L'AppImage semble incomplète ou corrompue — retéléchargez le launcher."));
+                              m_wineManager->missingWineMessage());
         return;
     }
 
