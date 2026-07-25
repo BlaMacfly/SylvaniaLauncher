@@ -59,15 +59,25 @@ inline QString getLogsDir() {
  * @return Path to the Asset directory
  */
 inline QString getAssetsDir() {
+    // Explicit override, exported by the AppImage's AppRun and usable by any
+    // packager that installs the assets somewhere unusual.
+    const QString fromEnv = qEnvironmentVariable("SYLVANIA_ASSETS_DIR");
+    if (!fromEnv.isEmpty() && QDir(fromEnv).exists()) {
+        return QDir(fromEnv).absolutePath();
+    }
+
     // Check relative to executable
     QString exeDir = QCoreApplication::applicationDirPath();
-    
+
     QStringList possiblePaths = {
         exeDir + "/Asset",
         exeDir + "/../Asset",
+        // Distro install: <prefix>/bin -> <prefix>/share/sylvania-launcher/Asset,
+        // which is exactly where the CMake install() rules put them.
+        exeDir + "/../share/sylvania-launcher/Asset",
         QDir::currentPath() + "/Asset"
     };
-    
+
     for (const QString& path : possiblePaths) {
         if (QDir(path).exists()) {
             return QDir(path).absolutePath();

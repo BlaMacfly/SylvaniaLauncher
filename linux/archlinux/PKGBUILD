@@ -1,0 +1,57 @@
+# Maintainer: BlaMacfly <expedycam@gmail.com>
+#
+# Native Arch Linux package — the counterpart of the AppImage, built the way a
+# distribution expects: compiled against the system Qt, with Wine and DXVK as
+# ordinary dependencies instead of a 500 MB embedded runtime. A few megabytes
+# instead of 230, and pacman handles updates and removal.
+#
+# The launcher detects at runtime which world it is in: no embedded Wine under
+# usr/wine means "use the system's" (see WineManager::locateSystemWineRoot).
+#
+# Build and install from this directory:
+#   makepkg -si
+
+pkgname=sylvania-launcher
+pkgver=3.0
+pkgrel=1
+pkgdesc="Launcher for the Sylvania World of Warcraft private server (WotLK 3.3.5a and Legion 7.3.5)"
+arch=('x86_64')
+url="https://github.com/BlaMacfly/SylvaniaLauncher"
+license=('GPL-3.0-only')
+depends=(
+    'qt6-base'
+    'qt6-multimedia'
+    'libzip'
+    'hicolor-icon-theme'
+)
+makedepends=(
+    'cmake'
+    'qt6-tools'      # lrelease, for the .qm translations
+    'git'
+)
+optdepends=(
+    'wine: run the Windows game client (required to play — wine-staging also works)'
+    'dxvk-bin: Direct3D 9 to Vulkan translation, a large frame-rate gain'
+    'libpulse: lets the launcher follow the system default audio output'
+    'vulkan-radeon: Vulkan driver for AMD GPUs, needed by DXVK'
+    'vulkan-intel: Vulkan driver for Intel GPUs, needed by DXVK'
+    'nvidia-utils: Vulkan driver for NVIDIA GPUs, needed by DXVK'
+)
+source=("git+${url}.git#branch=linux")
+sha256sums=('SKIP')
+
+build() {
+    cmake -B build -S "${srcdir}/SylvaniaLauncher/cpp" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
+        -Wno-dev
+    cmake --build build
+}
+
+package() {
+    DESTDIR="${pkgdir}" cmake --install build
+
+    install -Dm644 "${srcdir}/SylvaniaLauncher/LICENSE" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
