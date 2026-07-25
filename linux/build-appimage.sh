@@ -139,6 +139,30 @@ test -x "${APPDIR}/usr/bin/SylvaniaLauncher" \
 file -b "${APPDIR}/usr/bin/SylvaniaLauncher" | grep -q ELF \
     || { echo "ERROR: usr/bin/SylvaniaLauncher is not an ELF binary."; exit 1; }
 
+# OpenSSL must NEVER be bundled — it must come from the host, as a whole.
+#
+# linuxdeploy drags libcrypto.so.3 in as a dependency of the Kerberos libs
+# (libgssapi_krb5 -> libk5crypto), but NOT libssl.so.3, which Qt's TLS backend
+# dlopen()s at runtime. On a distro with a newer OpenSSL than the build host
+# (e.g. Fedora), the host libssl.so.3 then resolves against the OLDER bundled
+# libcrypto.so.3 -> missing versioned symbols -> the TLS backend fails to load
+# and every https request dies with "TLS initialization failed".
+#
+# Dropping both makes the pair consistent (host libssl + host libcrypto) and
+# also keeps the host's crypto policy and CA store in effect. Every distro at
+# our glibc 2.35 baseline ships OpenSSL 3.x.
+echo "  Removing bundled OpenSSL (must come from the host)..."
+rm -f "${APPDIR}/usr/lib/libssl.so."* "${APPDIR}/usr/lib/libcrypto.so."*
+LEFTOVER_SSL=$(find "${APPDIR}/usr/lib" -maxdepth 1 \
+    \( -name 'libssl.so*' -o -name 'libcrypto.so*' \) 2>/dev/null || true)
+[ -z "${LEFTOVER_SSL}" ] \
+    || { echo "ERROR: OpenSSL still bundled: ${LEFTOVER_SSL}"; exit 1; }
+
+# The TLS backend plugin itself MUST be present, otherwise Qt has no https at
+# all (only the "certonly" backend, which cannot open connections).
+test -f "${APPDIR}/usr/plugins/tls/libqopensslbackend.so" \
+    || { echo "ERROR: Qt OpenSSL TLS backend plugin missing from AppDir."; exit 1; }
+
 # Qt 6.5 FFmpeg backend: verify the libav*/libsw* runtime libs came along.
 FFPLUGIN="${APPDIR}/usr/plugins/multimedia/libffmpegmediaplugin.so"
 if [ -f "${FFPLUGIN}" ]; then
