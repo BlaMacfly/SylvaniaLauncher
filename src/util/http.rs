@@ -16,13 +16,30 @@ pub fn client(timeout: Option<Duration>) -> reqwest::blocking::Client {
     b.build().expect("client HTTP")
 }
 
+/// Error text including the whole `source()` chain: reqwest's own message
+/// omits the cause (DNS failure, connection refused, timeout…), which callers
+/// match on to show a precise message.
+pub fn error_chain(e: &dyn std::error::Error) -> String {
+    let mut msg = e.to_string();
+    let mut cur = e.source();
+    while let Some(c) = cur {
+        let part = c.to_string();
+        if !msg.contains(&part) {
+            msg.push_str(": ");
+            msg.push_str(&part);
+        }
+        cur = c.source();
+    }
+    msg
+}
+
 /// GETs a small text resource (e.g. a JSON manifest).
 pub fn get_text(url: &str, timeout: Duration) -> Result<String, String> {
-    let resp = client(Some(timeout)).get(url).send().map_err(|e| e.to_string())?;
+    let resp = client(Some(timeout)).get(url).send().map_err(|e| error_chain(&e))?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}", resp.status()));
     }
-    resp.text().map_err(|e| e.to_string())
+    resp.text().map_err(|e| error_chain(&e))
 }
 
 /// Outcome of [`download_to_file`].
@@ -54,7 +71,7 @@ pub fn download_to_file(
     let mut resp = client(None)
         .get(url)
         .send()
-        .map_err(|e| DownloadError::Http(e.to_string()))?;
+        .map_err(|e| DownloadError::Http(error_chain(&e)))?;
     if !resp.status().is_success() {
         return Err(DownloadError::Http(format!("HTTP {}", resp.status())));
     }
@@ -72,7 +89,7 @@ pub fn download_to_file(
             let _ = std::fs::remove_file(dest);
             return Err(DownloadError::Cancelled);
         }
-        let n = resp.read(&mut buf).map_err(|e| DownloadError::Http(e.to_string()))?;
+        let n = resp.read(&mut buf).map_err(|e| DownloadError::Http(error_chain(&e)))?;
         if n == 0 {
             break;
         }
