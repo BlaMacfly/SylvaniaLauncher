@@ -37,9 +37,10 @@
 
 ## Version actuelle
 
-**v3.0** - Application native C++ / Qt6
+**v3.0** - Application native Rust (egui) — un seul exécutable, sans DLL
 
 ### Nouveautés v3.0
+- 🦀 **Réécriture complète en Rust** (egui/eframe) à la place de C++/Qt : un unique `SylvaniaLauncher.exe` qui embarque fonds, logo, sons et traductions — plus aucune DLL Qt/FFmpeg à déployer. Extraction des archives en Rust pur (plus de PowerShell). Configuration, notes, statistiques et addons existants repris tels quels.
 - 🎯 **Bouton principal à 3 états** : « Installer » quand le client est absent, progression pendant le téléchargement, « Jouer » quand il est détecté. Le bouton « Télécharger » redondant a été retiré.
 - 📅 **Notes enrichies** : calendrier avec décoration des jours portant une note ou un rappel, rappels datés par note, notifications système natives (icône de zone de notification) + son, rattrapage des rappels manqués au démarrage.
 - 🎨 **Refonte de l'interface** : système de boutons centralisé à 3 niveaux (primaire/secondaire/tertiaire), échelle d'espacement unique, navigation clavier ; thème sombre et thèmes dynamiques conservés.
@@ -87,29 +88,21 @@
 - Connexion Internet
 
 ### Build (Windows)
+Prérequis : [Rust](https://rustup.rs) (toolchain MSVC stable) et les Build Tools de Visual Studio.
 ```bash
-# Se placer dans le dossier source
-cd cpp
+# Depuis la racine du dépôt
+cargo build --release
 
-# Créer un dossier de build
-mkdir build
-cd build
-
-# Configurer avec CMake (Qt 6.8 recommandé)
-cmake .. -G "MinGW Makefiles"
-
-# Compiler
-mingw32-make -j8
+# Tests unitaires
+cargo test
 ```
+L'exécutable est produit dans `target/release/SylvaniaLauncher.exe`. Il est autonome : il suffit de le distribuer seul (assets et traductions sont intégrés).
 
-### Déploiement
-Pour créer un package exécutable avec toutes ses dépendances :
-```bash
-windeployqt --compiler-runtime --multimedia SylvaniaLauncher.exe
-```
-
-> [!TIP]
-> Pour réduire la taille du package (environ -15 Mo), vous pouvez supprimer manuellement les DLL FFmpeg (`avcodec-*.dll`, `avformat-*.dll`, etc.) après le déploiement. Le launcher est configuré pour utiliser le moteur natif Windows Media si ces fichiers sont absents.
+### Organisation du code
+- `src/core/` — logique métier sans interface (notes, rappels, addons, patch HD, téléchargement du client)
+- `src/ui/` — fenêtres egui (principale, réglages, notes, serveurs, addons, téléchargement)
+- `src/config.rs`, `src/stats.rs`, `src/i18n.rs`, `src/theme.rs` — configuration, statistiques, traductions FR/EN (`translations/en.json`), thèmes
+- `Asset/` — images et sons intégrés à la compilation ; `resources/addons.json` — manifeste d'addons de secours
 
 ## Licence
 
