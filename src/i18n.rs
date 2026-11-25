@@ -33,13 +33,15 @@ impl I18n {
     }
 
     /// Translates a French source string.
+    ///
+    /// U+FE0F (emoji variation selector, e.g. in "🗑️") is stripped: egui's
+    /// fonts have no glyph for it and would draw a box.
     pub fn t(&self, fr: &str) -> String {
-        if self.is_en() {
-            if let Some(en) = self.en.get(fr) {
-                return en.clone();
-            }
-        }
-        fr.to_string()
+        let s = match self.en.get(fr) {
+            Some(en) if self.is_en() => en.as_str(),
+            _ => fr,
+        };
+        s.replace('\u{FE0F}', "")
     }
 
     /// Translates then substitutes `%1`, `%2`, … (Qt-style placeholders).

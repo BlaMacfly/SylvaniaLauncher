@@ -156,25 +156,25 @@ impl eframe::App for App {
         self.main.show(ui, &mut self.shared);
 
         let shared = &mut self.shared;
-        if let Some(w) = self.settings.as_mut() {
-            if !w.show(&ctx, shared) {
-                self.settings = None;
-            }
+        if let Some(w) = self.settings.as_mut()
+            && !w.show(&ctx, shared)
+        {
+            self.settings = None;
         }
-        if let Some(w) = self.notes.as_mut() {
-            if !w.show(&ctx, shared) {
-                self.notes = None;
-            }
+        if let Some(w) = self.notes.as_mut()
+            && !w.show(&ctx, shared)
+        {
+            self.notes = None;
         }
-        if let Some(w) = self.servers.as_mut() {
-            if !w.show(&ctx, shared) {
-                self.servers = None;
-            }
+        if let Some(w) = self.servers.as_mut()
+            && !w.show(&ctx, shared)
+        {
+            self.servers = None;
         }
-        if let Some(w) = self.addons.as_mut() {
-            if !w.show(&ctx, shared) {
-                self.addons = None;
-            }
+        if let Some(w) = self.addons.as_mut()
+            && !w.show(&ctx, shared)
+        {
+            self.addons = None;
         }
 
         self.dispatch_events(&ctx);
