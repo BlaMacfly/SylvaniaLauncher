@@ -41,3 +41,6 @@ build/
 # Scratch / packaging workspace
 cpp/scratch/
 release_build/
+
+# Rust
+/target/
