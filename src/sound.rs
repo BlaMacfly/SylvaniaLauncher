@@ -37,7 +37,10 @@ impl Sounds {
                 }
             })
             .is_ok();
-        Sounds { tx: spawned.then_some(tx), enabled }
+        Sounds {
+            tx: spawned.then_some(tx),
+            enabled,
+        }
     }
 
     pub fn set_enabled(&mut self, enabled: bool) {

@@ -35,7 +35,10 @@ pub fn error_chain(e: &dyn std::error::Error) -> String {
 
 /// GETs a small text resource (e.g. a JSON manifest).
 pub fn get_text(url: &str, timeout: Duration) -> Result<String, String> {
-    let resp = client(Some(timeout)).get(url).send().map_err(|e| error_chain(&e))?;
+    let resp = client(Some(timeout))
+        .get(url)
+        .send()
+        .map_err(|e| error_chain(&e))?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}", resp.status()));
     }
@@ -89,11 +92,14 @@ pub fn download_to_file(
             let _ = std::fs::remove_file(dest);
             return Err(DownloadError::Cancelled);
         }
-        let n = resp.read(&mut buf).map_err(|e| DownloadError::Http(error_chain(&e)))?;
+        let n = resp
+            .read(&mut buf)
+            .map_err(|e| DownloadError::Http(error_chain(&e)))?;
         if n == 0 {
             break;
         }
-        file.write_all(&buf[..n]).map_err(|e| DownloadError::Io(e.to_string()))?;
+        file.write_all(&buf[..n])
+            .map_err(|e| DownloadError::Io(e.to_string()))?;
         received += n as u64;
         on_progress(received, total);
     }

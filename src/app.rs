@@ -81,7 +81,13 @@ impl App {
         let config = Config::load();
         let i18n = I18n::new(&config.language());
         let sounds = Sounds::new(config.sound_enabled());
-        let mut shared = Shared { config, i18n, sounds, notes: NotesStore::load(), events: Vec::new() };
+        let mut shared = Shared {
+            config,
+            i18n,
+            sounds,
+            notes: NotesStore::load(),
+            events: Vec::new(),
+        };
         let main = ui::main_window::MainWindow::new(ctx, &mut shared);
         let tray = Tray::new(ctx);
         App {
@@ -102,11 +108,15 @@ impl App {
             WindowKind::Settings if self.settings.is_none() => {
                 self.settings = Some(ui::settings::SettingsWindow::new(s))
             }
-            WindowKind::Notes if self.notes.is_none() => self.notes = Some(ui::notes::NotesWindow::new(s)),
+            WindowKind::Notes if self.notes.is_none() => {
+                self.notes = Some(ui::notes::NotesWindow::new(s))
+            }
             WindowKind::Servers if self.servers.is_none() => {
                 self.servers = Some(ui::realmlist::RealmlistWindow::new(s))
             }
-            WindowKind::Addons if self.addons.is_none() => self.addons = Some(ui::addons::AddonsWindow::new(s)),
+            WindowKind::Addons if self.addons.is_none() => {
+                self.addons = Some(ui::addons::AddonsWindow::new(s))
+            }
             // Already open: bring it to the front.
             _ => ui::focus_child_window(ctx, window_id(kind)),
         }
@@ -144,15 +154,21 @@ pub fn window_id(kind: WindowKind) -> &'static str {
 }
 
 impl eframe::App for App {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let ctx = ui.ctx().clone();
-
+    /// Runs before every frame AND while the window is minimized (when eframe
+    /// skips `ui`): reminders must fire and the tray icon must restore the
+    /// window even then.
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.tray.take_restore_request() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
-
         self.reminders.tick(&mut self.shared);
+        // Keep this ticking while hidden (cheap: no egui pass runs then).
+        ctx.request_repaint_after(std::time::Duration::from_secs(1));
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
         self.main.show(ui, &mut self.shared);
 
         let shared = &mut self.shared;

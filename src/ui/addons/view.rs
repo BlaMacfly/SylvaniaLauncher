@@ -71,27 +71,40 @@ impl AddonsWindow {
             ui.spacing_mut().item_spacing.y = 0.0;
             self.tab_bar(ui, shared, actions);
             let width = ui.available_width();
-            ui.allocate_ui_with_layout(vec2(width, pane_height), Layout::top_down(Align::Min), |ui| {
-                egui::Frame::new()
-                    .fill(PANE_BG)
-                    .stroke(Stroke::new(1.0, PANE_BORDER))
-                    .corner_radius(CornerRadius::same(5))
-                    .inner_margin(12)
-                    .show(ui, |ui| {
-                        ui.set_min_size(ui.available_size());
-                        ui.spacing_mut().item_spacing.y = SPACE_SM;
-                        match self.tab {
-                            Tab::Recommended => self.recommended_tab(ui, shared, actions),
-                            Tab::Catalog => self.catalog_tab(ui, shared, actions),
-                            Tab::Installed => self.installed_tab(ui, shared, actions),
-                        }
-                    });
-            });
+            ui.allocate_ui_with_layout(
+                vec2(width, pane_height),
+                Layout::top_down(Align::Min),
+                |ui| {
+                    egui::Frame::new()
+                        .fill(PANE_BG)
+                        .stroke(Stroke::new(1.0, PANE_BORDER))
+                        .corner_radius(CornerRadius::same(5))
+                        .inner_margin(12)
+                        .show(ui, |ui| {
+                            ui.set_min_size(ui.available_size());
+                            ui.spacing_mut().item_spacing.y = SPACE_SM;
+                            match self.tab {
+                                Tab::Recommended => self.recommended_tab(ui, shared, actions),
+                                Tab::Catalog => self.catalog_tab(ui, shared, actions),
+                                Tab::Installed => self.installed_tab(ui, shared, actions),
+                            }
+                        });
+                },
+            );
         });
 
         ui.add_space(SPACE_SM);
         ui.vertical_centered(|ui| {
-            if level_button(ui, &shared.t("Fermer"), Level::Secondary, &ThemeTokens::default(), true, 120.0).clicked() {
+            if level_button(
+                ui,
+                &shared.t("Fermer"),
+                Level::Secondary,
+                &ThemeTokens::default(),
+                true,
+                120.0,
+            )
+            .clicked()
+            {
                 actions.push(Action::Close);
             }
         });
@@ -100,9 +113,11 @@ impl AddonsWindow {
     fn tab_bar(&self, ui: &mut Ui, shared: &Shared, actions: &mut Vec<Action>) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 2.0;
-            for (tab, label) in
-                [(Tab::Recommended, "Recommandés"), (Tab::Catalog, "Catalogue"), (Tab::Installed, "Installés")]
-            {
+            for (tab, label) in [
+                (Tab::Recommended, "Recommandés"),
+                (Tab::Catalog, "Catalogue"),
+                (Tab::Installed, "Installés"),
+            ] {
                 let selected = self.tab == tab;
                 let rt = if selected {
                     theme::bold(shared.t(label), 13.0).color(GOLD)
@@ -119,9 +134,15 @@ impl AddonsWindow {
                 let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
                 let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
                 let fill = if selected { TAB_SELECTED } else { TAB_BG };
-                let radius = CornerRadius { nw: 5, ne: 5, sw: 0, se: 0 };
+                let radius = CornerRadius {
+                    nw: 5,
+                    ne: 5,
+                    sw: 0,
+                    se: 0,
+                };
                 ui.painter().rect_filled(rect, radius, fill);
-                ui.painter().galley(rect.center() - galley.size() / 2.0, galley, Color32::WHITE);
+                ui.painter()
+                    .galley(rect.center() - galley.size() / 2.0, galley, Color32::WHITE);
                 if resp.clicked() {
                     actions.push(Action::SelectTab(tab));
                 }
@@ -133,7 +154,14 @@ impl AddonsWindow {
 
     fn recommended_tab(&self, ui: &mut Ui, shared: &Shared, actions: &mut Vec<Action>) {
         ui.vertical_centered(|ui| {
-            wrapped(ui, text(shared.t("Installez en un clic des addons recommandés par Sylvania."), 12.0, TEXT_INFO));
+            wrapped(
+                ui,
+                text(
+                    shared.t("Installez en un clic des addons recommandés par Sylvania."),
+                    12.0,
+                    TEXT_INFO,
+                ),
+            );
             let status = match self.manifest_status {
                 ManifestStatus::Loading => Some("Chargement de la liste..."),
                 ManifestStatus::Empty => Some("Aucun addon recommandé disponible."),
@@ -144,12 +172,15 @@ impl AddonsWindow {
                 wrapped(ui, text(shared.t(s), 12.0, TEXT_BLUE));
             }
         });
-        egui::ScrollArea::vertical().id_salt("addons-recommended").auto_shrink(false).show(ui, |ui| {
-            ui.spacing_mut().item_spacing.y = 10.0;
-            for (i, card) in self.recommended.iter().enumerate() {
-                self.card_ui(ui, shared, card, CardRef::Recommended(i), actions);
-            }
-        });
+        egui::ScrollArea::vertical()
+            .id_salt("addons-recommended")
+            .auto_shrink(false)
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 10.0;
+                for (i, card) in self.recommended.iter().enumerate() {
+                    self.card_ui(ui, shared, card, CardRef::Recommended(i), actions);
+                }
+            });
     }
 
     fn catalog_tab(&self, ui: &mut Ui, shared: &Shared, actions: &mut Vec<Action>) {
@@ -165,21 +196,35 @@ impl AddonsWindow {
                 ),
             );
         });
-        egui::ScrollArea::vertical().id_salt("addons-catalog").auto_shrink(false).show(ui, |ui| {
-            ui.spacing_mut().item_spacing.y = 10.0;
-            for (i, card) in self.catalog.iter().enumerate() {
-                self.card_ui(ui, shared, card, CardRef::Catalog(i), actions);
-            }
-        });
+        egui::ScrollArea::vertical()
+            .id_salt("addons-catalog")
+            .auto_shrink(false)
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 10.0;
+                for (i, card) in self.catalog.iter().enumerate() {
+                    self.card_ui(ui, shared, card, CardRef::Catalog(i), actions);
+                }
+            });
     }
 
-    fn card_ui(&self, ui: &mut Ui, shared: &Shared, card: &Card, card_ref: CardRef, actions: &mut Vec<Action>) {
+    fn card_ui(
+        &self,
+        ui: &mut Ui,
+        shared: &Shared,
+        card: &Card,
+        card_ref: CardRef,
+        actions: &mut Vec<Action>,
+    ) {
         let recommended = matches!(card_ref, CardRef::Recommended(_));
         let installing = self.active.as_ref().is_some_and(|a| a.card == card_ref);
         let button_width = if recommended { 120.0 } else { 110.0 };
 
         let margin = egui::Margin::symmetric(15, 12);
-        let mut prepared = egui::Frame::new().fill(CARD_BG).corner_radius(CornerRadius::same(5)).inner_margin(margin).begin(ui);
+        let mut prepared = egui::Frame::new()
+            .fill(CARD_BG)
+            .corner_radius(CornerRadius::same(5))
+            .inner_margin(margin)
+            .begin(ui);
         {
             let ui = &mut prepared.content_ui;
             ui.set_width(ui.available_width());
@@ -220,19 +265,32 @@ impl AddonsWindow {
                 ui.vertical(|ui| {
                     ui.spacing_mut().item_spacing.y = 4.0;
                     let (label, style) = match card.state {
-                        InstallState::UpdateAvailable { .. } => ("Mettre à jour", ButtonStyle::Update),
+                        InstallState::UpdateAvailable { .. } => {
+                            ("Mettre à jour", ButtonStyle::Update)
+                        }
                         InstallState::Installed(_) | InstallState::CatalogInstalled => {
                             ("Réinstaller", ButtonStyle::Install)
                         }
-                        InstallState::NotInstalled | InstallState::CatalogAbsent => ("Installer", ButtonStyle::Install),
+                        InstallState::NotInstalled | InstallState::CatalogAbsent => {
+                            ("Installer", ButtonStyle::Install)
+                        }
                     };
                     if button(ui, &shared.t(label), style, !installing, button_width) {
                         actions.push(Action::Install(card_ref));
                     }
                     let can_uninstall = recommended
-                        && matches!(card.state, InstallState::UpdateAvailable { .. } | InstallState::Installed(_));
+                        && matches!(
+                            card.state,
+                            InstallState::UpdateAvailable { .. } | InstallState::Installed(_)
+                        );
                     if can_uninstall
-                        && button(ui, &shared.t("Désinstaller"), ButtonStyle::Uninstall, !installing, button_width)
+                        && button(
+                            ui,
+                            &shared.t("Désinstaller"),
+                            ButtonStyle::Uninstall,
+                            !installing,
+                            button_width,
+                        )
                     {
                         actions.push(Action::Uninstall(card_ref));
                     }
@@ -262,20 +320,27 @@ impl AddonsWindow {
 
         let list_height = (ui.available_height() - 36.0 - SPACE_SM).max(80.0);
         let width = ui.available_width();
-        ui.allocate_ui_with_layout(vec2(width, list_height), Layout::top_down(Align::Min), |ui| {
-            egui::Frame::new()
-                .fill(PANE_BG)
-                .stroke(Stroke::new(1.0, PANE_BORDER))
-                .corner_radius(CornerRadius::same(5))
-                .inner_margin(1)
-                .show(ui, |ui| {
-                    ui.set_min_size(ui.available_size());
-                    egui::ScrollArea::vertical().id_salt("addons-installed").auto_shrink(false).show(ui, |ui| {
-                        ui.spacing_mut().item_spacing.y = 0.0;
-                        self.installed_rows(ui, shared);
+        ui.allocate_ui_with_layout(
+            vec2(width, list_height),
+            Layout::top_down(Align::Min),
+            |ui| {
+                egui::Frame::new()
+                    .fill(PANE_BG)
+                    .stroke(Stroke::new(1.0, PANE_BORDER))
+                    .corner_radius(CornerRadius::same(5))
+                    .inner_margin(1)
+                    .show(ui, |ui| {
+                        ui.set_min_size(ui.available_size());
+                        egui::ScrollArea::vertical()
+                            .id_salt("addons-installed")
+                            .auto_shrink(false)
+                            .show(ui, |ui| {
+                                ui.spacing_mut().item_spacing.y = 0.0;
+                                self.installed_rows(ui, shared);
+                            });
                     });
-                });
-        });
+            },
+        );
 
         ui.horizontal(|ui| {
             if button(ui, &shared.t("Actualiser"), ButtonStyle::Neutral, true, 0.0) {
@@ -285,7 +350,13 @@ impl AddonsWindow {
                 ui.add(egui::Spinner::new().color(GOLD));
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if button(ui, &shared.t("Supprimer la sélection"), ButtonStyle::Uninstall, true, 0.0) {
+                if button(
+                    ui,
+                    &shared.t("Supprimer la sélection"),
+                    ButtonStyle::Uninstall,
+                    true,
+                    0.0,
+                ) {
                     actions.push(Action::DeleteSelected);
                 }
             });
@@ -347,7 +418,11 @@ impl AddonsWindow {
             };
             ui.painter().rect_filled(rect, 0, fill);
             ui.painter().galley(rect.min + pad, galley, color);
-            ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, Stroke::new(1.0, CARD_BG));
+            ui.painter().hline(
+                rect.x_range(),
+                rect.bottom() - 0.5,
+                Stroke::new(1.0, CARD_BG),
+            );
             if resp.clicked() {
                 clicked = Some(i);
             }
@@ -382,11 +457,23 @@ impl AddonsWindow {
 /// Version line of a card (colour + weight like the Qt labels).
 fn version_label(shared: &Shared, state: &InstallState) -> Option<RichText> {
     Some(match state {
-        InstallState::UpdateAvailable { installed, available } => {
-            theme::bold(shared.tf("Mise à jour disponible (v%1 → v%2)", &[installed, available]), 11.0).color(GOLD)
+        InstallState::UpdateAvailable {
+            installed,
+            available,
+        } => theme::bold(
+            shared.tf(
+                "Mise à jour disponible (v%1 → v%2)",
+                &[installed, available],
+            ),
+            11.0,
+        )
+        .color(GOLD),
+        InstallState::Installed(v) if v.is_empty() => {
+            theme::bold(shared.t("Installé"), 11.0).color(TEXT_GREEN)
         }
-        InstallState::Installed(v) if v.is_empty() => theme::bold(shared.t("Installé"), 11.0).color(TEXT_GREEN),
-        InstallState::Installed(v) => theme::bold(shared.tf("Installé (v%1)", &[v]), 11.0).color(TEXT_GREEN),
+        InstallState::Installed(v) => {
+            theme::bold(shared.tf("Installé (v%1)", &[v]), 11.0).color(TEXT_GREEN)
+        }
         InstallState::NotInstalled => text(shared.t("Non installé"), 11.0, TEXT_INFO),
         InstallState::CatalogInstalled => text(shared.t("Déjà installé"), 11.0, TEXT_GREEN),
         InstallState::CatalogAbsent => return None,

@@ -33,7 +33,10 @@ impl Stats {
         };
         Stats {
             launch_count: s.get("launch_count").and_then(Value::as_u64).unwrap_or(0),
-            total_play_time: s.get("total_play_time").and_then(Value::as_i64).unwrap_or(0),
+            total_play_time: s
+                .get("total_play_time")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
             last_session: s
                 .get("last_session")
                 .and_then(Value::as_str)

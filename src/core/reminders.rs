@@ -70,7 +70,10 @@ fn take_due(store: &mut NotesStore, now: NaiveDateTime) -> Vec<Note> {
 
 /// Toast for one reminder: "Rappel : <title>" + the first 200 characters.
 fn due_notification(i18n: &I18n, note: &Note) -> (String, String) {
-    (i18n.tf("Rappel : %1", &[&note.title]), left_chars(&note.content, 200).to_string())
+    (
+        i18n.tf("Rappel : %1", &[&note.title]),
+        left_chars(&note.content, 200).to_string(),
+    )
 }
 
 /// One grouped toast for the reminders missed while the launcher was closed.
@@ -81,13 +84,19 @@ fn missed_notification(i18n: &I18n, missed: &[Note]) -> Option<(String, String)>
     let lines: Vec<String> = missed
         .iter()
         .map(|n| {
-            let when = n.due_at.map(|d| d.format("%d/%m %H:%M").to_string()).unwrap_or_default();
+            let when = n
+                .due_at
+                .map(|d| d.format("%d/%m %H:%M").to_string())
+                .unwrap_or_default();
             format!("• {} ({when})", n.title)
         })
         .collect();
     Some((
         i18n.tf("Rappels manqués (%1)", &[&missed.len()]),
-        i18n.tf("Échéances passées pendant que le launcher était fermé :\n%1", &[&lines.join("\n")]),
+        i18n.tf(
+            "Échéances passées pendant que le launcher était fermé :\n%1",
+            &[&lines.join("\n")],
+        ),
     ))
 }
 
@@ -127,7 +136,11 @@ mod tests {
 
     #[test]
     fn due_notification_truncates_content() {
-        let note = Note { title: "T".into(), content: "é".repeat(300), ..Default::default() };
+        let note = Note {
+            title: "T".into(),
+            content: "é".repeat(300),
+            ..Default::default()
+        };
         let (title, body) = due_notification(&I18n::new("en"), &note);
         assert_eq!(title, "Reminder: T");
         assert_eq!(body.chars().count(), 200);

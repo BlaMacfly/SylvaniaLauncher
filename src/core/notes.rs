@@ -27,7 +27,8 @@ const QT_ISO_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
 /// Serializes like `QDateTime::toString(Qt::ISODate)`; `None` (invalid) → `""`.
 pub fn format_qt_iso(dt: Option<NaiveDateTime>) -> String {
-    dt.map(|d| d.format(QT_ISO_FORMAT).to_string()).unwrap_or_default()
+    dt.map(|d| d.format(QT_ISO_FORMAT).to_string())
+        .unwrap_or_default()
 }
 
 /// Parses like `QDateTime::fromString(s, Qt::ISODate)`, returning local time.
@@ -91,13 +92,21 @@ pub fn parse_qt_iso(s: &str) -> Option<NaiveDateTime> {
         None => Some(naive),
         Some(off) => {
             let utc = naive - chrono::Duration::seconds(i64::from(off));
-            Some(Utc.from_utc_datetime(&utc).with_timezone(&Local).naive_local())
+            Some(
+                Utc.from_utc_datetime(&utc)
+                    .with_timezone(&Local)
+                    .naive_local(),
+            )
         }
     }
 }
 
 fn parse_fixed_digits(s: &str, len: usize) -> Option<u32> {
-    if s.len() == len && s.bytes().all(|b| b.is_ascii_digit()) { s.parse().ok() } else { None }
+    if s.len() == len && s.bytes().all(|b| b.is_ascii_digit()) {
+        s.parse().ok()
+    } else {
+        None
+    }
 }
 
 /// `+HH`, `+HHmm`, `+HH:mm` (or `-`) → seconds east of UTC.
@@ -110,7 +119,10 @@ fn parse_offset(s: &str) -> Option<i32> {
     let body = s[1..].replace(':', "");
     let (h, m) = match body.len() {
         2 => (parse_fixed_digits(&body, 2)?, 0),
-        4 => (parse_fixed_digits(&body[..2], 2)?, parse_fixed_digits(&body[2..], 2)?),
+        4 => (
+            parse_fixed_digits(&body[..2], 2)?,
+            parse_fixed_digits(&body[2..], 2)?,
+        ),
         _ => return None,
     };
     if h > 23 || m > 59 {
@@ -171,7 +183,10 @@ impl Note {
         let mut obj = Map::new();
         obj.insert("category".into(), Value::String(self.category.clone()));
         obj.insert("content".into(), Value::String(self.content.clone()));
-        obj.insert("created_at".into(), Value::String(format_qt_iso(self.created_at)));
+        obj.insert(
+            "created_at".into(),
+            Value::String(format_qt_iso(self.created_at)),
+        );
         if self.due_at.is_some() {
             obj.insert("due_at".into(), Value::String(format_qt_iso(self.due_at)));
         }
@@ -186,7 +201,10 @@ impl Note {
             Value::Array(self.tags.iter().cloned().map(Value::String).collect()),
         );
         obj.insert("title".into(), Value::String(self.title.clone()));
-        obj.insert("updated_at".into(), Value::String(format_qt_iso(self.updated_at)));
+        obj.insert(
+            "updated_at".into(),
+            Value::String(format_qt_iso(self.updated_at)),
+        );
         Value::Object(obj)
     }
 
@@ -195,7 +213,11 @@ impl Note {
         let tags = obj
             .get("tags")
             .and_then(Value::as_array)
-            .map(|a| a.iter().map(|t| t.as_str().unwrap_or_default().to_string()).collect())
+            .map(|a| {
+                a.iter()
+                    .map(|t| t.as_str().unwrap_or_default().to_string())
+                    .collect()
+            })
             .unwrap_or_default();
         let date = |key: &str| obj.get(key).and_then(Value::as_str).and_then(parse_qt_iso);
         Note {
@@ -224,7 +246,11 @@ pub struct NoteCategory {
 
 impl NoteCategory {
     fn new(id: &str, name: &str, color: &str) -> Self {
-        NoteCategory { id: id.into(), name: name.into(), color: color.into() }
+        NoteCategory {
+            id: id.into(),
+            name: name.into(),
+            color: color.into(),
+        }
     }
 
     pub fn to_json(&self) -> Value {
@@ -289,7 +315,12 @@ impl NotesStore {
         let dir = paths::data_dir();
         let mut old = Vec::new();
         if let Some(home) = dirs::home_dir() {
-            old.push(home.join("Documents").join("Sylvania Launcher").join("data").join(NOTES_FILE));
+            old.push(
+                home.join("Documents")
+                    .join("Sylvania Launcher")
+                    .join("data")
+                    .join(NOTES_FILE),
+            );
         }
         if let Ok(cwd) = std::env::current_dir() {
             old.push(cwd.join("data").join(NOTES_FILE));
@@ -343,7 +374,11 @@ impl NotesStore {
         self.notes.clear();
         let path = self.notes_path();
         if let Some(Value::Array(items)) = read_json_capped(&path) {
-            self.notes = items.iter().filter_map(Value::as_object).map(Note::from_json).collect();
+            self.notes = items
+                .iter()
+                .filter_map(Value::as_object)
+                .map(Note::from_json)
+                .collect();
             log::debug!("Chargé {} notes", self.notes.len());
         }
         self.rebuild_index();
@@ -352,8 +387,11 @@ impl NotesStore {
     fn load_categories(&mut self) {
         self.categories.clear();
         if let Some(Value::Array(items)) = read_json_capped(&self.categories_path()) {
-            self.categories =
-                items.iter().filter_map(Value::as_object).map(NoteCategory::from_json).collect();
+            self.categories = items
+                .iter()
+                .filter_map(Value::as_object)
+                .map(NoteCategory::from_json)
+                .collect();
         }
     }
 
@@ -429,7 +467,9 @@ impl NotesStore {
         category: Option<&str>,
         tags: &[String],
     ) -> bool {
-        let Some(i) = self.position(id) else { return false };
+        let Some(i) = self.position(id) else {
+            return false;
+        };
         let note = &mut self.notes[i];
         if let Some(t) = title {
             note.title = t.trim().to_string();
@@ -449,7 +489,9 @@ impl NotesStore {
     }
 
     pub fn delete_note(&mut self, id: &str) -> bool {
-        let Some(i) = self.position(id) else { return false };
+        let Some(i) = self.position(id) else {
+            return false;
+        };
         self.notes.remove(i);
         self.index.remove(i);
         self.save_notes()
@@ -460,7 +502,9 @@ impl NotesStore {
     /// Sets/clears the due date. Resets `reminder_done` so a re-scheduled
     /// note notifies again.
     pub fn set_note_due_date(&mut self, id: &str, due_at: Option<NaiveDateTime>) -> bool {
-        let Some(i) = self.position(id) else { return false };
+        let Some(i) = self.position(id) else {
+            return false;
+        };
         let note = &mut self.notes[i];
         note.due_at = due_at;
         note.reminder_done = false;
@@ -489,7 +533,10 @@ impl NotesStore {
 
     /// Notes carrying any reminder (calendar decoration).
     pub fn notes_with_reminders(&self) -> Vec<&Note> {
-        self.notes.iter().filter(|n| n.has_reminder() && !n.is_archived).collect()
+        self.notes
+            .iter()
+            .filter(|n| n.has_reminder() && !n.is_archived)
+            .collect()
     }
 
     /// Notes "belonging" to a calendar day: created OR due that day.
@@ -511,7 +558,10 @@ impl NotesStore {
     }
 
     pub fn get_all_notes(&self, include_archived: bool) -> Vec<&Note> {
-        self.notes.iter().filter(|n| include_archived || !n.is_archived).collect()
+        self.notes
+            .iter()
+            .filter(|n| include_archived || !n.is_archived)
+            .collect()
     }
 
     // --- Import / export ----------------------------------------------------
@@ -521,17 +571,24 @@ impl NotesStore {
     pub fn export_notes(&self, path: Option<&Path>) -> Option<PathBuf> {
         let path = match path {
             Some(p) => p.to_path_buf(),
-            None => self
-                .data_dir
-                .join(format!("notes_export_{}.json", Local::now().format("%Y%m%d_%H%M%S"))),
+            None => self.data_dir.join(format!(
+                "notes_export_{}.json",
+                Local::now().format("%Y%m%d_%H%M%S")
+            )),
         };
         let mut obj = Map::new();
         obj.insert(
             "categories".into(),
             Value::Array(self.categories.iter().map(NoteCategory::to_json).collect()),
         );
-        obj.insert("exported_at".into(), Value::String(format_qt_iso(Some(now_local()))));
-        obj.insert("notes".into(), Value::Array(self.notes.iter().map(Note::to_json).collect()));
+        obj.insert(
+            "exported_at".into(),
+            Value::String(format_qt_iso(Some(now_local()))),
+        );
+        obj.insert(
+            "notes".into(),
+            Value::Array(self.notes.iter().map(Note::to_json).collect()),
+        );
         obj.insert("version".into(), Value::String("1.0".into()));
 
         // Indented (4 spaces, like QJsonDocument::Indented): user-facing file.
@@ -549,13 +606,19 @@ impl NotesStore {
     /// `merge` keeps existing data (imported notes get new ids); otherwise
     /// everything is replaced.
     pub fn import_notes(&mut self, path: &Path, merge: bool) -> bool {
-        let Ok(meta) = std::fs::metadata(path) else { return false };
+        let Ok(meta) = std::fs::metadata(path) else {
+            return false;
+        };
         if meta.len() == 0 || meta.len() > MAX_IMPORT_BYTES {
             log::warn!("Import rejeté: taille hors limites ({})", meta.len());
             return false;
         }
-        let Ok(bytes) = std::fs::read(path) else { return false };
-        let Ok(Value::Object(data)) = serde_json::from_slice::<Value>(&bytes) else { return false };
+        let Ok(bytes) = std::fs::read(path) else {
+            return false;
+        };
+        let Ok(Value::Object(data)) = serde_json::from_slice::<Value>(&bytes) else {
+            return false;
+        };
         let (Some(Value::Array(notes)), Some(Value::Array(cats))) =
             (data.get("notes"), data.get("categories"))
         else {
@@ -567,12 +630,20 @@ impl NotesStore {
             self.notes.clear();
             self.categories.clear();
         }
-        for cat in cats.iter().filter_map(Value::as_object).map(NoteCategory::from_json) {
+        for cat in cats
+            .iter()
+            .filter_map(Value::as_object)
+            .map(NoteCategory::from_json)
+        {
             if !cat.id.is_empty() && !self.categories.iter().any(|c| c.id == cat.id) {
                 self.categories.push(cat);
             }
         }
-        for mut note in notes.iter().filter_map(Value::as_object).map(Note::from_json) {
+        for mut note in notes
+            .iter()
+            .filter_map(Value::as_object)
+            .map(Note::from_json)
+        {
             if note.id.is_empty() || note.title.is_empty() {
                 continue;
             }
@@ -597,7 +668,10 @@ impl NotesStore {
     }
 
     pub fn get_favorite_notes(&self) -> Vec<&Note> {
-        self.notes.iter().filter(|n| n.is_favorite && !n.is_archived).collect()
+        self.notes
+            .iter()
+            .filter(|n| n.is_favorite && !n.is_archived)
+            .collect()
     }
 
     /// Case-insensitive search in title, content and tags.
@@ -610,20 +684,28 @@ impl NotesStore {
             .iter()
             .zip(&self.index)
             .filter(|(n, _)| include_archived || !n.is_archived)
-            .filter(|(_, e)| e.title.contains(&q) || e.content.contains(&q) || e.tags.iter().any(|t| t.contains(&q)))
+            .filter(|(_, e)| {
+                e.title.contains(&q)
+                    || e.content.contains(&q)
+                    || e.tags.iter().any(|t| t.contains(&q))
+            })
             .map(|(n, _)| n)
             .collect()
     }
 
     pub fn toggle_favorite(&mut self, id: &str) -> bool {
-        let Some(i) = self.position(id) else { return false };
+        let Some(i) = self.position(id) else {
+            return false;
+        };
         self.notes[i].is_favorite = !self.notes[i].is_favorite;
         self.notes[i].updated_at = Some(now_local());
         self.save_notes()
     }
 
     pub fn toggle_archive(&mut self, id: &str) -> bool {
-        let Some(i) = self.position(id) else { return false };
+        let Some(i) = self.position(id) else {
+            return false;
+        };
         self.notes[i].is_archived = !self.notes[i].is_archived;
         self.notes[i].updated_at = Some(now_local());
         self.save_notes()
@@ -642,7 +724,10 @@ impl NotesStore {
     }
 
     pub fn stats(&self) -> NotesStats {
-        let mut s = NotesStats { total_notes: self.notes.len(), ..Default::default() };
+        let mut s = NotesStats {
+            total_notes: self.notes.len(),
+            ..Default::default()
+        };
         for n in &self.notes {
             if n.is_archived {
                 s.archived_notes += 1;
@@ -662,7 +747,11 @@ impl NotesStore {
 fn read_json_capped(path: &Path) -> Option<Value> {
     let meta = std::fs::metadata(path).ok()?;
     if meta.len() > MAX_IMPORT_BYTES {
-        log::warn!("{} ignoré: taille hors limites ({})", path.display(), meta.len());
+        log::warn!(
+            "{} ignoré: taille hors limites ({})",
+            path.display(),
+            meta.len()
+        );
         return None;
     }
     let bytes = std::fs::read(path).ok()?;
@@ -728,22 +817,44 @@ mod tests {
 
     #[test]
     fn qt_iso_parsing() {
-        assert_eq!(parse_qt_iso("2025-03-12T14:05:33"), Some(dt("2025-03-12 14:05:33")));
-        assert_eq!(parse_qt_iso("2025-03-12T14:05"), Some(dt("2025-03-12 14:05:00")));
+        assert_eq!(
+            parse_qt_iso("2025-03-12T14:05:33"),
+            Some(dt("2025-03-12 14:05:33"))
+        );
+        assert_eq!(
+            parse_qt_iso("2025-03-12T14:05"),
+            Some(dt("2025-03-12 14:05:00"))
+        );
         assert_eq!(parse_qt_iso("2025-03-12"), Some(dt("2025-03-12 00:00:00")));
         assert_eq!(
             parse_qt_iso("2025-03-12T14:05:33.250").map(|d| d.and_utc().timestamp_subsec_millis()),
             Some(250)
         );
-        assert_eq!(parse_qt_iso("2025-03-12T24:00:00"), Some(dt("2025-03-13 00:00:00")));
-        let z = Utc.from_utc_datetime(&dt("2025-03-12 14:05:33")).with_timezone(&Local).naive_local();
+        assert_eq!(
+            parse_qt_iso("2025-03-12T24:00:00"),
+            Some(dt("2025-03-13 00:00:00"))
+        );
+        let z = Utc
+            .from_utc_datetime(&dt("2025-03-12 14:05:33"))
+            .with_timezone(&Local)
+            .naive_local();
         assert_eq!(parse_qt_iso("2025-03-12T14:05:33Z"), Some(z));
         assert_eq!(parse_qt_iso("2025-03-12T16:05:33+02:00"), Some(z));
         assert_eq!(parse_qt_iso("2025-03-12T12:05:33-0200"), Some(z));
-        for bad in ["", "garbage", "2025-13-01T00:00:00", "2025-03-12T25:00", "2025-03-12X10:00", "2025-03-12T1:00"] {
+        for bad in [
+            "",
+            "garbage",
+            "2025-13-01T00:00:00",
+            "2025-03-12T25:00",
+            "2025-03-12X10:00",
+            "2025-03-12T1:00",
+        ] {
             assert_eq!(parse_qt_iso(bad), None, "{bad}");
         }
-        assert_eq!(format_qt_iso(Some(dt("2025-03-02 04:05:06"))), "2025-03-02T04:05:06");
+        assert_eq!(
+            format_qt_iso(Some(dt("2025-03-02 04:05:06"))),
+            "2025-03-02T04:05:06"
+        );
         assert_eq!(format_qt_iso(None), "");
     }
 
@@ -765,7 +876,10 @@ mod tests {
 
         // Default categories were created, in Qt's compact format.
         let cats = std::fs::read_to_string(dir.path().join(CATEGORIES_FILE)).unwrap();
-        assert!(cats.starts_with(r##"[{"color":"#4CAF50","id":"general","name":"Général"}"##), "{cats}");
+        assert!(
+            cats.starts_with(r##"[{"color":"#4CAF50","id":"general","name":"Général"}"##),
+            "{cats}"
+        );
     }
 
     #[test]
@@ -798,7 +912,9 @@ mod tests {
         let mut s = NotesStore::open(dir.path().to_path_buf());
         assert_eq!(s.create_note("  ", "\n", "#FFE066", &[], None), None);
         let due = dt("2030-01-01 10:00:00");
-        let id = s.create_note(" Titre ", " corps ", "#FFE066", &[], Some(due)).unwrap();
+        let id = s
+            .create_note(" Titre ", " corps ", "#FFE066", &[], Some(due))
+            .unwrap();
         let n = s.get_note_by_id(&id).unwrap();
         assert_eq!((n.title.as_str(), n.content.as_str()), ("Titre", "corps"));
         assert!(n.created_at.is_some());
@@ -811,12 +927,18 @@ mod tests {
         assert!(s.update_note(&id, Some("Nouveau"), None, Some("#80D4FF"), &[]));
         let reloaded = NotesStore::open(dir.path().to_path_buf());
         let n = reloaded.get_note_by_id(&id).unwrap();
-        assert_eq!((n.title.as_str(), n.content.as_str(), n.category.as_str()), ("Nouveau", "corps", "#80D4FF"));
+        assert_eq!(
+            (n.title.as_str(), n.content.as_str(), n.category.as_str()),
+            ("Nouveau", "corps", "#80D4FF")
+        );
         assert_eq!(n.due_at, Some(due));
 
         assert!(s.set_note_due_date(&id, None));
         let raw = std::fs::read_to_string(dir.path().join(NOTES_FILE)).unwrap();
-        assert!(!raw.contains("due_at") && !raw.contains("reminder_done"), "{raw}");
+        assert!(
+            !raw.contains("due_at") && !raw.contains("reminder_done"),
+            "{raw}"
+        );
 
         let rev = s.revision();
         assert!(s.delete_note(&id));
@@ -839,7 +961,11 @@ mod tests {
         let now = dt("2026-01-02 12:00:00");
         let ids: Vec<_> = s.due_reminders(now).into_iter().map(|n| n.id).collect();
         assert_eq!(ids, vec!["past", "exact"]);
-        let with: Vec<_> = s.notes_with_reminders().into_iter().map(|n| n.id.clone()).collect();
+        let with: Vec<_> = s
+            .notes_with_reminders()
+            .into_iter()
+            .map(|n| n.id.clone())
+            .collect();
         assert_eq!(with, vec!["past", "exact", "future", "done"]);
         assert!(s.mark_reminders_done(&ids));
         assert!(s.due_reminders(now).is_empty());
@@ -857,7 +983,11 @@ mod tests {
         ]"#,
         );
         let day = NaiveDate::from_ymd_opt(2026, 11, 25).unwrap();
-        let ids: Vec<_> = s.notes_on_day(day).into_iter().map(|n| n.id.as_str()).collect();
+        let ids: Vec<_> = s
+            .notes_on_day(day)
+            .into_iter()
+            .map(|n| n.id.as_str())
+            .collect();
         assert_eq!(ids, vec!["created", "due"]);
     }
 
@@ -887,7 +1017,12 @@ mod tests {
     fn export_import_round_trip_and_caps() {
         let (dir, s) = store_with(QT_SAMPLE);
         let out = s.export_notes(None).unwrap();
-        assert!(out.file_name().unwrap().to_string_lossy().starts_with("notes_export_"));
+        assert!(
+            out.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("notes_export_")
+        );
         let text = std::fs::read_to_string(&out).unwrap();
         assert!(text.starts_with("{\n    \"categories\": ["), "{text}");
 
@@ -895,15 +1030,25 @@ mod tests {
         let other = tempfile::tempdir().unwrap();
         let mut t = NotesStore::open(other.path().to_path_buf());
         assert!(t.import_notes(&out, true));
-        let titles: Vec<_> = t.get_all_notes(true).iter().map(|n| n.title.clone()).collect();
+        let titles: Vec<_> = t
+            .get_all_notes(true)
+            .iter()
+            .map(|n| n.title.clone())
+            .collect();
         assert_eq!(titles, vec!["Raid ICC", "Sombrelune"]);
-        assert!(t.get_note_by_id("6f1c0a52-3d1e-4b8e-9a51-1c7a0c0f2e11").is_none());
+        assert!(
+            t.get_note_by_id("6f1c0a52-3d1e-4b8e-9a51-1c7a0c0f2e11")
+                .is_none()
+        );
         assert!(t.import_notes(&out, true));
         assert_eq!(t.get_all_notes(true).len(), 4);
         // Replace import keeps the original ids.
         assert!(t.import_notes(&out, false));
         assert_eq!(t.get_all_notes(true).len(), 2);
-        assert!(t.get_note_by_id("6f1c0a52-3d1e-4b8e-9a51-1c7a0c0f2e11").is_some());
+        assert!(
+            t.get_note_by_id("6f1c0a52-3d1e-4b8e-9a51-1c7a0c0f2e11")
+                .is_some()
+        );
 
         // Schema and size checks.
         let bad = dir.path().join("bad.json");
@@ -920,7 +1065,11 @@ mod tests {
 
         // An oversized notes.json is ignored on load.
         std::fs::copy(&big, other.path().join(NOTES_FILE)).unwrap();
-        assert!(NotesStore::open(other.path().to_path_buf()).get_all_notes(true).is_empty());
+        assert!(
+            NotesStore::open(other.path().to_path_buf())
+                .get_all_notes(true)
+                .is_empty()
+        );
     }
 
     #[test]
@@ -929,14 +1078,24 @@ mod tests {
         std::fs::write(old.path().join(NOTES_FILE), QT_SAMPLE).unwrap();
         std::fs::write(old.path().join(CATEGORIES_FILE), "[]").unwrap();
         let new = tempfile::tempdir().unwrap();
-        migrate_old_notes(new.path(), &[old.path().join("absent.json"), old.path().join(NOTES_FILE)]);
-        assert_eq!(std::fs::read_to_string(new.path().join(NOTES_FILE)).unwrap(), QT_SAMPLE);
+        migrate_old_notes(
+            new.path(),
+            &[old.path().join("absent.json"), old.path().join(NOTES_FILE)],
+        );
+        assert_eq!(
+            std::fs::read_to_string(new.path().join(NOTES_FILE)).unwrap(),
+            QT_SAMPLE
+        );
         assert!(new.path().join(CATEGORIES_FILE).exists());
 
         // Existing notes are never overwritten.
         std::fs::write(new.path().join(NOTES_FILE), r#"[{"id":"keep"}]"#).unwrap();
         migrate_old_notes(new.path(), &[old.path().join(NOTES_FILE)]);
-        assert!(std::fs::read_to_string(new.path().join(NOTES_FILE)).unwrap().contains("keep"));
+        assert!(
+            std::fs::read_to_string(new.path().join(NOTES_FILE))
+                .unwrap()
+                .contains("keep")
+        );
     }
 
     #[test]

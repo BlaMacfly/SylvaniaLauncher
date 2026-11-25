@@ -5,16 +5,36 @@
 use crate::theme::{self, GOLD, TEXT_MUTED};
 use chrono::{Datelike, Duration, NaiveDate};
 use eframe::egui::{
-    self, Align2, Color32, CornerRadius, FontFamily, FontId, Rect, RichText, Sense, Stroke, StrokeKind, Ui, Vec2,
-    pos2, vec2,
+    self, Align2, Color32, CornerRadius, FontFamily, FontId, Rect, RichText, Sense, Stroke,
+    StrokeKind, Ui, Vec2, pos2, vec2,
 };
 
 const FR_MONTHS: [&str; 12] = [
-    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre",
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
     "Décembre",
 ];
 const EN_MONTHS: [&str; 12] = [
-    "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
     "December",
 ];
 const FR_DAYS: [&str; 7] = ["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"];
@@ -47,7 +67,10 @@ pub struct MonthView {
 
 impl MonthView {
     pub fn of(day: NaiveDate) -> Self {
-        MonthView { year: day.year(), month: day.month() }
+        MonthView {
+            year: day.year(),
+            month: day.month(),
+        }
     }
 
     fn first_day(self) -> NaiveDate {
@@ -93,11 +116,20 @@ pub fn month_calendar(
     let arrow = vec2(28.0, 28.0);
     let prev = Rect::from_min_size(header.min, arrow);
     let next = Rect::from_min_size(pos2(header.max.x - arrow.x, header.min.y), arrow);
-    let arrow_btn = |s: &str| egui::Button::new(RichText::new(s).color(GOLD).size(14.0)).frame(false);
-    if ui.put(prev, arrow_btn("◀")).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
+    let arrow_btn =
+        |s: &str| egui::Button::new(RichText::new(s).color(GOLD).size(14.0)).frame(false);
+    if ui
+        .put(prev, arrow_btn("◀"))
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
+    {
         view.shift(-1);
     }
-    if ui.put(next, arrow_btn("▶")).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
+    if ui
+        .put(next, arrow_btn("▶"))
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
+    {
         view.shift(1);
     }
     ui.painter().text(
@@ -112,9 +144,22 @@ pub fn month_calendar(
     let (days_row, _) = ui.allocate_exact_size(vec2(width, 20.0), Sense::hover());
     let names = if en { &EN_DAYS } else { &FR_DAYS };
     for (i, name) in names.iter().enumerate() {
-        let center = pos2(days_row.min.x + (i as f32 + 0.5) * cell.x, days_row.center().y);
-        let color = if i >= 5 { WEEKEND_TEXT.gamma_multiply(0.8) } else { TEXT_MUTED };
-        ui.painter().text(center, Align2::CENTER_CENTER, *name, FontId::proportional(11.0), color);
+        let center = pos2(
+            days_row.min.x + (i as f32 + 0.5) * cell.x,
+            days_row.center().y,
+        );
+        let color = if i >= 5 {
+            WEEKEND_TEXT.gamma_multiply(0.8)
+        } else {
+            TEXT_MUTED
+        };
+        ui.painter().text(
+            center,
+            Align2::CENTER_CENTER,
+            *name,
+            FontId::proportional(11.0),
+            color,
+        );
     }
 
     // Day grid.
@@ -124,7 +169,10 @@ pub fn month_calendar(
     let mut clicked = None;
     for (i, day) in view.grid_days().enumerate() {
         let (row, col) = (i / 7, i % 7);
-        let rect = Rect::from_min_size(grid.min + vec2(col as f32 * cell.x, row as f32 * cell.y), cell);
+        let rect = Rect::from_min_size(
+            grid.min + vec2(col as f32 * cell.x, row as f32 * cell.y),
+            cell,
+        );
         let resp = ui
             .interact(rect, base_id.with(i), Sense::click())
             .on_hover_cursor(egui::CursorIcon::PointingHand);
@@ -141,7 +189,12 @@ pub fn month_calendar(
             let f = if in_month { f } else { f.gamma_multiply(0.45) };
             painter.rect_filled(rect.shrink(1.0), CornerRadius::same(3), f);
         }
-        painter.rect_stroke(rect, CornerRadius::ZERO, Stroke::new(1.0, GRID_LINE), StrokeKind::Inside);
+        painter.rect_stroke(
+            rect,
+            CornerRadius::ZERO,
+            Stroke::new(1.0, GRID_LINE),
+            StrokeKind::Inside,
+        );
 
         let mut color = match m {
             DayMark::Reminder => DARK_TEXT,
@@ -150,20 +203,44 @@ pub fn month_calendar(
             DayMark::None => DAY_TEXT,
         };
         if !in_month {
-            color = if m == DayMark::None { OTHER_MONTH_TEXT } else { color.gamma_multiply(0.55) };
+            color = if m == DayMark::None {
+                OTHER_MONTH_TEXT
+            } else {
+                color.gamma_multiply(0.55)
+            };
         }
         let font = if m == DayMark::None {
             FontId::proportional(12.0)
         } else {
             FontId::new(12.5, FontFamily::Name(theme::BOLD.into()))
         };
-        painter.text(rect.center(), Align2::CENTER_CENTER, day.day().to_string(), font, color);
+        painter.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            day.day().to_string(),
+            font,
+            color,
+        );
 
         if selected == Some(day) {
-            painter.rect_stroke(rect.shrink(1.0), CornerRadius::same(3), Stroke::new(2.0, Color32::WHITE), StrokeKind::Inside);
+            painter.rect_stroke(
+                rect.shrink(1.0),
+                CornerRadius::same(3),
+                Stroke::new(2.0, Color32::WHITE),
+                StrokeKind::Inside,
+            );
         } else if day == today {
-            let c = if m == DayMark::Reminder { DARK_TEXT } else { GOLD };
-            painter.rect_stroke(rect.shrink(2.0), CornerRadius::same(3), Stroke::new(1.0, c), StrokeKind::Inside);
+            let c = if m == DayMark::Reminder {
+                DARK_TEXT
+            } else {
+                GOLD
+            };
+            painter.rect_stroke(
+                rect.shrink(2.0),
+                CornerRadius::same(3),
+                Stroke::new(1.0, c),
+                StrokeKind::Inside,
+            );
         }
 
         if resp.clicked() {
@@ -182,16 +259,31 @@ mod tests {
 
     #[test]
     fn grid_starts_on_monday_and_navigation_wraps_years() {
-        let mut v = MonthView { year: 2026, month: 11 };
+        let mut v = MonthView {
+            year: 2026,
+            month: 11,
+        };
         let days: Vec<_> = v.grid_days().collect();
         assert_eq!(days.len(), 42);
         // 1 Nov 2026 is a Sunday → grid starts Monday 26 Oct.
         assert_eq!(days[0], NaiveDate::from_ymd_opt(2026, 10, 26).unwrap());
         assert_eq!(days[6], NaiveDate::from_ymd_opt(2026, 11, 1).unwrap());
         v.shift(2);
-        assert_eq!(v, MonthView { year: 2027, month: 1 });
+        assert_eq!(
+            v,
+            MonthView {
+                year: 2027,
+                month: 1
+            }
+        );
         v.shift(-13);
-        assert_eq!(v, MonthView { year: 2025, month: 12 });
+        assert_eq!(
+            v,
+            MonthView {
+                year: 2025,
+                month: 12
+            }
+        );
         assert_eq!(month_title(false, v), "Décembre 2025");
         assert_eq!(month_title(true, v), "December 2025");
     }

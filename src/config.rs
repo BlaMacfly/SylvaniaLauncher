@@ -27,7 +27,10 @@ impl Config {
     /// unreadable/corrupt file falls back to defaults.
     pub fn load() -> Self {
         let path = paths::config_dir().join("config.json");
-        let mut cfg = Config { values: Map::new(), path };
+        let mut cfg = Config {
+            values: Map::new(),
+            path,
+        };
 
         let loaded = std::fs::read(&cfg.path)
             .ok()
@@ -73,10 +76,6 @@ impl Config {
 
     // --- Generic access -------------------------------------------------------
 
-    pub fn get(&self, key: &str) -> Option<&Value> {
-        self.values.get(key)
-    }
-
     /// Sets a key and saves immediately.
     pub fn set(&mut self, key: &str, value: Value) {
         self.values.insert(key.to_string(), value);
@@ -84,7 +83,10 @@ impl Config {
     }
 
     fn get_bool(&self, key: &str, default: bool) -> bool {
-        self.values.get(key).and_then(Value::as_bool).unwrap_or(default)
+        self.values
+            .get(key)
+            .and_then(Value::as_bool)
+            .unwrap_or(default)
     }
 
     fn get_str(&self, key: &str, default: &str) -> String {
@@ -103,13 +105,6 @@ impl Config {
     }
     pub fn set_wow_path(&mut self, path: &str) {
         self.set("wow_path", json!(path));
-    }
-
-    pub fn is_first_run(&self) -> bool {
-        self.get_bool("first_run", true)
-    }
-    pub fn set_first_run(&mut self, v: bool) {
-        self.set("first_run", json!(v));
     }
 
     pub fn sound_enabled(&self) -> bool {
@@ -151,8 +146,16 @@ impl Config {
             .map(|arr| {
                 arr.iter()
                     .map(|v| RealmlistEntry {
-                        name: v.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
-                        address: v.get("address").and_then(Value::as_str).unwrap_or("").to_string(),
+                        name: v
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_string(),
+                        address: v
+                            .get("address")
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_string(),
                         active: v.get("active").and_then(Value::as_bool).unwrap_or(false),
                     })
                     .collect()
@@ -180,19 +183,24 @@ impl Config {
         for (i, e) in entries.iter_mut().enumerate() {
             e.active = i == index;
         }
-        self.values.insert("active_realmlist_index".into(), json!(index));
+        self.values
+            .insert("active_realmlist_index".into(), json!(index));
         self.set_realmlist_entries(&entries); // saves
     }
 
     /// The active entry, if the index is in range.
     pub fn active_realmlist_entry(&self) -> Option<RealmlistEntry> {
-        self.realmlist_entries().get(self.active_realmlist_index()).cloned()
+        self.realmlist_entries()
+            .get(self.active_realmlist_index())
+            .cloned()
     }
 
     /// Selects an entry and rewrites the client's realmlist.wtf files.
     pub fn switch_realmlist(&mut self, index: usize) -> bool {
         let entries = self.realmlist_entries();
-        let Some(entry) = entries.get(index).cloned() else { return false };
+        let Some(entry) = entries.get(index).cloned() else {
+            return false;
+        };
         self.set_active_realmlist_index(index);
         self.update_realmlist(&entry.address)
     }
@@ -203,11 +211,11 @@ impl Config {
         let lower = s.to_lowercase();
         if let Some(rest) = lower.strip_prefix("set") {
             let rest_trim = rest.trim_start();
-            if let Some(after) = rest_trim.strip_prefix("realmlist") {
-                if after.starts_with(char::is_whitespace) {
-                    let cut = s.len() - after.trim_start().len();
-                    s = s[cut..].to_string();
-                }
+            if let Some(after) = rest_trim.strip_prefix("realmlist")
+                && after.starts_with(char::is_whitespace)
+            {
+                let cut = s.len() - after.trim_start().len();
+                s = s[cut..].to_string();
             }
         }
         s.replace('"', "").trim().to_string()
@@ -247,9 +255,16 @@ impl Config {
         let mut migrated = false;
         if let Some(editions) = self.values.remove("editions") {
             if let Some(wotlk) = editions.get("wotlk").and_then(Value::as_object) {
-                for key in ["wow_path", "realmlist_entries", "active_realmlist_index", "background"] {
+                for key in [
+                    "wow_path",
+                    "realmlist_entries",
+                    "active_realmlist_index",
+                    "background",
+                ] {
                     if let Some(v) = wotlk.get(key) {
-                        self.values.entry(key.to_string()).or_insert_with(|| v.clone());
+                        self.values
+                            .entry(key.to_string())
+                            .or_insert_with(|| v.clone());
                     }
                 }
             }
@@ -264,12 +279,15 @@ impl Config {
             .and_then(Value::as_array)
             .is_none_or(|a| a.is_empty());
         if empty {
-            self.values.insert("realmlist_entries".into(), default_realmlist());
-            self.values.insert("active_realmlist_index".into(), json!(0));
+            self.values
+                .insert("realmlist_entries".into(), default_realmlist());
+            self.values
+                .insert("active_realmlist_index".into(), json!(0));
             migrated = true;
         }
         if !self.values.contains_key("active_realmlist_index") {
-            self.values.insert("active_realmlist_index".into(), json!(0));
+            self.values
+                .insert("active_realmlist_index".into(), json!(0));
             migrated = true;
         }
         migrated
@@ -277,7 +295,11 @@ impl Config {
 
     /// Rewrites stale hosts from older launcher builds to the canonical one.
     fn migrate_legacy_realmlist(&mut self) -> bool {
-        const LEGACY: [&str; 3] = ["logon.sylvania-wow.com", "sylvania-wow.com", "logon.sylvania.com"];
+        const LEGACY: [&str; 3] = [
+            "logon.sylvania-wow.com",
+            "sylvania-wow.com",
+            "logon.sylvania.com",
+        ];
         let mut entries = self.realmlist_entries();
         let mut changed = false;
         for e in entries.iter_mut() {
@@ -293,7 +315,8 @@ impl Config {
                 .iter()
                 .map(|e| json!({"name": e.name, "address": e.address, "active": e.active}))
                 .collect();
-            self.values.insert("realmlist_entries".into(), Value::Array(arr));
+            self.values
+                .insert("realmlist_entries".into(), Value::Array(arr));
         }
         changed
     }
@@ -329,14 +352,20 @@ mod tests {
 
     #[test]
     fn host_from_address_strips_prefix_and_quotes() {
-        assert_eq!(Config::host_from_address("set realmlist sylvania-servergame.com"), "sylvania-servergame.com");
+        assert_eq!(
+            Config::host_from_address("set realmlist sylvania-servergame.com"),
+            "sylvania-servergame.com"
+        );
         assert_eq!(Config::host_from_address("SET  RealmList \"a.b\""), "a.b");
         assert_eq!(Config::host_from_address("  1.2.3.4 "), "1.2.3.4");
     }
 
     #[test]
     fn flattens_v3_edition_config() {
-        let mut c = Config { values: Map::new(), path: PathBuf::new() };
+        let mut c = Config {
+            values: Map::new(),
+            path: PathBuf::new(),
+        };
         c.values = serde_json::from_str::<Value>(
             r#"{"active_edition":"wotlk","editions":{"legion":{"wow_path":"E:/Legion"},
                "wotlk":{"wow_path":"E:/wotlk","background":"Taverne",
@@ -350,7 +379,7 @@ mod tests {
         assert!(c.migrate_from_edition_config());
         assert_eq!(c.wow_path(), "E:/wotlk");
         assert_eq!(c.background(), "Taverne");
-        assert!(c.get("editions").is_none() && c.get("active_edition").is_none());
+        assert!(!c.values.contains_key("editions") && !c.values.contains_key("active_edition"));
         assert_eq!(c.realmlist_entries().len(), 1);
     }
 }

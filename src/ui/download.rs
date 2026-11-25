@@ -23,7 +23,8 @@ impl DownloadDialog {
     /// configureForClient + setLanguage + setRealmlistAddress).
     pub fn start(destination: PathBuf, shared: &Shared) -> Self {
         let address = shared.config.active_realmlist_entry().map(|e| e.address);
-        let params = DownloadParams::for_client(destination.clone(), address, &shared.config.language());
+        let params =
+            DownloadParams::for_client(destination.clone(), address, &shared.config.language());
         let snap = Snapshot {
             status: shared.t("Préparation du téléchargement..."),
             percent: Some(0),
@@ -32,7 +33,11 @@ impl DownloadDialog {
             eta: shared.t("Temps restant: --"),
             button_percent: None,
         };
-        DownloadDialog { task: DownloadTask::start(params, shared.i18n.clone()), snap, destination }
+        DownloadDialog {
+            task: DownloadTask::start(params, shared.i18n.clone()),
+            snap,
+            destination,
+        }
     }
 
     pub fn destination(&self) -> &std::path::Path {
@@ -54,25 +59,35 @@ impl DownloadDialog {
             }
         }
 
-        let title = shared.tf("Téléchargement du Client — %1", &[&constants::CLIENT_DISPLAY_NAME]);
+        let title = shared.tf(
+            "Téléchargement du Client — %1",
+            &[&constants::CLIENT_DISPLAY_NAME],
+        );
         let cancel_text = shared.t("Annuler");
         let snap = &self.snap;
         let mut cancel = false;
-        let open = child_window(ctx, WINDOW_ID, &title, [500.0, 250.0], [500.0, 250.0], |ui| {
-            ui.add_space(SPACE_LG - SPACE_MD);
-            ui.spacing_mut().item_spacing.y = SPACE_MD;
-            ui.vertical_centered(|ui| {
-                ui.label(theme::bold(&snap.status, 14.0).color(theme::GOLD));
-            });
-            progress_bar(ui, snap.percent, &BarStyle::dialog());
-            info_row(ui, snap);
-            ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+        let open = child_window(
+            ctx,
+            WINDOW_ID,
+            &title,
+            [500.0, 250.0],
+            [500.0, 250.0],
+            |ui| {
                 ui.add_space(SPACE_LG - SPACE_MD);
-                if widgets::dialog_button(ui, &cancel_text).clicked() {
-                    cancel = true;
-                }
-            });
-        });
+                ui.spacing_mut().item_spacing.y = SPACE_MD;
+                ui.vertical_centered(|ui| {
+                    ui.label(theme::bold(&snap.status, 14.0).color(theme::GOLD));
+                });
+                progress_bar(ui, snap.percent, &BarStyle::dialog());
+                info_row(ui, snap);
+                ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                    ui.add_space(SPACE_LG - SPACE_MD);
+                    if widgets::dialog_button(ui, &cancel_text).clicked() {
+                        cancel = true;
+                    }
+                });
+            },
+        );
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
 
         if cancel || !open {
@@ -90,9 +105,13 @@ fn info_row(ui: &mut Ui, snap: &Snapshot) {
     let text = |s: &str| RichText::new(s).size(12.0).color(theme::TEXT_MUTED);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
-        ui.allocate_ui_with_layout(Vec2::new(w, h), Layout::left_to_right(Align::Center), |ui| {
-            ui.label(text(&snap.speed));
-        });
+        ui.allocate_ui_with_layout(
+            Vec2::new(w, h),
+            Layout::left_to_right(Align::Center),
+            |ui| {
+                ui.label(text(&snap.speed));
+            },
+        );
         ui.allocate_ui_with_layout(
             Vec2::new(w, h),
             Layout::centered_and_justified(egui::Direction::LeftToRight),
@@ -100,9 +119,13 @@ fn info_row(ui: &mut Ui, snap: &Snapshot) {
                 ui.label(text(&snap.size));
             },
         );
-        ui.allocate_ui_with_layout(Vec2::new(w, h), Layout::right_to_left(Align::Center), |ui| {
-            ui.label(text(&snap.eta));
-        });
+        ui.allocate_ui_with_layout(
+            Vec2::new(w, h),
+            Layout::right_to_left(Align::Center),
+            |ui| {
+                ui.label(text(&snap.eta));
+            },
+        );
     });
 }
 
@@ -134,7 +157,10 @@ impl BarStyle {
 /// Full-width progress bar. `percent` None = indeterminate (a chunk sweeping
 /// back and forth, like Qt's busy QProgressBar).
 pub(crate) fn progress_bar(ui: &mut Ui, percent: Option<u8>, style: &BarStyle) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(ui.available_width(), style.height), Sense::hover());
+    let (rect, response) = ui.allocate_exact_size(
+        Vec2::new(ui.available_width(), style.height),
+        Sense::hover(),
+    );
     if !ui.is_rect_visible(rect) {
         return response;
     }
@@ -165,13 +191,23 @@ pub(crate) fn progress_bar(ui: &mut Ui, percent: Option<u8>, style: &BarStyle) -
             let w = inner.width() * 0.3;
             // Triangle wave 0..1..0 over 2 s.
             let phase = (t * 0.5).fract();
-            let k = if phase < 0.5 { phase * 2.0 } else { 2.0 - phase * 2.0 };
+            let k = if phase < 0.5 {
+                phase * 2.0
+            } else {
+                2.0 - phase * 2.0
+            };
             let x = inner.left() + (inner.width() - w) * k;
-            let chunk = egui::Rect::from_min_size(egui::pos2(x, inner.top()), Vec2::new(w, inner.height()));
+            let chunk =
+                egui::Rect::from_min_size(egui::pos2(x, inner.top()), Vec2::new(w, inner.height()));
             painter.rect_filled(chunk, chunk_radius, style.fill);
             ui.ctx().request_repaint();
         }
     }
-    painter.rect_stroke(rect, radius, Stroke::new(1.0, style.border), egui::StrokeKind::Inside);
+    painter.rect_stroke(
+        rect,
+        radius,
+        Stroke::new(1.0, style.border),
+        egui::StrokeKind::Inside,
+    );
     response
 }

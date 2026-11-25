@@ -80,7 +80,10 @@ pub enum InstallState {
     /// Recommended, installed; version shown (may be empty).
     Installed(String),
     /// Recommended, the registry holds another version.
-    UpdateAvailable { installed: String, available: String },
+    UpdateAvailable {
+        installed: String,
+        available: String,
+    },
     /// Catalogue entry present (registry or disk).
     CatalogInstalled,
     /// Catalogue entry absent.
@@ -95,15 +98,30 @@ pub fn install_state(
     addons_dir: Option<&Path>,
 ) -> InstallState {
     let in_registry = registry.contains(&target.id);
-    let installed_ver = if in_registry { registry.installed_version(&target.id) } else { String::new() };
-    let on_disk = addons_dir.is_some_and(|d| target.folders.iter().any(|f| install::folder_exists(d, f)));
+    let installed_ver = if in_registry {
+        registry.installed_version(&target.id)
+    } else {
+        String::new()
+    };
+    let on_disk =
+        addons_dir.is_some_and(|d| target.folders.iter().any(|f| install::folder_exists(d, f)));
     match target.source {
         Source::Recommended => {
-            if in_registry && !target.version.is_empty() && !installed_ver.is_empty() && installed_ver != target.version
+            if in_registry
+                && !target.version.is_empty()
+                && !installed_ver.is_empty()
+                && installed_ver != target.version
             {
-                InstallState::UpdateAvailable { installed: installed_ver, available: target.version.clone() }
+                InstallState::UpdateAvailable {
+                    installed: installed_ver,
+                    available: target.version.clone(),
+                }
             } else if in_registry || on_disk {
-                InstallState::Installed(if installed_ver.is_empty() { target.version.clone() } else { installed_ver })
+                InstallState::Installed(if installed_ver.is_empty() {
+                    target.version.clone()
+                } else {
+                    installed_ver
+                })
             } else {
                 InstallState::NotInstalled
             }
@@ -137,19 +155,44 @@ mod tests {
             folders: vec![folder.into()],
             source: Source::Recommended,
         };
-        reg.record(&InstalledAddon { id: "old".into(), version: "1.0".into(), ..Default::default() });
-        reg.record(&InstalledAddon { id: "nover".into(), ..Default::default() });
+        reg.record(&InstalledAddon {
+            id: "old".into(),
+            version: "1.0".into(),
+            ..Default::default()
+        });
+        reg.record(&InstalledAddon {
+            id: "nover".into(),
+            ..Default::default()
+        });
 
         let d = Some(addons.as_path());
-        assert_eq!(install_state(&rec("x", "1.0", "X"), &reg, d), InstallState::NotInstalled);
+        assert_eq!(
+            install_state(&rec("x", "1.0", "X"), &reg, d),
+            InstallState::NotInstalled
+        );
         assert_eq!(
             install_state(&rec("old", "2.0", "Old"), &reg, d),
-            InstallState::UpdateAvailable { installed: "1.0".into(), available: "2.0".into() }
+            InstallState::UpdateAvailable {
+                installed: "1.0".into(),
+                available: "2.0".into()
+            }
         );
-        assert_eq!(install_state(&rec("old", "1.0", "Old"), &reg, d), InstallState::Installed("1.0".into()));
-        assert_eq!(install_state(&rec("nover", "3.0", "N"), &reg, d), InstallState::Installed("3.0".into()));
-        assert_eq!(install_state(&rec("m", "", "Manual"), &reg, d), InstallState::Installed(String::new()));
-        assert_eq!(install_state(&rec("m", "", "Manual"), &reg, None), InstallState::NotInstalled);
+        assert_eq!(
+            install_state(&rec("old", "1.0", "Old"), &reg, d),
+            InstallState::Installed("1.0".into())
+        );
+        assert_eq!(
+            install_state(&rec("nover", "3.0", "N"), &reg, d),
+            InstallState::Installed("3.0".into())
+        );
+        assert_eq!(
+            install_state(&rec("m", "", "Manual"), &reg, d),
+            InstallState::Installed(String::new())
+        );
+        assert_eq!(
+            install_state(&rec("m", "", "Manual"), &reg, None),
+            InstallState::NotInstalled
+        );
 
         let cat = InstallTarget::from_catalog(&catalog::CATALOG[0]);
         assert_eq!(cat.folders, vec!["ArkInventory".to_string()]);

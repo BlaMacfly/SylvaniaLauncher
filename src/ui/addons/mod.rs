@@ -11,7 +11,9 @@ mod view;
 
 use crate::app::{Shared, WindowKind, window_id};
 use crate::constants::{CLIENT_DISPLAY_NAME, CLIENT_EXE_NAME};
-use crate::core::addons::install::{self, InstallError, InstallEvent, InstallJob, InstalledEntry, Staging};
+use crate::core::addons::install::{
+    self, InstallError, InstallEvent, InstallJob, InstalledEntry, Staging,
+};
 use crate::core::addons::manifest::{self, ManifestLoad};
 use crate::core::addons::registry::{AddonRegistry, InstalledAddon};
 use crate::core::addons::{self as core_addons, InstallState, InstallTarget, catalog};
@@ -66,7 +68,13 @@ struct Card {
 
 impl Card {
     fn new(target: InstallTarget, description: String) -> Self {
-        Card { target, description, state: InstallState::NotInstalled, status: None, progress: None }
+        Card {
+            target,
+            description,
+            state: InstallState::NotInstalled,
+            status: None,
+            progress: None,
+        }
     }
 }
 
@@ -155,9 +163,14 @@ impl AddonsWindow {
         let mut actions = Vec::new();
         let open = {
             let shared: &Shared = shared;
-            crate::ui::child_window(ctx, window_id(WindowKind::Addons), &title, WINDOW_SIZE, WINDOW_MIN_SIZE, |ui| {
-                self.render(ui, shared, &mut actions)
-            })
+            crate::ui::child_window(
+                ctx,
+                window_id(WindowKind::Addons),
+                &title,
+                WINDOW_SIZE,
+                WINDOW_MIN_SIZE,
+                |ui| self.render(ui, shared, &mut actions),
+            )
         };
 
         for action in actions {
@@ -206,9 +219,10 @@ impl AddonsWindow {
             let load = match rx.try_recv() {
                 Ok(load) => Some(load),
                 Err(TryRecvError::Empty) => None,
-                Err(TryRecvError::Disconnected) => {
-                    Some(ManifestLoad { addons: manifest::embedded(), from_remote: false })
-                }
+                Err(TryRecvError::Disconnected) => Some(ManifestLoad {
+                    addons: manifest::embedded(),
+                    from_remote: false,
+                }),
             };
             if let Some(load) = load {
                 self.manifest_rx = None;
@@ -241,13 +255,25 @@ impl AddonsWindow {
                         InstallEvent::Downloading(pct) => {
                             c.progress = Some(Progress(pct.map(|p| f32::from(p) / 100.0)));
                             c.status = Some(match pct {
-                                Some(p) => Status { text: "Téléchargement... %1%", pct: Some(p), kind: StatusKind::Info },
-                                None => Status { text: "Téléchargement...", pct: None, kind: StatusKind::Info },
+                                Some(p) => Status {
+                                    text: "Téléchargement... %1%",
+                                    pct: Some(p),
+                                    kind: StatusKind::Info,
+                                },
+                                None => Status {
+                                    text: "Téléchargement...",
+                                    pct: None,
+                                    kind: StatusKind::Info,
+                                },
                             });
                         }
                         InstallEvent::Extracting(f) => {
                             c.progress = Some(Progress(Some(f)));
-                            c.status = Some(Status { text: "Extraction en cours...", pct: None, kind: StatusKind::Info });
+                            c.status = Some(Status {
+                                text: "Extraction en cours...",
+                                pct: None,
+                                kind: StatusKind::Info,
+                            });
                         }
                         InstallEvent::Finished(_) => {}
                     }
@@ -318,7 +344,8 @@ impl AddonsWindow {
         if !dir.is_dir() && std::fs::create_dir_all(&dir).is_err() {
             msg::warning(
                 &shared.t("Erreur"),
-                &shared.t("Impossible de créer le dossier Interface/AddOns (droits insuffisants ?)."),
+                &shared
+                    .t("Impossible de créer le dossier Interface/AddOns (droits insuffisants ?)."),
             );
             return None;
         }
@@ -326,40 +353,65 @@ impl AddonsWindow {
     }
 
     fn warn_install_running(shared: &Shared) {
-        msg::info(&shared.t("Information"), &shared.t("Une installation est déjà en cours. Veuillez patienter."));
+        msg::info(
+            &shared.t("Information"),
+            &shared.t("Une installation est déjà en cours. Veuillez patienter."),
+        );
     }
 
     fn start_install(&mut self, shared: &Shared, card_ref: CardRef) {
-        let Some(addons_dir) = Self::ensure_wow_ready(shared) else { return };
+        let Some(addons_dir) = Self::ensure_wow_ready(shared) else {
+            return;
+        };
         if self.active.is_some() {
             Self::warn_install_running(shared);
             return;
         }
-        let Some(target) = self.card(card_ref).map(|c| c.target.clone()) else { return };
+        let Some(target) = self.card(card_ref).map(|c| c.target.clone()) else {
+            return;
+        };
 
         // Only download from the trusted addon host.
         if !install::is_trusted_url(&target.url) {
-            msg::warning(&shared.t("Erreur"), &shared.t("URL de téléchargement de l'addon invalide."));
+            msg::warning(
+                &shared.t("Erreur"),
+                &shared.t("URL de téléchargement de l'addon invalide."),
+            );
             return;
         }
         let staging = match Staging::create(&target.id) {
             Ok(s) => s,
             Err(e) => {
                 log::error!("Dossier temporaire d'addon impossible : {e}");
-                msg::warning(&shared.t("Erreur"), &shared.t("Impossible de créer le fichier temporaire."));
+                msg::warning(
+                    &shared.t("Erreur"),
+                    &shared.t("Impossible de créer le fichier temporaire."),
+                );
                 return;
             }
         };
 
         if let Some(c) = self.card_mut(card_ref) {
             c.progress = Some(Progress(Some(0.0)));
-            c.status = Some(Status { text: "Téléchargement...", pct: None, kind: StatusKind::Info });
+            c.status = Some(Status {
+                text: "Téléchargement...",
+                pct: None,
+                kind: StatusKind::Info,
+            });
         }
         let job = install::spawn_install(target.url, target.folders, staging, addons_dir);
-        self.active = Some(ActiveInstall { card: card_ref, job });
+        self.active = Some(ActiveInstall {
+            card: card_ref,
+            job,
+        });
     }
 
-    fn finish_install(&mut self, shared: &Shared, card_ref: CardRef, result: Result<Vec<String>, InstallError>) {
+    fn finish_install(
+        &mut self,
+        shared: &Shared,
+        card_ref: CardRef,
+        result: Result<Vec<String>, InstallError>,
+    ) {
         self.active = None;
         let status = match result {
             Ok(deployed) => {
@@ -375,9 +427,17 @@ impl AddonsWindow {
                 {
                     log::warn!("Registre des addons non enregistré pour {}", record.id);
                 }
-                Status { text: "Installé avec succès !", pct: None, kind: StatusKind::Success }
+                Status {
+                    text: "Installé avec succès !",
+                    pct: None,
+                    kind: StatusKind::Success,
+                }
             }
-            Err(e) => Status { text: install_error_text(e), pct: None, kind: StatusKind::Error },
+            Err(e) => Status {
+                text: install_error_text(e),
+                pct: None,
+                kind: StatusKind::Error,
+            },
         };
         if let Some(c) = self.card_mut(card_ref) {
             c.progress = None;
@@ -393,15 +453,22 @@ impl AddonsWindow {
             Self::warn_install_running(shared);
             return;
         }
-        let Some(dir) = addons_dir(shared) else { return };
-        let Some(card) = self.card(card_ref) else { return };
+        let Some(dir) = addons_dir(shared) else {
+            return;
+        };
+        let Some(card) = self.card(card_ref) else {
+            return;
+        };
         let id = card.target.id.clone();
         let name = card.target.name.clone();
 
         // Prefer the registry's recorded folders (multi-folder addons); fall
         // back to the declared folders for manual installs.
-        let mut folders =
-            if self.registry.contains(&id) { self.registry.folders(&id) } else { card.target.folders.clone() };
+        let mut folders = if self.registry.contains(&id) {
+            self.registry.folders(&id)
+        } else {
+            card.target.folders.clone()
+        };
         folders.retain(|f| !f.is_empty());
         if folders.is_empty() {
             return;
@@ -409,7 +476,10 @@ impl AddonsWindow {
 
         if !msg::confirm(
             &shared.t("Confirmer la désinstallation"),
-            &shared.tf("Désinstaller %1 ?\nDossiers supprimés : %2", &[&name, &folders.join(", ")]),
+            &shared.tf(
+                "Désinstaller %1 ?\nDossiers supprimés : %2",
+                &[&name, &folders.join(", ")],
+            ),
         ) {
             return;
         }
@@ -419,9 +489,17 @@ impl AddonsWindow {
 
         if let Some(c) = self.card_mut(card_ref) {
             c.status = Some(if failures.is_empty() {
-                Status { text: "Désinstallé.", pct: None, kind: StatusKind::Muted }
+                Status {
+                    text: "Désinstallé.",
+                    pct: None,
+                    kind: StatusKind::Muted,
+                }
             } else {
-                Status { text: "Désinstallation partielle.", pct: None, kind: StatusKind::Error }
+                Status {
+                    text: "Désinstallation partielle.",
+                    pct: None,
+                    kind: StatusKind::Error,
+                }
             });
         }
         self.refresh_cards(shared);
@@ -456,18 +534,30 @@ impl AddonsWindow {
             Self::warn_install_running(shared);
             return;
         }
-        let rows: Vec<InstalledEntry> =
-            self.installed.selected.iter().filter_map(|&i| self.installed.rows.get(i).cloned()).collect();
+        let rows: Vec<InstalledEntry> = self
+            .installed
+            .selected
+            .iter()
+            .filter_map(|&i| self.installed.rows.get(i).cloned())
+            .collect();
         if rows.is_empty() {
-            msg::info(&shared.t("Suppression d'addons"), &shared.t("Veuillez sélectionner au moins un addon à supprimer."));
+            msg::info(
+                &shared.t("Suppression d'addons"),
+                &shared.t("Veuillez sélectionner au moins un addon à supprimer."),
+            );
             return;
         }
-        let Some(dir) = addons_dir(shared) else { return };
+        let Some(dir) = addons_dir(shared) else {
+            return;
+        };
 
         let names: Vec<&str> = rows.iter().map(|r| r.name.as_str()).collect();
         if !msg::confirm(
             &shared.t("Confirmer la suppression"),
-            &shared.tf("Supprimer définitivement %1 addon(s) ?\n\n%2", &[&rows.len(), &names.join("\n")]),
+            &shared.tf(
+                "Supprimer définitivement %1 addon(s) ?\n\n%2",
+                &[&rows.len(), &names.join("\n")],
+            ),
         ) {
             return;
         }
@@ -484,7 +574,10 @@ impl AddonsWindow {
         self.refresh_cards(shared);
 
         if failures.is_empty() {
-            msg::info(&shared.t("Suppression d'addons"), &shared.t("Addon(s) supprimé(s) avec succès."));
+            msg::info(
+                &shared.t("Suppression d'addons"),
+                &shared.t("Addon(s) supprimé(s) avec succès."),
+            );
         } else {
             warn_partial(shared, &failures);
         }
@@ -504,7 +597,11 @@ impl Drop for AddonsWindow {
 /// resolve folder names against the working directory).
 fn addons_dir(shared: &Shared) -> Option<PathBuf> {
     let wow = shared.config.wow_path();
-    if wow.trim().is_empty() { None } else { Some(core_addons::addons_dir(&wow)) }
+    if wow.trim().is_empty() {
+        None
+    } else {
+        Some(core_addons::addons_dir(&wow))
+    }
 }
 
 fn warn_partial(shared: &Shared, failures: &[String]) {

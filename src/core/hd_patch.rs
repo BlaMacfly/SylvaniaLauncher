@@ -40,7 +40,14 @@ const EXTRACTED_ROOT_NAME: &str = "Le Client WoW HD";
 const FIND_ROOT_MAX_DEPTH: usize = 4;
 
 /// Items moved from the extracted root into the client (folders, then files).
-const ITEMS_TO_MIGRATE: [&str; 6] = ["Data", "Interface", "World of Warcraft.app", "d3d9.dll", "dxvk.conf", "WoW.exe"];
+const ITEMS_TO_MIGRATE: [&str; 6] = [
+    "Data",
+    "Interface",
+    "World of Warcraft.app",
+    "d3d9.dll",
+    "dxvk.conf",
+    "WoW.exe",
+];
 
 /// Minimum delay between two download progress events.
 const PROGRESS_THROTTLE: Duration = Duration::from_millis(150);
@@ -62,7 +69,13 @@ impl HdPatchTask {
             let tx = tx.clone();
             let i18n = i18n.clone();
             move || {
-                let worker = Worker { wow: wow_path, temp: temp_dir, i18n, tx: tx.clone(), cancel: worker_cancel };
+                let worker = Worker {
+                    wow: wow_path,
+                    temp: temp_dir,
+                    i18n,
+                    tx: tx.clone(),
+                    cancel: worker_cancel,
+                };
                 let (ok, message) = match worker.run() {
                     Ok(msg) => (true, msg),
                     Err(msg) => (false, msg),
@@ -73,9 +86,16 @@ impl HdPatchTask {
         });
         if let Err(e) = spawned {
             log::error!("Thread du Patch HD non démarré: {e}");
-            let _ = tx.send(HdEvent::Finished { ok: false, message: format!("{}: {e}", i18n.t("Erreur")) });
+            let _ = tx.send(HdEvent::Finished {
+                ok: false,
+                message: format!("{}: {e}", i18n.t("Erreur")),
+            });
         }
-        HdPatchTask { rx, running: true, cancel }
+        HdPatchTask {
+            rx,
+            running: true,
+            cancel,
+        }
     }
 
     /// Drains pending events (non-blocking).
@@ -99,9 +119,14 @@ impl HdPatchTask {
         if wow_path.as_os_str().is_empty() {
             return false;
         }
-        ["patch-w.mpq", "patch-w.mpq.disabled", "patch-5.mpq", "patch-5.mpq.disabled"]
-            .iter()
-            .any(|f| wow_path.join("Data").join(f).exists())
+        [
+            "patch-w.mpq",
+            "patch-w.mpq.disabled",
+            "patch-5.mpq",
+            "patch-5.mpq.disabled",
+        ]
+        .iter()
+        .any(|f| wow_path.join("Data").join(f).exists())
     }
 }
 
@@ -117,7 +142,10 @@ impl Drop for HdPatchTask {
 /// [`http::download_to_file`] (same wording as the Qt `onDownloadError`).
 pub fn network_error_message(i18n: &I18n, err: &str) -> String {
     let lower = err.to_lowercase();
-    if lower.contains("connection refused") || lower.contains("10061") || lower.contains("actively refused") {
+    if lower.contains("connection refused")
+        || lower.contains("10061")
+        || lower.contains("actively refused")
+    {
         i18n.t("Connexion refusée par le serveur")
     } else if lower.contains("dns")
         || lower.contains("no such host")
@@ -139,7 +167,10 @@ pub fn network_error_message(i18n: &I18n, err: &str) -> String {
 /// multi-GB `Data` tree is never walked) rather than assume a path.
 pub fn find_extracted_root(extract_path: &Path) -> Option<PathBuf> {
     let looks_like_root = |dir: &Path| {
-        dir.join("Data").is_dir() || ["WoW.exe", "wow.exe", "Wow.exe"].iter().any(|f| dir.join(f).is_file())
+        dir.join("Data").is_dir()
+            || ["WoW.exe", "wow.exe", "Wow.exe"]
+                .iter()
+                .any(|f| dir.join(f).is_file())
     };
     let mut queue = std::collections::VecDeque::from([(extract_path.to_path_buf(), 0usize)]);
     while let Some((dir, depth)) = queue.pop_front() {
@@ -153,7 +184,9 @@ pub fn find_extracted_root(extract_path: &Path) -> Option<PathBuf> {
         if depth >= FIND_ROOT_MAX_DEPTH {
             continue;
         }
-        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
         let mut subs: Vec<PathBuf> = entries
             .filter_map(Result::ok)
             .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
@@ -182,14 +215,20 @@ pub fn move_tree(src: &Path, dest: &Path) -> Vec<String> {
         }
     };
     for entry in entries.filter_map(Result::ok) {
-        let Ok(kind) = entry.file_type() else { continue };
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
         let from = entry.path();
         let to = dest.join(entry.file_name());
         if kind.is_symlink() {
             log::warn!("Lien symbolique ignoré: {}", from.display());
         } else if kind.is_dir() {
             if to.is_file() {
-                errors.push(format!("{}: {}", to.display(), "un fichier porte déjà ce nom"));
+                errors.push(format!(
+                    "{}: {}",
+                    to.display(),
+                    "un fichier porte déjà ce nom"
+                ));
                 continue;
             }
             errors.extend(move_tree(&from, &to));
@@ -346,7 +385,10 @@ impl Worker {
         }
         self.extract(&zip_path, &extract_path)?;
         let _ = std::fs::remove_file(&zip_path); // free disk space early
-        self.progress(Some(100), self.t("Extraction terminée. Migration des fichiers..."));
+        self.progress(
+            Some(100),
+            self.t("Extraction terminée. Migration des fichiers..."),
+        );
 
         // 4. Migration
         let Some(source) = find_extracted_root(&extract_path) else {
@@ -375,15 +417,19 @@ impl Worker {
     fn download(&self, zip_path: &Path) -> Result<(), String> {
         let mut last_percent: Option<u8> = None;
         let mut last_sent = Instant::now();
-        let result = http::download_to_file(constants::HD_PATCH_URL, zip_path, &self.cancel, |received, total| {
-            match total.filter(|t| *t > 0) {
+        let result = http::download_to_file(
+            constants::HD_PATCH_URL,
+            zip_path,
+            &self.cancel,
+            |received, total| match total.filter(|t| *t > 0) {
                 Some(total) => {
                     let percent = ((received.saturating_mul(100)) / total).min(100) as u8;
                     if last_percent != Some(percent) {
                         last_percent = Some(percent);
                         self.progress(
                             Some(percent),
-                            self.i18n.tf("Téléchargement du Patch HD... %1%", &[&percent]),
+                            self.i18n
+                                .tf("Téléchargement du Patch HD... %1%", &[&percent]),
                         );
                     }
                 }
@@ -393,8 +439,8 @@ impl Worker {
                     self.progress(None, format!("{} {size}", self.t("Téléchargement...")));
                 }
                 None => {}
-            }
-        });
+            },
+        );
         match result {
             Ok(_) => Ok(()),
             Err(http::DownloadError::Cancelled) => Err(self.t("Téléchargement annulé")),
@@ -404,7 +450,10 @@ impl Worker {
             }
             Err(http::DownloadError::Io(e)) => {
                 let _ = std::fs::remove_file(zip_path);
-                Err(format!("{} ({e})", self.t("Impossible de créer le fichier temporaire")))
+                Err(format!(
+                    "{} ({e})",
+                    self.t("Impossible de créer le fichier temporaire")
+                ))
             }
         }
     }
@@ -460,7 +509,9 @@ impl Worker {
                 }
             }
             let dest = self.wow.join(item);
-            let Ok(meta) = std::fs::symlink_metadata(&src) else { continue };
+            let Ok(meta) = std::fs::symlink_metadata(&src) else {
+                continue;
+            };
             if meta.is_dir() {
                 errors.extend(move_tree(&src, &dest));
             } else if meta.is_file() {
@@ -508,11 +559,17 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         // Contents shipped directly.
         fs::create_dir_all(tmp.path().join("Data")).unwrap();
-        assert_eq!(find_extracted_root(tmp.path()), Some(tmp.path().to_path_buf()));
+        assert_eq!(
+            find_extracted_root(tmp.path()),
+            Some(tmp.path().to_path_buf())
+        );
 
         let tmp2 = tempfile::tempdir().unwrap();
         touch(&tmp2.path().join("a").join("b").join("WoW.exe"));
-        assert_eq!(find_extracted_root(tmp2.path()), Some(tmp2.path().join("a").join("b")));
+        assert_eq!(
+            find_extracted_root(tmp2.path()),
+            Some(tmp2.path().join("a").join("b"))
+        );
     }
 
     #[test]
@@ -560,7 +617,10 @@ mod tests {
         fs::create_dir_all(&wtf).unwrap();
         fs::write(wtf.join("Config.wtf"), b"SET locale \"enUS\"\n").unwrap();
         write_config_wtf(tmp.path()).unwrap();
-        assert_eq!(fs::read(wtf.join("Config.wtf.bak")).unwrap(), b"SET locale \"enUS\"\n");
+        assert_eq!(
+            fs::read(wtf.join("Config.wtf.bak")).unwrap(),
+            b"SET locale \"enUS\"\n"
+        );
         let written = fs::read_to_string(wtf.join("Config.wtf")).unwrap();
         assert!(written.starts_with("SET locale \"frFR\"\n"));
         assert!(written.ends_with("SET extShadowQuality \"5\"\n"));
@@ -570,9 +630,21 @@ mod tests {
     #[test]
     fn network_errors_are_classified() {
         let i = I18n::new("fr");
-        assert_eq!(network_error_message(&i, "operation timed out"), "Délai de connexion dépassé");
-        assert_eq!(network_error_message(&i, "Connection refused (os error 10061)"), "Connexion refusée par le serveur");
-        assert_eq!(network_error_message(&i, "dns error: failed to lookup address"), "Serveur introuvable");
-        assert_eq!(network_error_message(&i, "HTTP 500"), "Erreur réseau: HTTP 500");
+        assert_eq!(
+            network_error_message(&i, "operation timed out"),
+            "Délai de connexion dépassé"
+        );
+        assert_eq!(
+            network_error_message(&i, "Connection refused (os error 10061)"),
+            "Connexion refusée par le serveur"
+        );
+        assert_eq!(
+            network_error_message(&i, "dns error: failed to lookup address"),
+            "Serveur introuvable"
+        );
+        assert_eq!(
+            network_error_message(&i, "HTTP 500"),
+            "Erreur réseau: HTTP 500"
+        );
     }
 }

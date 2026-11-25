@@ -32,7 +32,13 @@ pub fn is_trusted_url(url: &str) -> bool {
 pub fn safe_id(id: &str) -> String {
     let s: String = id
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-') { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-') {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     if s.is_empty() { "addon".into() } else { s }
 }
@@ -105,7 +111,9 @@ pub fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
 /// Moves `src` into `dest_parent` (replacing an existing copy). Falls back to
 /// copy + delete when rename fails (temp dir on another volume).
 pub fn move_dir_into(src: &Path, dest_parent: &Path) -> bool {
-    let Some(name) = src.file_name() else { return false };
+    let Some(name) = src.file_name() else {
+        return false;
+    };
     let dest = dest_parent.join(name);
     if dest.symlink_metadata().is_ok() {
         let _ = std::fs::remove_dir_all(&dest);
@@ -126,14 +134,21 @@ pub fn move_dir_into(src: &Path, dest_parent: &Path) -> bool {
 /// top-level folder it contains into `addons_dir` — that is what installs
 /// multi-folder addons completely (DBM ships 13 folders, Details 9…).
 /// Returns the deployed folder names.
-pub fn deploy_extracted(extract_root: &Path, expected: &[String], addons_dir: &Path) -> Vec<String> {
+pub fn deploy_extracted(
+    extract_root: &Path,
+    expected: &[String],
+    addons_dir: &Path,
+) -> Vec<String> {
     let root = expected
         .iter()
         .filter(|f| is_safe_folder_name(f))
         .find_map(|f| find_folder_in(extract_root, f, FIND_MAX_DEPTH))
         .and_then(|found| found.parent().map(Path::to_path_buf))
         .unwrap_or_else(|| extract_root.to_path_buf());
-    sub_dirs(&root).into_iter().filter(|sub| move_dir_into(&root.join(sub), addons_dir)).collect()
+    sub_dirs(&root)
+        .into_iter()
+        .filter(|sub| move_dir_into(&root.join(sub), addons_dir))
+        .collect()
 }
 
 /// Total size of the regular files below `path` (symlinks not followed).
@@ -163,8 +178,14 @@ pub fn remove_folders(addons_dir: &Path, folders: &[String]) -> Vec<String> {
             continue;
         }
         let path = addons_dir.join(folder);
-        let Ok(meta) = path.symlink_metadata() else { continue };
-        let res = if meta.is_dir() { std::fs::remove_dir_all(&path) } else { std::fs::remove_file(&path) };
+        let Ok(meta) = path.symlink_metadata() else {
+            continue;
+        };
+        let res = if meta.is_dir() {
+            std::fs::remove_dir_all(&path)
+        } else {
+            std::fs::remove_file(&path)
+        };
         if let Err(e) = res {
             log::warn!("Suppression de {} impossible : {e}", path.display());
             failures.push(folder.clone());
@@ -204,7 +225,11 @@ pub fn parse_toc_value(content: &str, key: &str) -> String {
         .lines()
         .map(|l| l.trim_start_matches('\u{feff}').trim())
         .find(|l| l.to_lowercase().starts_with(&prefix))
-        .map(|l| strip_color_codes(l[prefix.len()..].trim()).trim().to_string())
+        .map(|l| {
+            strip_color_codes(l[prefix.len()..].trim())
+                .trim()
+                .to_string()
+        })
         .unwrap_or_default()
 }
 
@@ -239,7 +264,10 @@ impl InstalledEntry {
 /// Lists `addons_dir`: first the addons installed by the launcher (grouped,
 /// deleted as one), then every remaining folder (manual installs).
 /// `None` if the directory does not exist.
-pub fn scan_installed(addons_dir: &Path, registry: &[InstalledAddon]) -> Option<Vec<InstalledEntry>> {
+pub fn scan_installed(
+    addons_dir: &Path,
+    registry: &[InstalledAddon],
+) -> Option<Vec<InstalledEntry>> {
     if !addons_dir.is_dir() {
         return None;
     }
@@ -247,14 +275,23 @@ pub fn scan_installed(addons_dir: &Path, registry: &[InstalledAddon]) -> Option<
     let mut covered = HashSet::new();
 
     for a in registry {
-        let present: Vec<String> = a.folders.iter().filter(|f| folder_exists(addons_dir, f)).cloned().collect();
+        let present: Vec<String> = a
+            .folders
+            .iter()
+            .filter(|f| folder_exists(addons_dir, f))
+            .cloned()
+            .collect();
         if present.is_empty() {
             continue;
         }
         let size = present.iter().map(|f| dir_size(&addons_dir.join(f))).sum();
         covered.extend(present.iter().cloned());
         rows.push(InstalledEntry {
-            name: if a.name.is_empty() { a.id.clone() } else { a.name.clone() },
+            name: if a.name.is_empty() {
+                a.id.clone()
+            } else {
+                a.name.clone()
+            },
             version: a.version.clone(),
             size,
             folders: present,
@@ -281,7 +318,10 @@ pub fn scan_installed(addons_dir: &Path, registry: &[InstalledAddon]) -> Option<
 }
 
 /// [`scan_installed`] on a worker thread.
-pub fn spawn_scan(addons_dir: PathBuf, registry: Vec<InstalledAddon>) -> mpsc::Receiver<Option<Vec<InstalledEntry>>> {
+pub fn spawn_scan(
+    addons_dir: PathBuf,
+    registry: Vec<InstalledAddon>,
+) -> mpsc::Receiver<Option<Vec<InstalledEntry>>> {
     let (tx, rx) = mpsc::channel();
     std::thread::Builder::new()
         .name("addons-scan".into())
@@ -305,7 +345,9 @@ impl Staging {
     /// Creates the staging directory and the (empty) archive file.
     pub fn create(id: &str) -> std::io::Result<Self> {
         let sid = safe_id(id);
-        let dir = std::env::temp_dir().join("SylvaniaLauncher_Addons").join(&sid);
+        let dir = std::env::temp_dir()
+            .join("SylvaniaLauncher_Addons")
+            .join(&sid);
         if dir.exists() {
             let _ = std::fs::remove_dir_all(&dir);
         }
@@ -358,7 +400,12 @@ impl InstallJob {
 /// Downloads `url` (redirects only within the trusted host), checks it is a
 /// ZIP, extracts it and deploys its folders into `addons_dir`. The staging
 /// directory is always removed at the end.
-pub fn spawn_install(url: String, expected: Vec<String>, staging: Staging, addons_dir: PathBuf) -> InstallJob {
+pub fn spawn_install(
+    url: String,
+    expected: Vec<String>,
+    staging: Staging,
+    addons_dir: PathBuf,
+) -> InstallJob {
     let (tx, rx) = mpsc::channel();
     let cancel = Arc::new(AtomicBool::new(false));
     let flag = cancel.clone();
@@ -367,7 +414,10 @@ pub fn spawn_install(url: String, expected: Vec<String>, staging: Staging, addon
         staging.remove();
         let _ = tx.send(InstallEvent::Finished(result));
     };
-    if let Err(e) = std::thread::Builder::new().name("addons-install".into()).spawn(worker) {
+    if let Err(e) = std::thread::Builder::new()
+        .name("addons-install".into())
+        .spawn(worker)
+    {
         log::error!("Thread d'installation d'addon impossible : {e}");
         let (tx, rx2) = mpsc::channel();
         let _ = tx.send(InstallEvent::Finished(Err(InstallError::Extract)));
@@ -386,7 +436,9 @@ fn run_install(
 ) -> Result<Vec<String>, InstallError> {
     let mut last_pct = None;
     download_trusted(url, &staging.zip, cancel, |received, total| {
-        let pct = total.filter(|t| *t > 0).map(|t| (received.saturating_mul(100) / t).min(100) as u8);
+        let pct = total
+            .filter(|t| *t > 0)
+            .map(|t| (received.saturating_mul(100) / t).min(100) as u8);
         if pct != last_pct || received == 0 {
             last_pct = pct;
             let _ = tx.send(InstallEvent::Downloading(pct));
@@ -394,7 +446,11 @@ fn run_install(
     })
     .map_err(|e| {
         log::warn!("Téléchargement de l'addon {url} : {e}");
-        if cancel.load(Ordering::Relaxed) { InstallError::Cancelled } else { InstallError::Network }
+        if cancel.load(Ordering::Relaxed) {
+            InstallError::Cancelled
+        } else {
+            InstallError::Network
+        }
     })?;
 
     if !crate::util::archive::is_zip_file(&staging.zip) {
@@ -410,14 +466,22 @@ fn run_install(
     })
     .map_err(|e| {
         log::warn!("Extraction de {} : {e}", staging.zip.display());
-        if cancel.load(Ordering::Relaxed) { InstallError::Cancelled } else { InstallError::Extract }
+        if cancel.load(Ordering::Relaxed) {
+            InstallError::Cancelled
+        } else {
+            InstallError::Extract
+        }
     })?;
 
     if cancel.load(Ordering::Relaxed) {
         return Err(InstallError::Cancelled);
     }
     let deployed = deploy_extracted(&root, expected, addons_dir);
-    if deployed.is_empty() { Err(InstallError::NoFolders) } else { Ok(deployed) }
+    if deployed.is_empty() {
+        Err(InstallError::NoFolders)
+    } else {
+        Ok(deployed)
+    }
 }
 
 /// Streams `url` to `dest`. Like the Qt SameOriginRedirectPolicy, redirects
@@ -431,7 +495,8 @@ fn download_trusted(
     let policy = reqwest::redirect::Policy::custom(|attempt| {
         if attempt.previous().len() >= 10 {
             attempt.error("trop de redirections")
-        } else if attempt.url().scheme() == "https" && attempt.url().host_str() == Some(SERVER_HOST) {
+        } else if attempt.url().scheme() == "https" && attempt.url().host_str() == Some(SERVER_HOST)
+        {
             attempt.follow()
         } else {
             attempt.stop()
@@ -481,13 +546,21 @@ mod tests {
 
     #[test]
     fn trusted_urls() {
-        assert!(is_trusted_url("https://sylvania-servergame.com/download_addon.php?file=x.zip"));
+        assert!(is_trusted_url(
+            "https://sylvania-servergame.com/download_addon.php?file=x.zip"
+        ));
         assert!(is_trusted_url("https://SYLVANIA-SERVERGAME.COM/a.zip"));
         assert!(!is_trusted_url("http://sylvania-servergame.com/a.zip"));
         assert!(!is_trusted_url("https://evil.com/a.zip"));
-        assert!(!is_trusted_url("https://sylvania-servergame.com.evil.com/a.zip"));
-        assert!(!is_trusted_url("https://evil.sylvania-servergame.com/a.zip"));
-        assert!(!is_trusted_url("https://sylvania-servergame.com@evil.com/a.zip"));
+        assert!(!is_trusted_url(
+            "https://sylvania-servergame.com.evil.com/a.zip"
+        ));
+        assert!(!is_trusted_url(
+            "https://evil.sylvania-servergame.com/a.zip"
+        ));
+        assert!(!is_trusted_url(
+            "https://sylvania-servergame.com@evil.com/a.zip"
+        ));
         assert!(!is_trusted_url("ftp://sylvania-servergame.com/a.zip"));
         assert!(!is_trusted_url("not a url"));
         assert!(!is_trusted_url(""));
@@ -498,7 +571,18 @@ mod tests {
         assert!(is_safe_folder_name("DBM-Core"));
         assert!(is_safe_folder_name("_NPCScan-Overlay"));
         assert!(is_safe_folder_name("Prat-3.0"));
-        for bad in ["", ".", "..", "../x", "a/b", "a\\b", "C:", "C:\\Windows", "/etc", "x..y"] {
+        for bad in [
+            "",
+            ".",
+            "..",
+            "../x",
+            "a/b",
+            "a\\b",
+            "C:",
+            "C:\\Windows",
+            "/etc",
+            "x..y",
+        ] {
             assert!(!is_safe_folder_name(bad), "{bad}");
         }
         assert_eq!(safe_id("Details! Damage/Meter"), "Details__Damage_Meter");
@@ -525,11 +609,20 @@ mod tests {
     fn find_folder_respects_depth() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
-        mkdirs(root, &["wrap/inner/DBM-Core", "a/b/c/d/e/Deep", "a/b/c/d/Ok"]);
-        assert_eq!(find_folder_in(root, "DBM-Core", 4), Some(root.join("wrap/inner/DBM-Core")));
+        mkdirs(
+            root,
+            &["wrap/inner/DBM-Core", "a/b/c/d/e/Deep", "a/b/c/d/Ok"],
+        );
+        assert_eq!(
+            find_folder_in(root, "DBM-Core", 4),
+            Some(root.join("wrap/inner/DBM-Core"))
+        );
         assert_eq!(find_folder_in(root, "Ok", 4), Some(root.join("a/b/c/d/Ok")));
         assert_eq!(find_folder_in(root, "Deep", 4), None);
-        assert_eq!(find_folder_in(root, "Deep", 5), Some(root.join("a/b/c/d/e/Deep")));
+        assert_eq!(
+            find_folder_in(root, "Deep", 5),
+            Some(root.join("a/b/c/d/e/Deep"))
+        );
         assert_eq!(find_folder_in(root, "Missing", 4), None);
     }
 
@@ -538,8 +631,19 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let extracted = dir.path().join("extracted");
         let addons = dir.path().join("AddOns");
-        mkdirs(&extracted, &["DBM-master/DBM-Core", "DBM-master/DBM-GUI", "DBM-master/DBM-Naxx"]);
-        std::fs::write(extracted.join("DBM-master/DBM-Core/DBM-Core.toc"), "## Title: DBM\n").unwrap();
+        mkdirs(
+            &extracted,
+            &[
+                "DBM-master/DBM-Core",
+                "DBM-master/DBM-GUI",
+                "DBM-master/DBM-Naxx",
+            ],
+        );
+        std::fs::write(
+            extracted.join("DBM-master/DBM-Core/DBM-Core.toc"),
+            "## Title: DBM\n",
+        )
+        .unwrap();
         mkdirs(&addons, &["DBM-Core/old-stuff"]);
 
         let deployed = deploy_extracted(&extracted, &["DBM-Core".into()], &addons);
@@ -551,7 +655,10 @@ mod tests {
         // Expected folder not found: top level of the archive is deployed.
         let extracted2 = dir.path().join("extracted2");
         mkdirs(&extracted2, &["Other"]);
-        assert_eq!(deploy_extracted(&extracted2, &["Nope".into()], &addons), vec!["Other"]);
+        assert_eq!(
+            deploy_extracted(&extracted2, &["Nope".into()], &addons),
+            vec!["Other"]
+        );
         let empty = dir.path().join("empty");
         mkdirs(&empty, &[""]);
         assert!(deploy_extracted(&empty, &["X".into()], &addons).is_empty());
@@ -563,8 +670,11 @@ mod tests {
         let addons = dir.path().join("AddOns");
         assert!(scan_installed(&addons, &[]).is_none());
         mkdirs(&addons, &["ElvUI", "ElvUI_OptionsUI", "Manual", "NoToc"]);
-        std::fs::write(addons.join("Manual/Manual.toc"), "## Title: |cff00ff00Manual|r Addon\n## Version: 2.1\n")
-            .unwrap();
+        std::fs::write(
+            addons.join("Manual/Manual.toc"),
+            "## Title: |cff00ff00Manual|r Addon\n## Version: 2.1\n",
+        )
+        .unwrap();
         std::fs::write(addons.join("ElvUI/file.lua"), vec![0u8; 1000]).unwrap();
         std::fs::write(addons.join("ElvUI_OptionsUI/o.lua"), vec![0u8; 24]).unwrap();
 
@@ -572,7 +682,12 @@ mod tests {
             id: "elvui".into(),
             name: "ElvUI".into(),
             version: "6.08".into(),
-            folders: vec!["ElvUI".into(), "ElvUI_OptionsUI".into(), "ElvUI_Gone".into(), "../evil".into()],
+            folders: vec![
+                "ElvUI".into(),
+                "ElvUI_OptionsUI".into(),
+                "ElvUI_Gone".into(),
+                "../evil".into(),
+            ],
             source: "recommended".into(),
         }];
         let rows = scan_installed(&addons, &reg).unwrap();
@@ -580,7 +695,10 @@ mod tests {
         assert_eq!(rows[0].folders, vec!["ElvUI", "ElvUI_OptionsUI"]);
         assert_eq!(rows[0].size, 1024);
         assert!(rows[0].by_launcher());
-        assert_eq!((rows[1].name.as_str(), rows[1].version.as_str()), ("Manual Addon", "2.1"));
+        assert_eq!(
+            (rows[1].name.as_str(), rows[1].version.as_str()),
+            ("Manual Addon", "2.1")
+        );
         assert_eq!(rows[2].name, "NoToc");
         assert!(!rows[2].by_launcher());
 

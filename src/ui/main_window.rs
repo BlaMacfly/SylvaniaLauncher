@@ -92,8 +92,6 @@ pub struct MainWindow {
 
 impl MainWindow {
     pub fn new(ctx: &egui::Context, shared: &mut Shared) -> Self {
-        install_symbol_font(ctx);
-
         // Qt changeLanguage(initial): keep Config.wtf in sync with the language.
         sync_wtf_locale(&shared.config.wow_path(), &shared.config.language());
 
@@ -138,10 +136,12 @@ impl MainWindow {
 
         self.paint_background(ui);
         let mut click = None;
-        egui::Frame::new().inner_margin(egui::Margin::symmetric(SPACE_LG as i8, SPACE_MD as i8)).show(ui, |ui| {
-            ui.set_min_size(ui.available_size());
-            click = self.layout(ui, &ctx, shared);
-        });
+        egui::Frame::new()
+            .inner_margin(egui::Margin::symmetric(SPACE_LG as i8, SPACE_MD as i8))
+            .show(ui, |ui| {
+                ui.set_min_size(ui.available_size());
+                click = self.layout(ui, &ctx, shared);
+            });
         if let Some(c) = click {
             self.on_click(c, &ctx, shared);
         }
@@ -158,10 +158,18 @@ impl MainWindow {
 
         // The game covers / minimizes the launcher: keep the ui pass running
         // so the Wow.exe poll can see the game exit and restore the window.
-        if self.wow_running || self.launched_at.is_some_and(|t| t.elapsed() < Duration::from_secs(120)) {
+        if self.wow_running
+            || self
+                .launched_at
+                .is_some_and(|t| t.elapsed() < Duration::from_secs(120))
+        {
             ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaintWhileHidden);
         }
-        if self.download.is_some() || self.hd.is_some() || self.pending_bg.is_some() || self.watch.pending() {
+        if self.download.is_some()
+            || self.hd.is_some()
+            || self.pending_bg.is_some()
+            || self.watch.pending()
+        {
             ctx.request_repaint_after(Duration::from_millis(100));
         }
     }
@@ -200,22 +208,30 @@ impl MainWindow {
         let name = name.to_string();
         let (tx, rx) = mpsc::channel();
         let job = name.clone();
-        let spawned = std::thread::Builder::new().name("background-decode".into()).spawn(move || {
-            let bytes = assets::background(&job).or_else(|| assets::background(DEFAULT_BACKGROUND));
-            let _ = tx.send(bytes.and_then(assets::decode_image));
-        });
+        let spawned = std::thread::Builder::new()
+            .name("background-decode".into())
+            .spawn(move || {
+                let bytes =
+                    assets::background(&job).or_else(|| assets::background(DEFAULT_BACKGROUND));
+                let _ = tx.send(bytes.and_then(assets::decode_image));
+            });
         if spawned.is_ok() {
             self.pending_bg = Some((name, rx));
         }
     }
 
     fn poll_background(&mut self, ctx: &egui::Context) {
-        let Some((name, rx)) = &self.pending_bg else { return };
+        let Some((name, rx)) = &self.pending_bg else {
+            return;
+        };
         match rx.try_recv() {
             Ok(img) => {
                 if let Some(img) = img {
-                    self.background =
-                        Some(ctx.load_texture(format!("background-{name}"), img, egui::TextureOptions::LINEAR));
+                    self.background = Some(ctx.load_texture(
+                        format!("background-{name}"),
+                        img,
+                        egui::TextureOptions::LINEAR,
+                    ));
                 }
                 self.pending_bg = None;
             }
@@ -255,7 +271,10 @@ impl MainWindow {
         self.panels(ui, shared, panels_h);
 
         // 3-6. Action zone, status, nav bar, footer (height measured for next frame).
-        let rect = ui.scope(|ui| self.bottom(ui, shared, &mut click)).response.rect;
+        let rect = ui
+            .scope(|ui| self.bottom(ui, shared, &mut click))
+            .response
+            .rect;
         if (rect.height() - self.bottom_h).abs() > 0.5 {
             self.bottom_h = rect.height();
             ctx.request_repaint();
@@ -268,7 +287,11 @@ impl MainWindow {
             match &self.logo {
                 Some(logo) => {
                     let s = logo.size_vec2();
-                    let w = if s.y > 0.0 { s.x * LOGO_HEIGHT / s.y } else { LOGO_HEIGHT };
+                    let w = if s.y > 0.0 {
+                        s.x * LOGO_HEIGHT / s.y
+                    } else {
+                        LOGO_HEIGHT
+                    };
                     ui.image((logo.id(), Vec2::new(w, LOGO_HEIGHT)));
                 }
                 None => {
@@ -276,9 +299,20 @@ impl MainWindow {
                 }
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let label = if shared.config.language() == "en" { "Lang: EN" } else { "Lang: FR" };
-                let resp = widgets::level_button(ui, label, Level::Tertiary, &self.theme.tokens, true, 0.0)
-                    .on_hover_text(shared.t("Changer la langue (FR/EN)"));
+                let label = if shared.config.language() == "en" {
+                    "Lang: EN"
+                } else {
+                    "Lang: FR"
+                };
+                let resp = widgets::level_button(
+                    ui,
+                    label,
+                    Level::Tertiary,
+                    &self.theme.tokens,
+                    true,
+                    0.0,
+                )
+                .on_hover_text(shared.t("Changer la langue (FR/EN)"));
                 if resp.clicked() {
                     *click = Some(Click::Lang);
                 }
@@ -300,8 +334,15 @@ impl MainWindow {
                     ui.label(theme::bold(shared.t("Serveur"), 18.0).color(accent));
                 });
                 if let Some((name, host)) = &self.server {
-                    ui.label(theme::bold(shared.tf("Serveur: %1", &[name]), 13.0).color(pal.text_primary));
-                    ui.label(RichText::new(shared.tf("Realmlist: %1", &[host])).size(12.0).color(pal.text_secondary));
+                    ui.label(
+                        theme::bold(shared.tf("Serveur: %1", &[name]), 13.0)
+                            .color(pal.text_primary),
+                    );
+                    ui.label(
+                        RichText::new(shared.tf("Realmlist: %1", &[host]))
+                            .size(12.0)
+                            .color(pal.text_secondary),
+                    );
                 }
             });
 
@@ -311,12 +352,19 @@ impl MainWindow {
                     ui.label(theme::bold(shared.t("Statistiques de Jeu"), 18.0).color(accent));
                 });
                 let total = self.displayed_play_time();
-                self.stat_label(ui, shared.tf("Temps de jeu: %1h %2min", &[&(total / 3600), &((total % 3600) / 60)]));
+                self.stat_label(
+                    ui,
+                    shared.tf(
+                        "Temps de jeu: %1h %2min",
+                        &[&(total / 3600), &((total % 3600) / 60)],
+                    ),
+                );
                 self.stat_label(ui, shared.tf("Lancements: %1", &[&self.stats.launch_count]));
                 let last = match self.stats.last_session {
                     Some(d) => {
                         shared.t("Dernière session: ")
-                            + &d.format(&qt_to_chrono_format(&shared.t("dd/MM/yyyy hh:mm"))).to_string()
+                            + &d.format(&qt_to_chrono_format(&shared.t("dd/MM/yyyy hh:mm")))
+                                .to_string()
                     }
                     None => shared.t("Dernière session: --"),
                 };
@@ -355,13 +403,24 @@ impl MainWindow {
             ui.spacing_mut().item_spacing.y = SPACE_SM;
             let enabled = self.primary != PrimaryState::Downloading && self.hd.is_none();
             let label = self.primary_label(shared);
-            if widgets::level_button(ui, &label, Level::Primary, &tokens, enabled, MAIN_WINDOW_MIN_WIDTH / 3.0)
-                .clicked()
+            if widgets::level_button(
+                ui,
+                &label,
+                Level::Primary,
+                &tokens,
+                enabled,
+                MAIN_WINDOW_MIN_WIDTH / 3.0,
+            )
+            .clicked()
             {
                 *click = Some(Click::Primary);
             }
             if let Some(row) = &self.progress_row {
-                ui.label(RichText::new(&row.label).size(11.0).color(pal.text_secondary));
+                ui.label(
+                    RichText::new(&row.label)
+                        .size(11.0)
+                        .color(pal.text_secondary),
+                );
                 let style = BarStyle {
                     height: 10.0,
                     bg: Color32::from_rgba_unmultiplied(0, 0, 0, 120),
@@ -376,16 +435,31 @@ impl MainWindow {
 
         // Status line.
         ui.vertical_centered(|ui| {
-            egui::Frame::new().inner_margin(egui::Margin::same(SPACE_XS as i8)).show(ui, |ui| {
-                ui.label(RichText::new(self.status_text(shared)).size(12.0).color(pal.text_primary));
-            });
+            egui::Frame::new()
+                .inner_margin(egui::Margin::same(SPACE_XS as i8))
+                .show(ui, |ui| {
+                    ui.label(
+                        RichText::new(self.status_text(shared))
+                            .size(12.0)
+                            .color(pal.text_primary),
+                    );
+                });
         });
 
         // Secondary navigation bar.
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = SPACE_SM;
             let mut nav = |ui: &mut Ui, text: &str, enabled: bool, c: Click| {
-                if widgets::level_button(ui, &shared.t(text), Level::Secondary, &tokens, enabled, 0.0).clicked() {
+                if widgets::level_button(
+                    ui,
+                    &shared.t(text),
+                    Level::Secondary,
+                    &tokens,
+                    enabled,
+                    0.0,
+                )
+                .clicked()
+                {
                     *click = Some(c);
                 }
             };
@@ -393,7 +467,12 @@ impl MainWindow {
             nav(ui, "ADDONS", true, Click::Open(WindowKind::Addons));
             nav(ui, "NOTES", true, Click::Open(WindowKind::Notes));
             nav(ui, "SERVEURS", true, Click::Open(WindowKind::Servers));
-            nav(ui, "PATCH HD", self.hd.is_none() && self.download.is_none(), Click::Hd);
+            nav(
+                ui,
+                "PATCH HD",
+                self.hd.is_none() && self.download.is_none(),
+                Click::Hd,
+            );
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 nav(ui, "QUITTER", true, Click::Quit);
             });
@@ -402,9 +481,12 @@ impl MainWindow {
         // Footer.
         ui.vertical_centered(|ui| {
             ui.label(
-                RichText::new(shared.tf("© 2026 Sylvania Launcher v3.0 — %1", &[&CLIENT_DISPLAY_NAME]))
-                    .size(11.0)
-                    .color(pal.text_secondary),
+                RichText::new(shared.tf(
+                    "© 2026 Sylvania Launcher v3.0 — %1",
+                    &[&CLIENT_DISPLAY_NAME],
+                ))
+                .size(11.0)
+                .color(pal.text_secondary),
             );
         });
     }
@@ -413,7 +495,11 @@ impl MainWindow {
     fn primary_label(&self, shared: &Shared) -> String {
         match self.primary {
             PrimaryState::Install => shared.t("INSTALLER"),
-            PrimaryState::Downloading => match self.download.as_ref().and_then(DownloadDialog::button_progress) {
+            PrimaryState::Downloading => match self
+                .download
+                .as_ref()
+                .and_then(DownloadDialog::button_progress)
+            {
                 Some(p) => shared.tf("TÉLÉCHARGEMENT… %1%", &[&p]),
                 None => shared.t("INSTALLATION…"),
             },
@@ -424,14 +510,22 @@ impl MainWindow {
     fn status_text(&self, shared: &Shared) -> String {
         match &self.status {
             Status::Loading => shared.t("Chargement..."),
-            Status::NotDetected => shared.tf("Client %1 non détecté — cliquez sur INSTALLER.", &[&CLIENT_DISPLAY_NAME]),
-            Status::Ready(server) => {
-                shared.tf("%1 est installé. Prêt à jouer sur %2!", &[&CLIENT_DISPLAY_NAME, server])
+            Status::NotDetected => shared.tf(
+                "Client %1 non détecté — cliquez sur INSTALLER.",
+                &[&CLIENT_DISPLAY_NAME],
+            ),
+            Status::Ready(server) => shared.tf(
+                "%1 est installé. Prêt à jouer sur %2!",
+                &[&CLIENT_DISPLAY_NAME, server],
+            ),
+            Status::Installing => {
+                shared.tf("Installation de %1 en cours...", &[&CLIENT_DISPLAY_NAME])
             }
-            Status::Installing => shared.tf("Installation de %1 en cours...", &[&CLIENT_DISPLAY_NAME]),
             Status::Launched => shared.t("World of Warcraft lancé! Bon jeu!"),
             Status::Running => shared.t("World of Warcraft en cours d'exécution..."),
-            Status::SessionEnded(mins) => shared.tf("Session terminée! Temps joué: %1 min", &[mins]),
+            Status::SessionEnded(mins) => {
+                shared.tf("Session terminée! Temps joué: %1 min", &[mins])
+            }
         }
     }
 
@@ -461,7 +555,11 @@ impl MainWindow {
             },
             Click::Lang => {
                 shared.sounds.play("button");
-                let new_lang = if shared.config.language() == "fr" { "en" } else { "fr" };
+                let new_lang = if shared.config.language() == "fr" {
+                    "en"
+                } else {
+                    "fr"
+                };
                 change_language(new_lang, shared);
             }
             Click::Open(kind) => {
@@ -477,8 +575,10 @@ impl MainWindow {
     }
 
     fn update_server_info(&mut self, shared: &Shared) {
-        self.server =
-            shared.config.active_realmlist_entry().map(|e| (e.name.clone(), Config::host_from_address(&e.address)));
+        self.server = shared
+            .config
+            .active_realmlist_entry()
+            .map(|e| (e.name.clone(), Config::host_from_address(&e.address)));
     }
 
     /// Qt refreshPrimaryState: 3-state button from on-disk client detection.
@@ -493,8 +593,11 @@ impl MainWindow {
             return;
         }
         self.primary = PrimaryState::Play;
-        let server =
-            shared.config.active_realmlist_entry().map(|e| e.name).unwrap_or_else(|| DEFAULT_REALM_NAME.to_string());
+        let server = shared
+            .config
+            .active_realmlist_entry()
+            .map(|e| e.name)
+            .unwrap_or_else(|| DEFAULT_REALM_NAME.to_string());
         self.status = Status::Ready(server);
     }
 
@@ -502,7 +605,9 @@ impl MainWindow {
         let Some(exe) = client_exe_path(&shared.config) else {
             msg::warning(
                 &shared.t("Erreur"),
-                &shared.t("Exécutable du jeu non trouvé!\nVeuillez vérifier le chemin d'installation."),
+                &shared.t(
+                    "Exécutable du jeu non trouvé!\nVeuillez vérifier le chemin d'installation.",
+                ),
             );
             self.refresh_primary_state(shared);
             return;
@@ -524,17 +629,25 @@ impl MainWindow {
             // Get out of the way while the game runs; restored when it exits.
             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
         } else {
-            msg::warning(&shared.t("Erreur"), &shared.t("Impossible de lancer World of Warcraft."));
+            msg::warning(
+                &shared.t("Erreur"),
+                &shared.t("Impossible de lancer World of Warcraft."),
+            );
         }
     }
 
     fn start_client_install(&mut self, shared: &mut Shared) {
-        let title = shared.tf("Choisir l'emplacement d'installation — %1", &[&CLIENT_DISPLAY_NAME]);
+        let title = shared.tf(
+            "Choisir l'emplacement d'installation — %1",
+            &[&CLIENT_DISPLAY_NAME],
+        );
         let mut dialog = rfd::FileDialog::new().set_title(&title);
         if let Some(home) = dirs::home_dir() {
             dialog = dialog.set_directory(home);
         }
-        let Some(dir) = dialog.pick_folder() else { return };
+        let Some(dir) = dialog.pick_folder() else {
+            return;
+        };
 
         self.primary = PrimaryState::Downloading;
         self.status = Status::Installing;
@@ -547,7 +660,8 @@ impl MainWindow {
         if outcome.ok {
             msg::info(&shared.t("Téléchargement terminé"), &outcome.message);
             let dir = outcome.client_dir.or_else(|| {
-                crate::core::download::find_client_exe(destination).and_then(|e| e.parent().map(Path::to_path_buf))
+                crate::core::download::find_client_exe(destination)
+                    .and_then(|e| e.parent().map(Path::to_path_buf))
             });
             if let Some(dir) = dir {
                 shared.config.set_wow_path(&dir.to_string_lossy());
@@ -577,7 +691,10 @@ impl MainWindow {
             return;
         }
         if self.hd.as_ref().is_some_and(HdPatchTask::is_running) {
-            msg::info(&title, &shared.t("L'installation du Patch HD est déjà en cours."));
+            msg::info(
+                &title,
+                &shared.t("L'installation du Patch HD est déjà en cours."),
+            );
             return;
         }
         if HdPatchTask::is_installed(Path::new(&wow))
@@ -592,8 +709,10 @@ impl MainWindow {
         }
 
         // Play / HD buttons are disabled while `self.hd` is Some.
-        self.progress_row =
-            Some(ProgressRow { label: shared.t("Préparation de l'installation..."), percent: Some(0) });
+        self.progress_row = Some(ProgressRow {
+            label: shared.t("Préparation de l'installation..."),
+            percent: Some(0),
+        });
         self.hd = Some(HdPatchTask::start(PathBuf::from(&wow), shared.i18n.clone()));
     }
 
@@ -603,7 +722,10 @@ impl MainWindow {
         for ev in task.poll() {
             match ev {
                 HdEvent::Progress { percent, status } => {
-                    self.progress_row = Some(ProgressRow { label: status, percent });
+                    self.progress_row = Some(ProgressRow {
+                        label: status,
+                        percent,
+                    });
                 }
                 HdEvent::Finished { ok, message } => finished = Some((ok, message)),
             }
@@ -618,7 +740,10 @@ impl MainWindow {
             if ok {
                 msg::info(&title, &shared.t("Patch HD installé avec succès."));
             } else {
-                msg::warning(&title, &(shared.t("Erreur lors de l'installation : ") + &message));
+                msg::warning(
+                    &title,
+                    &(shared.t("Erreur lors de l'installation : ") + &message),
+                );
             }
         }
         self.refresh_primary_state(shared);
@@ -700,29 +825,20 @@ fn pick_random_background(exclude: &str) -> String {
     }
 }
 
-/// Segoe UI has no glyph for the symbols used in labels (✓ ➕ ✏️ 🗑️ ✅ 🎲
-/// 📌 ⏰ …): add Segoe UI Symbol as the last fallback of the regular and
-/// bold families so they don't render as empty boxes.
-fn install_symbol_font(ctx: &egui::Context) {
-    use egui::epaint::text::{FontInsert, FontPriority, InsertFontFamily};
-    let windir = std::env::var("WINDIR").unwrap_or_else(|_| r"C:\Windows".into());
-    let Ok(bytes) = std::fs::read(Path::new(&windir).join("Fonts").join("seguisym.ttf")) else { return };
-    let families = [egui::FontFamily::Proportional, egui::FontFamily::Name(theme::BOLD.into())]
-        .into_iter()
-        .map(|family| InsertFontFamily { family, priority: FontPriority::Lowest })
-        .collect();
-    ctx.add_font(FontInsert::new("segoe-symbol", egui::FontData::from_owned(bytes), families));
-}
-
 /// Logo pre-scaled on the CPU (2× the header height for HiDPI screens).
 fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
     let img = image::load_from_memory(assets::LOGO_PNG).ok()?;
     let target = (LOGO_HEIGHT * 2.0) as u32;
-    let img =
-        if img.height() > target { img.resize(u32::MAX, target, image::imageops::FilterType::Lanczos3) } else { img };
+    let img = if img.height() > target {
+        img.resize(u32::MAX, target, image::imageops::FilterType::Lanczos3)
+    } else {
+        img
+    };
     let rgba = img.to_rgba8();
-    let color =
-        egui::ColorImage::from_rgba_unmultiplied([rgba.width() as usize, rgba.height() as usize], rgba.as_raw());
+    let color = egui::ColorImage::from_rgba_unmultiplied(
+        [rgba.width() as usize, rgba.height() as usize],
+        rgba.as_raw(),
+    );
     Some(ctx.load_texture("logo", color, egui::TextureOptions::LINEAR))
 }
 
@@ -740,7 +856,9 @@ fn sync_wtf_locale(wow_path: &str, lang: &str) {
         return;
     }
     let path = Path::new(wow_path).join("WTF").join("Config.wtf");
-    let Ok(bytes) = std::fs::read(&path) else { return };
+    let Ok(bytes) = std::fs::read(&path) else {
+        return;
+    };
     let content = String::from_utf8_lossy(&bytes).into_owned();
     if content.is_empty() {
         return;
@@ -759,7 +877,11 @@ fn rewrite_locale(content: &str, lang: &str) -> String {
         if content.contains("SET locale") {
             content.replace("SET locale \"frFR\"", "SET locale \"enUS\"")
         } else {
-            let eol = if content.contains("\r\n") { "\r\n" } else { "\n" };
+            let eol = if content.contains("\r\n") {
+                "\r\n"
+            } else {
+                "\n"
+            };
             format!("{content}{eol}SET locale \"enUS\"{eol}")
         }
     } else {
@@ -770,14 +892,20 @@ fn rewrite_locale(content: &str, lang: &str) -> String {
 /// Converts the Qt date pattern used by the translations ("dd/MM/yyyy hh:mm")
 /// into a chrono format string.
 fn qt_to_chrono_format(qt: &str) -> String {
-    qt.replace("yyyy", "%Y").replace("dd", "%d").replace("MM", "%m").replace("hh", "%H").replace("mm", "%M")
+    qt.replace("yyyy", "%Y")
+        .replace("dd", "%d")
+        .replace("MM", "%m")
+        .replace("hh", "%H")
+        .replace("mm", "%M")
 }
 
 /// QProcess::startDetached equivalent: own console-less process, cwd = exe dir.
 fn spawn_detached(exe: &Path, work_dir: &Path) -> bool {
     use std::process::{Command, Stdio};
     let mut cmd = Command::new(exe);
-    cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
     if !work_dir.as_os_str().is_empty() {
         cmd.current_dir(work_dir);
     }
@@ -806,7 +934,10 @@ struct ProcessWatch {
 
 impl ProcessWatch {
     fn new() -> Self {
-        ProcessWatch { rx: None, last: Instant::now() }
+        ProcessWatch {
+            rx: None,
+            last: Instant::now(),
+        }
     }
 
     fn pending(&self) -> bool {
@@ -875,7 +1006,10 @@ mod tests {
         let en = rewrite_locale(fr, "en");
         assert_eq!(en, "SET gxWindow \"1\"\r\nSET locale \"enUS\"\r\n");
         assert_eq!(rewrite_locale(&en, "fr"), fr);
-        assert_eq!(rewrite_locale("SET a \"1\"\n", "en"), "SET a \"1\"\n\nSET locale \"enUS\"\n");
+        assert_eq!(
+            rewrite_locale("SET a \"1\"\n", "en"),
+            "SET a \"1\"\n\nSET locale \"enUS\"\n"
+        );
         assert_eq!(rewrite_locale("SET a \"1\"\n", "fr"), "SET a \"1\"\n");
     }
 

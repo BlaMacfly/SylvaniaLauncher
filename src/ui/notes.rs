@@ -14,8 +14,8 @@ use crate::util::msg;
 use calendar::{DayMark, MonthView, month_calendar};
 use chrono::{Duration, Local, NaiveDate, NaiveDateTime, Timelike};
 use eframe::egui::{
-    self, Align, Align2, Color32, CornerRadius, FontFamily, FontId, Layout, Rect, RichText, Sense, Stroke,
-    StrokeKind, Ui, UiBuilder, Vec2, pos2, vec2,
+    self, Align, Align2, Color32, CornerRadius, FontFamily, FontId, Layout, Rect, RichText, Sense,
+    Stroke, StrokeKind, Ui, UiBuilder, Vec2, pos2, vec2,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -45,20 +45,36 @@ const BORDER_BROWN: Color32 = Color32::from_rgb(0x5a, 0x4a, 0x2d);
 
 /// The colour a note is drawn with (unknown category → yellow).
 fn post_it_color(note: &Note) -> &'static str {
-    COLORS.iter().copied().find(|c| *c == note.category).unwrap_or(COLORS[0])
+    COLORS
+        .iter()
+        .copied()
+        .find(|c| *c == note.category)
+        .unwrap_or(COLORS[0])
 }
 
 /// egui's fonts have no glyph for the emoji variation selector (U+FE0F).
 fn clean(s: String) -> String {
-    if s.contains('\u{FE0F}') { s.replace('\u{FE0F}', "") } else { s }
+    if s.contains('\u{FE0F}') {
+        s.replace('\u{FE0F}', "")
+    } else {
+        s
+    }
 }
 
 fn bold_font(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name(theme::BOLD.into()))
 }
 
-fn layout_text(ui: &Ui, text: String, font: FontId, color: Color32, width: f32, max_rows: usize) -> Arc<egui::Galley> {
-    let mut job = egui::text::LayoutJob::single_section(text, egui::TextFormat::simple(font, color));
+fn layout_text(
+    ui: &Ui,
+    text: String,
+    font: FontId,
+    color: Color32,
+    width: f32,
+    max_rows: usize,
+) -> Arc<egui::Galley> {
+    let mut job =
+        egui::text::LayoutJob::single_section(text, egui::TextFormat::simple(font, color));
     job.wrap = egui::text::TextWrapping {
         max_width: width,
         max_rows,
@@ -124,7 +140,11 @@ impl Editor {
             title: note.title.clone(),
             content: note.content.clone(),
             // Legacy notes keep their category unless a colour is picked.
-            color: if note.category.is_empty() { COLORS[0].to_string() } else { note.category.clone() },
+            color: if note.category.is_empty() {
+                COLORS[0].to_string()
+            } else {
+                note.category.clone()
+            },
             reminder: note.has_reminder(),
             due,
             picker_month: MonthView::of(due.date()),
@@ -228,8 +248,12 @@ impl NotesWindow {
         let full = ui.available_rect_before_wrap();
         let left = Rect::from_min_size(full.min, vec2(CALENDAR_PANE_W, full.height()));
         let right = Rect::from_min_max(pos2(left.right() + SPACE_MD, full.top()), full.max);
-        ui.scope_builder(UiBuilder::new().max_rect(left), |ui| self.calendar_pane(ui, shared));
-        ui.scope_builder(UiBuilder::new().max_rect(right), |ui| self.notes_pane(ui, shared));
+        ui.scope_builder(UiBuilder::new().max_rect(left), |ui| {
+            self.calendar_pane(ui, shared)
+        });
+        ui.scope_builder(UiBuilder::new().max_rect(right), |ui| {
+            self.notes_pane(ui, shared)
+        });
 
         let ctx = ui.ctx().clone();
         self.editor_dialog(&ctx, shared);
@@ -267,15 +291,25 @@ impl NotesWindow {
         }
 
         let info = match self.filter {
-            Some(day) => shared.tf("%1 : %2 note(s)", &[&day.format("%d/%m/%Y"), &self.visible.len()]),
+            Some(day) => shared.tf(
+                "%1 : %2 note(s)",
+                &[&day.format("%d/%m/%Y"), &self.visible.len()],
+            ),
             None => shared.t("Cliquez sur un jour pour filtrer."),
         };
         ui.add(egui::Label::new(RichText::new(info).color(TEXT_MUTED).size(12.0)).wrap());
 
         let show_all = shared.t("Afficher toutes les notes");
         let tokens = ThemeTokens::default();
-        if widgets::level_button(ui, &show_all, Level::Secondary, &tokens, self.filter.is_some(), CALENDAR_PANE_W)
-            .clicked()
+        if widgets::level_button(
+            ui,
+            &show_all,
+            Level::Secondary,
+            &tokens,
+            self.filter.is_some(),
+            CALENDAR_PANE_W,
+        )
+        .clicked()
         {
             self.set_filter(None, &shared.notes);
         }
@@ -310,40 +344,44 @@ impl NotesWindow {
         });
         ui.add_space(SPACE_SM);
 
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-            ui.add_space(SPACE_XS);
-            let gap = SPACE_MD;
-            // Leave room for the post-it shadows on the right.
-            let width = ui.available_width() - SPACE_SM;
-            let cols = (((width + gap) / (CARD_MIN_W + gap)).floor() as usize).max(1);
-            let card_w = ((width - gap * (cols as f32 - 1.0)) / cols as f32).floor();
-            let now = now_local();
-            let mut action = None;
-            for row in self.visible.chunks(cols) {
-                ui.horizontal(|ui| {
-                    ui.add_space(SPACE_XS);
-                    ui.spacing_mut().item_spacing.x = gap;
-                    for note in row {
-                        if let Some(a) = post_it(ui, note, vec2(card_w, CARD_H), shared, now) {
-                            action = Some(a);
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                ui.add_space(SPACE_XS);
+                let gap = SPACE_MD;
+                // Leave room for the post-it shadows on the right.
+                let width = ui.available_width() - SPACE_SM;
+                let cols = (((width + gap) / (CARD_MIN_W + gap)).floor() as usize).max(1);
+                let card_w = ((width - gap * (cols as f32 - 1.0)) / cols as f32).floor();
+                let now = now_local();
+                let mut action = None;
+                for row in self.visible.chunks(cols) {
+                    ui.horizontal(|ui| {
+                        ui.add_space(SPACE_XS);
+                        ui.spacing_mut().item_spacing.x = gap;
+                        for note in row {
+                            if let Some(a) = post_it(ui, note, vec2(card_w, CARD_H), shared, now) {
+                                action = Some(a);
+                            }
                         }
-                    }
-                });
-                ui.add_space(gap - ui.spacing().item_spacing.y);
-            }
-            match action {
-                Some(CardAction::View(note)) => self.viewer = Some(note),
-                Some(CardAction::Edit(note)) => self.editor = Some(Editor::edit(&note)),
-                Some(CardAction::Delete(id)) => self.deferred.push(Deferred::ConfirmDelete(id)),
-                None => {}
-            }
-        });
+                    });
+                    ui.add_space(gap - ui.spacing().item_spacing.y);
+                }
+                match action {
+                    Some(CardAction::View(note)) => self.viewer = Some(note),
+                    Some(CardAction::Edit(note)) => self.editor = Some(Editor::edit(&note)),
+                    Some(CardAction::Delete(id)) => self.deferred.push(Deferred::ConfirmDelete(id)),
+                    None => {}
+                }
+            });
     }
 
     // --- Add / edit dialog ------------------------------------------------------
 
     fn editor_dialog(&mut self, ctx: &egui::Context, shared: &mut Shared) {
-        let Some(ed) = self.editor.as_mut() else { return };
+        let Some(ed) = self.editor.as_mut() else {
+            return;
+        };
         let mut save = false;
         let mut cancel = false;
         let en = shared.i18n.is_en();
@@ -359,7 +397,11 @@ impl NotesWindow {
             )
             .show(ctx, |ui| {
                 ui.set_width(EDITOR_W);
-                let heading = if ed.id.is_none() { "Nouvelle Note" } else { "Modifier la Note" };
+                let heading = if ed.id.is_none() {
+                    "Nouvelle Note"
+                } else {
+                    "Modifier la Note"
+                };
                 ui.label(theme::bold(shared.t(heading), 18.0).color(GOLD));
                 ui.add_space(SPACE_XS);
 
@@ -375,21 +417,26 @@ impl NotesWindow {
                 }
 
                 ui.label(label("Contenu:"));
-                egui::ScrollArea::vertical().id_salt("note-content").max_height(190.0).show(ui, |ui| {
-                    ui.add(
-                        egui::TextEdit::multiline(&mut ed.content)
-                            .hint_text(shared.t("Écrivez votre note ici..."))
-                            .desired_rows(8)
-                            .desired_width(f32::INFINITY)
-                            .margin(vec2(10.0, 8.0)),
-                    );
-                });
+                egui::ScrollArea::vertical()
+                    .id_salt("note-content")
+                    .max_height(190.0)
+                    .show(ui, |ui| {
+                        ui.add(
+                            egui::TextEdit::multiline(&mut ed.content)
+                                .hint_text(shared.t("Écrivez votre note ici..."))
+                                .desired_rows(8)
+                                .desired_width(f32::INFINITY)
+                                .margin(vec2(10.0, 8.0)),
+                        );
+                    });
 
                 // Reminder: checkbox + date picker + hour/minute.
                 ui.horizontal(|ui| {
                     ui.checkbox(&mut ed.reminder, label("Rappel:"));
                     ui.add_enabled_ui(ed.reminder, |ui| {
-                        let date_btn = ui.button(RichText::new(format!("📅 {}", ed.due.format("%d/%m/%Y"))).size(13.0));
+                        let date_btn = ui.button(
+                            RichText::new(format!("📅 {}", ed.due.format("%d/%m/%Y"))).size(13.0),
+                        );
                         if date_btn.clicked() {
                             ed.picker_month = MonthView::of(ed.due.date());
                         }
@@ -414,9 +461,19 @@ impl NotesWindow {
 
                         let (mut h, mut m) = (ed.due.hour(), ed.due.minute());
                         let two_digits = |v: f64, _| format!("{:02}", v as u32);
-                        let dh = ui.add(egui::DragValue::new(&mut h).range(0..=23).speed(0.1).custom_formatter(two_digits));
+                        let dh = ui.add(
+                            egui::DragValue::new(&mut h)
+                                .range(0..=23)
+                                .speed(0.1)
+                                .custom_formatter(two_digits),
+                        );
                         ui.label(RichText::new(":").size(13.0));
-                        let dm = ui.add(egui::DragValue::new(&mut m).range(0..=59).speed(0.2).custom_formatter(two_digits));
+                        let dm = ui.add(
+                            egui::DragValue::new(&mut m)
+                                .range(0..=59)
+                                .speed(0.2)
+                                .custom_formatter(two_digits),
+                        );
                         if (dh.changed() || dm.changed())
                             && let Some(t) = ed.due.date().and_hms_opt(h, m, ed.due.second())
                         {
@@ -428,7 +485,8 @@ impl NotesWindow {
                 ui.label(label("Couleur:"));
                 ui.horizontal(|ui| {
                     for color in COLORS {
-                        let (rect, resp) = ui.allocate_exact_size(Vec2::splat(35.0), Sense::click());
+                        let (rect, resp) =
+                            ui.allocate_exact_size(Vec2::splat(35.0), Sense::click());
                         let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
                         let selected = ed.color == color;
                         let stroke = if selected || resp.hovered() {
@@ -436,7 +494,8 @@ impl NotesWindow {
                         } else {
                             Stroke::new(2.0, Color32::from_rgb(0x55, 0x55, 0x55))
                         };
-                        ui.painter().circle(rect.center(), 16.0, theme::hex(color), stroke);
+                        ui.painter()
+                            .circle(rect.center(), 16.0, theme::hex(color), stroke);
                         if resp.clicked() {
                             ed.color = color.to_string();
                         }
@@ -448,11 +507,15 @@ impl NotesWindow {
                     if widgets::dialog_button(ui, &shared.t("Sauvegarder")).clicked() {
                         save = true;
                     }
-                    let cancel_btn = egui::Button::new(RichText::new(shared.t("Annuler")).color(Color32::WHITE).size(13.0))
-                        .fill(Color32::from_rgb(0x3a, 0x3a, 0x3a))
-                        .stroke(Stroke::new(1.0, Color32::from_rgb(0x5a, 0x5a, 0x5a)))
-                        .corner_radius(CornerRadius::same(5))
-                        .min_size(vec2(100.0, 36.0));
+                    let cancel_btn = egui::Button::new(
+                        RichText::new(shared.t("Annuler"))
+                            .color(Color32::WHITE)
+                            .size(13.0),
+                    )
+                    .fill(Color32::from_rgb(0x3a, 0x3a, 0x3a))
+                    .stroke(Stroke::new(1.0, Color32::from_rgb(0x5a, 0x5a, 0x5a)))
+                    .corner_radius(CornerRadius::same(5))
+                    .min_size(vec2(100.0, 36.0));
                     if ui.add(cancel_btn).clicked() {
                         cancel = true;
                     }
@@ -536,8 +599,10 @@ impl NotesWindow {
                     let text = clean(shared.tf("⏰ Rappel: %1", &[&due.format("%d/%m/%Y %H:%M")]));
                     ui.label(theme::bold(text, 12.0).color(TEXT_DARK));
                 }
-                let (line, _) = ui.allocate_exact_size(vec2(ui.available_width(), 2.0), Sense::hover());
-                ui.painter().rect_filled(line, CornerRadius::ZERO, TEXT_DARK);
+                let (line, _) =
+                    ui.allocate_exact_size(vec2(ui.available_width(), 2.0), Sense::hover());
+                ui.painter()
+                    .rect_filled(line, CornerRadius::ZERO, TEXT_DARK);
 
                 egui::ScrollArea::vertical()
                     .id_salt("note-view")
@@ -545,19 +610,40 @@ impl NotesWindow {
                     .max_height(380.0)
                     .auto_shrink([false, true])
                     .show(ui, |ui| {
-                        ui.add(egui::Label::new(RichText::new(&note.content).color(TEXT_DARK).size(14.0)).wrap());
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(&note.content).color(TEXT_DARK).size(14.0),
+                            )
+                            .wrap(),
+                        );
                     });
 
                 ui.add_space(SPACE_SM);
                 ui.horizontal(|ui| {
-                    let created = note.created_at.map(|c| c.format("%d/%m/%Y %H:%M").to_string()).unwrap_or_default();
-                    ui.label(RichText::new(shared.tf("Créée le: %1", &[&created])).color(TEXT_DARK).size(11.0));
+                    let created = note
+                        .created_at
+                        .map(|c| c.format("%d/%m/%Y %H:%M").to_string())
+                        .unwrap_or_default();
+                    ui.label(
+                        RichText::new(shared.tf("Créée le: %1", &[&created]))
+                            .color(TEXT_DARK)
+                            .size(11.0),
+                    );
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if ui.add(dark_button(shared.t("Fermer"), Color32::from_rgba_unmultiplied(60, 60, 60, 200))).clicked() {
+                        if ui
+                            .add(dark_button(
+                                shared.t("Fermer"),
+                                Color32::from_rgba_unmultiplied(60, 60, 60, 200),
+                            ))
+                            .clicked()
+                        {
                             close = true;
                         }
                         if ui
-                            .add(dark_button(shared.t("✏️ Modifier"), Color32::from_rgba_unmultiplied(80, 80, 80, 200)))
+                            .add(dark_button(
+                                shared.t("✏️ Modifier"),
+                                Color32::from_rgba_unmultiplied(80, 80, 80, 200),
+                            ))
                             .clicked()
                         {
                             edit = true;
@@ -585,10 +671,14 @@ impl NotesWindow {
                     }
                 }
                 Deferred::EmptyNoteWarning => {
-                    msg::warning(&shared.t("Erreur"), &shared.t("La note ne peut pas être vide."));
+                    msg::warning(
+                        &shared.t("Erreur"),
+                        &shared.t("La note ne peut pas être vide."),
+                    );
                 }
                 Deferred::Export => {
-                    let name = format!("notes_export_{}.json", Local::now().format("%Y%m%d_%H%M%S"));
+                    let name =
+                        format!("notes_export_{}.json", Local::now().format("%Y%m%d_%H%M%S"));
                     let Some(path) = rfd::FileDialog::new()
                         .set_title(shared.t("Exporter les notes"))
                         .set_file_name(name)
@@ -602,7 +692,10 @@ impl NotesWindow {
                             &shared.t("Succès"),
                             &shared.tf("Notes exportées vers :\n%1", &[&p.display()]),
                         ),
-                        None => msg::error(&shared.t("Erreur"), &shared.t("Impossible d'exporter les notes.")),
+                        None => msg::error(
+                            &shared.t("Erreur"),
+                            &shared.t("Impossible d'exporter les notes."),
+                        ),
                     }
                 }
                 Deferred::Import => {
@@ -614,7 +707,10 @@ impl NotesWindow {
                         continue;
                     };
                     if shared.notes.import_notes(&path, true) {
-                        msg::info(&shared.t("Succès"), &shared.t("Notes importées avec succès."));
+                        msg::info(
+                            &shared.t("Succès"),
+                            &shared.t("Notes importées avec succès."),
+                        );
                     } else {
                         msg::error(
                             &shared.t("Erreur"),
@@ -629,13 +725,24 @@ impl NotesWindow {
 }
 
 /// Draws one post-it and returns what the user clicked on it.
-fn post_it(ui: &mut Ui, note: &Note, size: Vec2, shared: &Shared, now: NaiveDateTime) -> Option<CardAction> {
+fn post_it(
+    ui: &mut Ui,
+    note: &Note,
+    size: Vec2,
+    shared: &Shared,
+    now: NaiveDateTime,
+) -> Option<CardAction> {
     let (rect, card) = ui.allocate_exact_size(size, Sense::click());
     let card = card.on_hover_cursor(egui::CursorIcon::PointingHand);
     let painter = ui.painter().clone();
     let radius = CornerRadius::same(5);
 
-    let shadow = egui::epaint::Shadow { offset: [3, 3], blur: 15, spread: 0, color: Color32::from_black_alpha(100) };
+    let shadow = egui::epaint::Shadow {
+        offset: [3, 3],
+        blur: 15,
+        spread: 0,
+        color: Color32::from_black_alpha(100),
+    };
     painter.add(shadow.as_shape(rect, radius));
     painter.rect_filled(rect, radius, theme::hex(post_it_color(note)));
     if card.contains_pointer() {
@@ -647,7 +754,11 @@ fn post_it(ui: &mut Ui, note: &Note, size: Vec2, shared: &Shared, now: NaiveDate
     // Delete button (top-right ×).
     let del_rect = Rect::from_min_size(pos2(inner.right() - 25.0, inner.top()), Vec2::splat(25.0));
     let del = ui
-        .interact(del_rect, ui.scope_id().with(("note-delete", &note.id)), Sense::click())
+        .interact(
+            del_rect,
+            ui.scope_id().with(("note-delete", &note.id)),
+            Sense::click(),
+        )
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(shared.t("Supprimer cette note"));
     let del_fill = if del.hovered() {
@@ -656,11 +767,28 @@ fn post_it(ui: &mut Ui, note: &Note, size: Vec2, shared: &Shared, now: NaiveDate
         Color32::from_rgba_unmultiplied(200, 50, 50, 180)
     };
     painter.circle_filled(del_rect.center(), 12.5, del_fill);
-    painter.text(del_rect.center(), Align2::CENTER_CENTER, "×", bold_font(16.0), Color32::WHITE);
+    painter.text(
+        del_rect.center(),
+        Align2::CENTER_CENTER,
+        "×",
+        bold_font(16.0),
+        Color32::WHITE,
+    );
 
     // Title (2 lines max).
-    let title = if note.title.is_empty() { shared.t("Sans titre") } else { note.title.clone() };
-    let title_g = layout_text(ui, title, bold_font(14.0), TEXT_DARK, inner.width() - 25.0 - SPACE_XS, 2);
+    let title = if note.title.is_empty() {
+        shared.t("Sans titre")
+    } else {
+        note.title.clone()
+    };
+    let title_g = layout_text(
+        ui,
+        title,
+        bold_font(14.0),
+        TEXT_DARK,
+        inner.width() - 25.0 - SPACE_XS,
+        2,
+    );
     let mut y = inner.top() + title_g.size().y.max(25.0) + SPACE_XS;
     painter.galley(inner.min, title_g, TEXT_DARK);
 
@@ -668,18 +796,39 @@ fn post_it(ui: &mut Ui, note: &Note, size: Vec2, shared: &Shared, now: NaiveDate
     if let Some(due) = note.due_at {
         let overdue = !note.reminder_done && due < now;
         let text = shared.tf("⏰ %1", &[&due.format("%d/%m/%Y %H:%M")]);
-        let g = layout_text(ui, text, bold_font(11.0), if overdue { OVERDUE } else { DUE }, inner.width(), 1);
+        let g = layout_text(
+            ui,
+            text,
+            bold_font(11.0),
+            if overdue { OVERDUE } else { DUE },
+            inner.width(),
+            1,
+        );
         let h = g.size().y;
         painter.galley(pos2(inner.left(), y), g, TEXT_DARK);
         y += h + SPACE_XS;
     }
 
     // Bottom row: character count + edit button.
-    let edit_g = layout_text(ui, clean(shared.t("✏️ Modifier")), FontId::proportional(11.0), Color32::WHITE, f32::INFINITY, 1);
+    let edit_g = layout_text(
+        ui,
+        clean(shared.t("✏️ Modifier")),
+        FontId::proportional(11.0),
+        Color32::WHITE,
+        f32::INFINITY,
+        1,
+    );
     let edit_size = vec2(edit_g.size().x + 20.0, 28.0);
-    let edit_rect = Rect::from_min_size(pos2(inner.right() - edit_size.x, inner.bottom() - edit_size.y), edit_size);
+    let edit_rect = Rect::from_min_size(
+        pos2(inner.right() - edit_size.x, inner.bottom() - edit_size.y),
+        edit_size,
+    );
     let edit = ui
-        .interact(edit_rect, ui.scope_id().with(("note-edit", &note.id)), Sense::click())
+        .interact(
+            edit_rect,
+            ui.scope_id().with(("note-edit", &note.id)),
+            Sense::click(),
+        )
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     let edit_fill = if edit.hovered() {
         Color32::from_rgba_unmultiplied(120, 120, 120, 220)
@@ -687,7 +836,11 @@ fn post_it(ui: &mut Ui, note: &Note, size: Vec2, shared: &Shared, now: NaiveDate
         Color32::from_rgba_unmultiplied(100, 100, 100, 180)
     };
     painter.rect_filled(edit_rect, radius, edit_fill);
-    painter.galley(edit_rect.center() - edit_g.size() / 2.0, edit_g, Color32::WHITE);
+    painter.galley(
+        edit_rect.center() - edit_g.size() / 2.0,
+        edit_g,
+        Color32::WHITE,
+    );
 
     let count = shared.tf("%1 car.", &[&note.content.chars().count()]);
     painter.text(

@@ -49,10 +49,18 @@ impl Theme {
             secondary: palette.s,
             secondary_border: palette.s_border,
             primary_text: Color32::WHITE,
-            secondary_text: if bg == "Azeroth" { Color32::WHITE } else { accent },
+            secondary_text: if bg == "Azeroth" {
+                Color32::WHITE
+            } else {
+                accent
+            },
             accent,
         };
-        Theme { background: bg.to_string(), palette, tokens }
+        Theme {
+            background: bg.to_string(),
+            palette,
+            tokens,
+        }
     }
 }
 
@@ -75,16 +83,18 @@ impl Default for ThemeTokens {
 pub fn hex(s: &str) -> Color32 {
     let s = s.trim();
     if let Some(inner) = s.strip_prefix("rgba(").and_then(|r| r.strip_suffix(')')) {
-        let v: Vec<u8> = inner.split(',').filter_map(|p| p.trim().parse().ok()).collect();
+        let v: Vec<u8> = inner
+            .split(',')
+            .filter_map(|p| p.trim().parse().ok())
+            .collect();
         if v.len() == 4 {
             return Color32::from_rgba_unmultiplied(v[0], v[1], v[2], v[3]);
         }
-    } else if let Some(h) = s.strip_prefix('#') {
-        if h.len() == 6 {
-            if let Ok(n) = u32::from_str_radix(h, 16) {
-                return Color32::from_rgb((n >> 16) as u8, (n >> 8) as u8, n as u8);
-            }
-        }
+    } else if let Some(h) = s.strip_prefix('#')
+        && h.len() == 6
+        && let Ok(n) = u32::from_str_radix(h, 16)
+    {
+        return Color32::from_rgb((n >> 16) as u8, (n >> 8) as u8, n as u8);
     }
     Color32::from_rgb(255, 0, 255)
 }
@@ -104,31 +114,119 @@ fn pal(c: [&str; 12]) -> Palette {
 
 pub fn palette_for(bg: &str) -> Palette {
     match bg {
-        "Alliance" => pal(["rgba(0, 20, 50, 180)", "#15479a", "#ffffff", "#7ec8e3",
-                           "#1e5ab8", "#15479a", "#0f326a", "#3a7de4",
-                           "#3a4a5a", "#2a3a4a", "#1a2a3a", "#5a6a7a"]),
-        "Horde" => pal(["rgba(40, 0, 0, 180)", "#6a0dad", "#e0e0e0", "#ff6b6b",
-                        "#8b0000", "#660000", "#440000", "#b22222",
-                        "#4a2d2d", "#3a1d1d", "#2a0d0d", "#6a4d4d"]),
-        "Arbre de Vie" => pal(["rgba(10, 40, 10, 180)", "#2e8b57", "#f0fff0", "#98fb98",
-                               "#2e8b57", "#228b22", "#006400", "#3cb371",
-                               "#5a4a2d", "#4a3a1d", "#3a2a0d", "#7a6a4d"]),
-        "Ilidan" => pal(["rgba(20, 0, 30, 180)", "#32cd32", "#e6e6fa", "#7fff00",
-                         "#32cd32", "#228b22", "#006400", "#7fff00",
-                         "#3a2d4a", "#2a1d3a", "#1a0d2a", "#5a4d6a"]),
-        "Lich King" => pal(["rgba(0, 10, 20, 180)", "#4682b4", "#f0f8ff", "#87cefa",
-                            "#4682b4", "#5f9ea0", "#1e90ff", "#87ceeb",
-                            "#4a5a6a", "#3a4a5a", "#2a3a4a", "#6a7a8a"]),
-        "Ragnaros" => pal(["rgba(30, 10, 0, 180)", "#ff4500", "#ffebcd", "#ff8c00",
-                           "#ff4500", "#cd5c5c", "#8b0000", "#ff6347",
-                           "#5a2d1d", "#4a1d0d", "#3a0d00", "#7a4d3d"]),
-        "Taverne" => pal(["rgba(0, 0, 0, 150)", "#5a4a2d", "#ffffff", "#7ec8e3",
-                          "#4a7c3f", "#3a6a2f", "#2a5a1f", "#5a8c4f",
-                          "#5a4a3d", "#4a3a2d", "#3a2a1d", "#6a5a4d"]),
+        "Alliance" => pal([
+            "rgba(0, 20, 50, 180)",
+            "#15479a",
+            "#ffffff",
+            "#7ec8e3",
+            "#1e5ab8",
+            "#15479a",
+            "#0f326a",
+            "#3a7de4",
+            "#3a4a5a",
+            "#2a3a4a",
+            "#1a2a3a",
+            "#5a6a7a",
+        ]),
+        "Horde" => pal([
+            "rgba(40, 0, 0, 180)",
+            "#6a0dad",
+            "#e0e0e0",
+            "#ff6b6b",
+            "#8b0000",
+            "#660000",
+            "#440000",
+            "#b22222",
+            "#4a2d2d",
+            "#3a1d1d",
+            "#2a0d0d",
+            "#6a4d4d",
+        ]),
+        "Arbre de Vie" => pal([
+            "rgba(10, 40, 10, 180)",
+            "#2e8b57",
+            "#f0fff0",
+            "#98fb98",
+            "#2e8b57",
+            "#228b22",
+            "#006400",
+            "#3cb371",
+            "#5a4a2d",
+            "#4a3a1d",
+            "#3a2a0d",
+            "#7a6a4d",
+        ]),
+        "Ilidan" => pal([
+            "rgba(20, 0, 30, 180)",
+            "#32cd32",
+            "#e6e6fa",
+            "#7fff00",
+            "#32cd32",
+            "#228b22",
+            "#006400",
+            "#7fff00",
+            "#3a2d4a",
+            "#2a1d3a",
+            "#1a0d2a",
+            "#5a4d6a",
+        ]),
+        "Lich King" => pal([
+            "rgba(0, 10, 20, 180)",
+            "#4682b4",
+            "#f0f8ff",
+            "#87cefa",
+            "#4682b4",
+            "#5f9ea0",
+            "#1e90ff",
+            "#87ceeb",
+            "#4a5a6a",
+            "#3a4a5a",
+            "#2a3a4a",
+            "#6a7a8a",
+        ]),
+        "Ragnaros" => pal([
+            "rgba(30, 10, 0, 180)",
+            "#ff4500",
+            "#ffebcd",
+            "#ff8c00",
+            "#ff4500",
+            "#cd5c5c",
+            "#8b0000",
+            "#ff6347",
+            "#5a2d1d",
+            "#4a1d0d",
+            "#3a0d00",
+            "#7a4d3d",
+        ]),
+        "Taverne" => pal([
+            "rgba(0, 0, 0, 150)",
+            "#5a4a2d",
+            "#ffffff",
+            "#7ec8e3",
+            "#4a7c3f",
+            "#3a6a2f",
+            "#2a5a1f",
+            "#5a8c4f",
+            "#5a4a3d",
+            "#4a3a2d",
+            "#3a2a1d",
+            "#6a5a4d",
+        ]),
         // Azeroth or default
-        _ => pal(["rgba(230, 210, 170, 200)", "#5a4a2d", "#3a2a1d", "#5a4a2d",
-                  "#4a7c3f", "#3a6a2f", "#2a5a1f", "#5a8c4f",
-                  "#5a4a3d", "#4a3a2d", "#3a2a1d", "#6a5a4d"]),
+        _ => pal([
+            "rgba(230, 210, 170, 200)",
+            "#5a4a2d",
+            "#3a2a1d",
+            "#5a4a2d",
+            "#4a7c3f",
+            "#3a6a2f",
+            "#2a5a1f",
+            "#5a8c4f",
+            "#5a4a3d",
+            "#4a3a2d",
+            "#3a2a1d",
+            "#6a5a4d",
+        ]),
     }
 }
 
@@ -144,18 +242,46 @@ pub fn install_fonts(ctx: &egui::Context) {
     let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
     let load = |file: &str| std::fs::read(format!("{windir}\\Fonts\\{file}")).ok();
 
-    let fallbacks = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
+    let fallbacks = fonts
+        .families
+        .get(&FontFamily::Proportional)
+        .cloned()
+        .unwrap_or_default();
     if let Some(regular) = load("segoeui.ttf") {
-        fonts.font_data.insert("segoe".into(), egui::FontData::from_owned(regular).into());
-        fonts.families.entry(FontFamily::Proportional).or_default().insert(0, "segoe".into());
+        fonts
+            .font_data
+            .insert("segoe".into(), egui::FontData::from_owned(regular).into());
+        fonts
+            .families
+            .entry(FontFamily::Proportional)
+            .or_default()
+            .insert(0, "segoe".into());
     }
     let mut bold_family = Vec::new();
     if let Some(bold) = load("segoeuib.ttf") {
-        fonts.font_data.insert("segoe-bold".into(), egui::FontData::from_owned(bold).into());
+        fonts
+            .font_data
+            .insert("segoe-bold".into(), egui::FontData::from_owned(bold).into());
         bold_family.push("segoe-bold".to_string());
     }
     bold_family.extend(fallbacks);
-    fonts.families.insert(FontFamily::Name(BOLD.into()), bold_family);
+    fonts
+        .families
+        .insert(FontFamily::Name(BOLD.into()), bold_family);
+    // Last-resort fallback for symbols Segoe UI lacks (✓ ➕ ✏ 🗑 ✅ 🎲 📌 📅 ⏰…).
+    if let Some(symbols) = load("seguisym.ttf") {
+        fonts.font_data.insert(
+            "segoe-symbol".into(),
+            egui::FontData::from_owned(symbols).into(),
+        );
+        for fam in [FontFamily::Proportional, FontFamily::Name(BOLD.into())] {
+            fonts
+                .families
+                .entry(fam)
+                .or_default()
+                .push("segoe-symbol".into());
+        }
+    }
     ctx.set_fonts(fonts);
 }
 
@@ -183,8 +309,12 @@ pub fn apply_global_style(ctx: &egui::Context) {
     v.selection.stroke.color = GOLD;
     v.hyperlink_color = GOLD;
     v.override_text_color = Some(Color32::from_rgb(0xee, 0xee, 0xee));
-    style.text_styles.insert(egui::TextStyle::Body, FontId::proportional(13.0));
-    style.text_styles.insert(egui::TextStyle::Button, FontId::proportional(13.0));
+    style
+        .text_styles
+        .insert(egui::TextStyle::Body, FontId::proportional(13.0));
+    style
+        .text_styles
+        .insert(egui::TextStyle::Button, FontId::proportional(13.0));
     style.spacing.item_spacing = egui::vec2(constants::SPACE_SM, constants::SPACE_SM);
     ctx.set_global_style(style);
 }

@@ -17,11 +17,10 @@ pub struct I18n {
 impl I18n {
     pub fn new(lang: &str) -> Self {
         let en = Arc::new(serde_json::from_str(EN_JSON).unwrap_or_default());
-        I18n { lang: normalize(lang), en }
-    }
-
-    pub fn lang(&self) -> &str {
-        &self.lang
+        I18n {
+            lang: normalize(lang),
+            en,
+        }
     }
 
     pub fn set_lang(&mut self, lang: &str) {
@@ -56,7 +55,11 @@ impl I18n {
 }
 
 fn normalize(lang: &str) -> String {
-    if lang == "en" { "en".into() } else { "fr".into() }
+    if lang == "en" {
+        "en".into()
+    } else {
+        "fr".into()
+    }
 }
 
 #[cfg(test)]

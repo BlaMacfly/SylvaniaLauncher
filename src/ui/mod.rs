@@ -20,7 +20,11 @@ pub fn app_icon() -> Arc<egui::IconData> {
     ICON.get_or_init(|| {
         let icon = image::load_from_memory(crate::assets::ICON_PNG)
             .map(|i| i.to_rgba8())
-            .map(|i| egui::IconData { width: i.width(), height: i.height(), rgba: i.into_raw() })
+            .map(|i| egui::IconData {
+                width: i.width(),
+                height: i.height(),
+                rgba: i.into_raw(),
+            })
             .unwrap_or_default();
         Arc::new(icon)
     })
@@ -46,15 +50,26 @@ pub fn child_window(
         .with_inner_size(size)
         .with_min_inner_size(min_size)
         .with_icon(app_icon());
-    ctx.show_viewport_immediate(egui::ViewportId::from_hash_of(id), builder, |ctx, _class| {
-        egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(theme::WINDOW_BG).inner_margin(SPACE_MD))
-            .show(ctx, |ui| add(ui));
-        !ctx.input(|i| i.viewport().close_requested())
-    })
+    ctx.show_viewport_immediate(
+        egui::ViewportId::from_hash_of(id),
+        builder,
+        |ctx, _class| {
+            egui::CentralPanel::default()
+                .frame(
+                    egui::Frame::new()
+                        .fill(theme::WINDOW_BG)
+                        .inner_margin(SPACE_MD),
+                )
+                .show(ctx, |ui| add(ui));
+            !ctx.input(|i| i.viewport().close_requested())
+        },
+    )
 }
 
 /// Requests focus for a child window (e.g. when its button is clicked again).
 pub fn focus_child_window(ctx: &egui::Context, id: &str) {
-    ctx.send_viewport_cmd_to(egui::ViewportId::from_hash_of(id), egui::ViewportCommand::Focus);
+    ctx.send_viewport_cmd_to(
+        egui::ViewportId::from_hash_of(id),
+        egui::ViewportCommand::Focus,
+    );
 }

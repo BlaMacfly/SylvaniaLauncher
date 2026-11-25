@@ -34,7 +34,10 @@ pub struct ManifestLoad {
 }
 
 fn str_field(obj: &serde_json::Map<String, Value>, key: &str) -> String {
-    obj.get(key).and_then(Value::as_str).unwrap_or_default().to_string()
+    obj.get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
 }
 
 /// Parses a manifest document `{"addons": [...]}`. Malformed documents yield
@@ -59,7 +62,13 @@ pub fn parse(json: &str) -> Vec<ManifestAddon> {
             folders: obj
                 .get("folders")
                 .and_then(Value::as_array)
-                .map(|a| a.iter().filter_map(Value::as_str).filter(|f| !f.is_empty()).map(String::from).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(Value::as_str)
+                        .filter(|f| !f.is_empty())
+                        .map(String::from)
+                        .collect()
+                })
                 .unwrap_or_default(),
         })
         .filter(|a| !a.id.is_empty() && !a.url.is_empty() && !a.folders.is_empty())
@@ -77,13 +86,19 @@ pub fn resolve(remote: Result<String, String>) -> ManifestLoad {
         Ok(text) => {
             let addons = parse(&text);
             if !addons.is_empty() {
-                return ManifestLoad { addons, from_remote: true };
+                return ManifestLoad {
+                    addons,
+                    from_remote: true,
+                };
             }
             log::warn!("Manifeste d'addons distant inutilisable, copie embarquée utilisée");
         }
         Err(e) => log::warn!("Manifeste d'addons injoignable ({e}), copie embarquée utilisée"),
     }
-    ManifestLoad { addons: embedded(), from_remote: false }
+    ManifestLoad {
+        addons: embedded(),
+        from_remote: false,
+    }
 }
 
 /// Blocking fetch (worker threads only).
@@ -114,7 +129,11 @@ mod tests {
         assert!(!addons.is_empty());
         for a in &addons {
             assert!(!a.id.is_empty() && !a.url.is_empty() && !a.folders.is_empty());
-            assert!(crate::core::addons::install::is_trusted_url(&a.url), "{}", a.url);
+            assert!(
+                crate::core::addons::install::is_trusted_url(&a.url),
+                "{}",
+                a.url
+            );
         }
         let elvui = addons.iter().find(|a| a.id == "elvui").expect("elvui");
         assert_eq!(elvui.name, "ElvUI");
@@ -136,7 +155,10 @@ mod tests {
         ]}"#;
         let addons = parse(json);
         assert_eq!(addons.len(), 2);
-        assert_eq!(addons[0].folders, vec!["A".to_string(), "A_Extra".to_string()]);
+        assert_eq!(
+            addons[0].folders,
+            vec!["A".to_string(), "A_Extra".to_string()]
+        );
         assert_eq!(addons[0].version, "1.0");
         assert_eq!(addons[1].id, "f");
         assert_eq!(addons[1].name, "");
@@ -161,7 +183,9 @@ mod tests {
         assert!(!empty.from_remote);
         assert!(!empty.addons.is_empty());
 
-        let remote = resolve(Ok(r#"{"addons": [{"id": "x", "url": "https://h/x.zip", "folders": ["X"]}]}"#.into()));
+        let remote = resolve(Ok(
+            r#"{"addons": [{"id": "x", "url": "https://h/x.zip", "folders": ["X"]}]}"#.into(),
+        ));
         assert!(remote.from_remote);
         assert_eq!(remote.addons.len(), 1);
     }

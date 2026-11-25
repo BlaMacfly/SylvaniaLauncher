@@ -13,7 +13,8 @@ pub fn extract_zip(
     mut on_progress: impl FnMut(usize, usize),
 ) -> Result<(), String> {
     let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
-    let mut archive = zip::ZipArchive::new(std::io::BufReader::new(file)).map_err(|e| e.to_string())?;
+    let mut archive =
+        zip::ZipArchive::new(std::io::BufReader::new(file)).map_err(|e| e.to_string())?;
     std::fs::create_dir_all(dest).map_err(|e| e.to_string())?;
     let total = archive.len();
     for i in 0..total {
@@ -22,7 +23,10 @@ pub fn extract_zip(
         }
         let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
         let Some(rel) = entry.enclosed_name() else {
-            log::warn!("Entrée d'archive ignorée (chemin hors destination): {:?}", entry.name());
+            log::warn!(
+                "Entrée d'archive ignorée (chemin hors destination): {:?}",
+                entry.name()
+            );
             continue;
         };
         let out = dest.join(rel);
@@ -32,7 +36,8 @@ pub fn extract_zip(
             if let Some(p) = out.parent() {
                 std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
             }
-            let mut f = std::fs::File::create(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+            let mut f =
+                std::fs::File::create(&out).map_err(|e| format!("{}: {e}", out.display()))?;
             std::io::copy(&mut entry, &mut f).map_err(|e| format!("{}: {e}", out.display()))?;
         }
         on_progress(i + 1, total);

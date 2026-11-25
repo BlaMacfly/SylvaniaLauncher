@@ -40,7 +40,15 @@ const fn f(
     dangerous: bool,
     default_on: bool,
 ) -> FeatureDef {
-    FeatureDef { label, root, locale, dxvk: false, dangerous, default_on, exclusive_with: None }
+    FeatureDef {
+        label,
+        root,
+        locale,
+        dxvk: false,
+        dangerous,
+        default_on,
+        exclusive_with: None,
+    }
 }
 
 /// Catalogue from the pack's technical README (§4/§5/§6): a letter does NOT
@@ -67,14 +75,20 @@ pub const FEATURES: &[FeatureDef] = &[
     f("Curseur et Fenêtres d'interface", &[], &["d"], false, true),
     f("Cartes des donjons", &[], &["m"], true, true),
     f("Addons (ACP)", &["5"], &["9"], false, true),
-    FeatureDef { exclusive_with: Some(MOP), ..f(SL, &["k"], &["k"], true, true) },
+    FeatureDef {
+        exclusive_with: Some(MOP),
+        ..f(SL, &["k"], &["k"], true, true)
+    },
     // --- OFF by default (heavier / "dangerous" / optional) ---
     f("Armures HD", &["7"], &[], true, false),
     f("Armes HD", &["8"], &[], false, false),
     f("Nouvelles icônes", &["i"], &[], false, false),
     f("Nouveaux arbres", &["t"], &[], false, false),
     f("Mort-vivant sans os", &["u"], &["u", "a"], true, false),
-    FeatureDef { exclusive_with: Some(SL), ..f(MOP, &["j"], &["j"], true, false) },
+    FeatureDef {
+        exclusive_with: Some(SL),
+        ..f(MOP, &["j"], &["j"], true, false)
+    },
     f("Cartes des mini-donjons", &[], &["n"], true, false),
     f("Sang", &["b"], &[], true, false),
     // ARAC = All Races All Classes (root patch-a.mpq). Independent of the HD
@@ -88,7 +102,9 @@ pub fn root_patch_path(wow: &Path, letter: &str) -> PathBuf {
 }
 
 pub fn locale_patch_path(wow: &Path, locale: &str, letter: &str) -> PathBuf {
-    wow.join("Data").join(locale).join(format!("patch-{locale}-{letter}.mpq"))
+    wow.join("Data")
+        .join(locale)
+        .join(format!("patch-{locale}-{letter}.mpq"))
 }
 
 /// `<path>.disabled`
@@ -108,7 +124,10 @@ fn marker_paths(wow: &Path, f: &FeatureDef) -> Vec<PathBuf> {
     } else if let Some(letter) = f.root.first() {
         vec![root_patch_path(wow, letter)]
     } else if let Some(letter) = f.locale.first() {
-        LOCALES.iter().map(|loc| locale_patch_path(wow, loc, letter)).collect()
+        LOCALES
+            .iter()
+            .map(|loc| locale_patch_path(wow, loc, letter))
+            .collect()
     } else {
         Vec::new()
     }
@@ -116,7 +135,9 @@ fn marker_paths(wow: &Path, f: &FeatureDef) -> Vec<PathBuf> {
 
 /// Installed, enabled or not.
 pub fn is_present(wow: &Path, f: &FeatureDef) -> bool {
-    marker_paths(wow, f).iter().any(|p| p.exists() || disabled_path(p).exists())
+    marker_paths(wow, f)
+        .iter()
+        .any(|p| p.exists() || disabled_path(p).exists())
 }
 
 /// Installed AND enabled.
@@ -225,7 +246,11 @@ mod tests {
         assert!(is_present(wow, f) && is_enabled(wow, f));
 
         assert!(apply(wow, f, false).is_empty());
-        for p in [root_patch_path(wow, "u"), locale_patch_path(wow, "frFR", "u"), locale_patch_path(wow, "frFR", "a")] {
+        for p in [
+            root_patch_path(wow, "u"),
+            locale_patch_path(wow, "frFR", "u"),
+            locale_patch_path(wow, "frFR", "a"),
+        ] {
             assert!(!p.exists());
             assert!(disabled_path(&p).is_file(), "{}", p.display());
         }
@@ -254,7 +279,9 @@ mod tests {
         touch(&wow.join("d3d9.dll"));
         touch(&wow.join("dxvk.conf"));
         assert!(apply(wow, f, false).is_empty());
-        assert!(wow.join("d3d9.dll.disabled").is_file() && wow.join("dxvk.conf.disabled").is_file());
+        assert!(
+            wow.join("d3d9.dll.disabled").is_file() && wow.join("dxvk.conf.disabled").is_file()
+        );
         assert!(is_present(wow, f) && !is_enabled(wow, f));
         assert!(apply(wow, f, true).is_empty());
         assert!(wow.join("d3d9.dll").is_file() && wow.join("dxvk.conf").is_file());

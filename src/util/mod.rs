@@ -33,7 +33,11 @@ pub mod msg {
     use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 
     fn show(level: MessageLevel, title: &str, text: &str) {
-        MessageDialog::new().set_level(level).set_title(title).set_description(text).show();
+        MessageDialog::new()
+            .set_level(level)
+            .set_title(title)
+            .set_description(text)
+            .show();
     }
     pub fn info(title: &str, text: &str) {
         show(MessageLevel::Info, title, text);

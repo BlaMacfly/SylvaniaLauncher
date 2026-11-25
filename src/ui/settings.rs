@@ -14,7 +14,9 @@ use crate::constants::{self, SPACE_MD, SPACE_SM, SPACE_XS};
 use crate::theme::{self, ThemeTokens, hex};
 use crate::ui::widgets::{self, Level};
 use crate::util::msg;
-use eframe::egui::{self, Align, Color32, CursorIcon, Layout, Response, RichText, Stroke, Ui, vec2};
+use eframe::egui::{
+    self, Align, Color32, CursorIcon, Layout, Response, RichText, Stroke, Ui, vec2,
+};
 use enus::{EnUsTask, Outcome};
 use features::FeatureDef;
 use std::path::{Path, PathBuf};
@@ -47,7 +49,11 @@ impl PatchPanel {
             .iter()
             .map(|def| {
                 let present = features::is_present(&wow, def);
-                PatchRow { def, present, on: present && features::is_enabled(&wow, def) }
+                PatchRow {
+                    def,
+                    present,
+                    on: present && features::is_enabled(&wow, def),
+                }
             })
             .collect();
         let master = rows.iter().any(|r| r.on);
@@ -79,7 +85,10 @@ impl PatchPanel {
             .flat_map(|r| features::apply(&self.wow, r.def, r.on))
             .map(|(path, e)| {
                 log::warn!("Patch HD: {}: {e}", path.display());
-                let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                let name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
                 format!("{name} ({e})")
             })
             .collect()
@@ -122,7 +131,10 @@ impl SettingsWindow {
             background,
             random_bg: shared.config.random_background(),
             patches,
-            enus: EnUsState { task: None, result: None },
+            enus: EnUsState {
+                task: None,
+                result: None,
+            },
             open: true,
         }
     }
@@ -134,8 +146,14 @@ impl SettingsWindow {
             ctx.request_repaint_after(Duration::from_millis(100));
         }
         let title = shared.t("Réglages");
-        let alive = super::child_window(ctx, crate::app::window_id(crate::app::WindowKind::Settings), &title,
-            WINDOW_SIZE, WINDOW_MIN_SIZE, |ui| self.ui(ui, shared));
+        let alive = super::child_window(
+            ctx,
+            crate::app::window_id(crate::app::WindowKind::Settings),
+            &title,
+            WINDOW_SIZE,
+            WINDOW_MIN_SIZE,
+            |ui| self.ui(ui, shared),
+        );
         if !alive && self.open {
             // Title-bar ✕ = Cancel: revert the live background preview.
             shared.emit(AppEvent::BackgroundChanged(shared.config.background()));
@@ -165,8 +183,15 @@ impl SettingsWindow {
             if widgets::dialog_button(ui, &shared.t("Annuler")).clicked() {
                 self.on_cancel(shared);
             }
-            if widgets::level_button(ui, &shared.t("OK"), Level::Secondary, &ThemeTokens::default(), true, 100.0)
-                .clicked()
+            if widgets::level_button(
+                ui,
+                &shared.t("OK"),
+                Level::Secondary,
+                &ThemeTokens::default(),
+                true,
+                100.0,
+            )
+            .clicked()
             {
                 self.on_ok(shared);
             }
@@ -178,12 +203,22 @@ impl SettingsWindow {
     fn install_section(&mut self, ui: &mut Ui, shared: &mut Shared) {
         centered_title(ui, &shared.t("Installation de WoW"));
         ui.horizontal(|ui| {
-            ui.add_sized([130.0, 20.0], egui::Label::new(RichText::new(shared.t("Dossier d'installation:")).color(Color32::WHITE)));
+            ui.add_sized(
+                [130.0, 20.0],
+                egui::Label::new(
+                    RichText::new(shared.t("Dossier d'installation:")).color(Color32::WHITE),
+                ),
+            );
             let browse = shared.t("Parcourir");
             // Same metrics as widgets::level_button (Secondary = bold 12 px).
             let font = egui::FontId::new(12.0, egui::FontFamily::Name(theme::BOLD.into()));
-            let browse_width =
-                ui.painter().layout_no_wrap(browse.clone(), font, Color32::WHITE).size().x + 2.0 * SPACE_MD + 4.0;
+            let browse_width = ui
+                .painter()
+                .layout_no_wrap(browse.clone(), font, Color32::WHITE)
+                .size()
+                .x
+                + 2.0 * SPACE_MD
+                + 4.0;
             let mut text: &str = &self.path;
             ui.add(
                 egui::TextEdit::singleline(&mut text)
@@ -196,8 +231,15 @@ impl SettingsWindow {
         });
         let width = ui.available_width();
         let clear = shared.t("Vider le cache");
-        if widgets::level_button(ui, &clear, Level::Secondary, &ThemeTokens::default(), self.client_found, width)
-            .clicked()
+        if widgets::level_button(
+            ui,
+            &clear,
+            Level::Secondary,
+            &ThemeTokens::default(),
+            self.client_found,
+            width,
+        )
+        .clicked()
         {
             self.on_clear_cache(shared);
         }
@@ -213,7 +255,16 @@ impl SettingsWindow {
             ..ThemeTokens::default()
         };
         let open = shared.t("Ouvrir le dossier AddOns");
-        if widgets::level_button(ui, &open, Level::Secondary, &green, self.client_found, width).clicked() {
+        if widgets::level_button(
+            ui,
+            &open,
+            Level::Secondary,
+            &green,
+            self.client_found,
+            width,
+        )
+        .clicked()
+        {
             self.on_open_addons(shared);
         }
 
@@ -227,7 +278,8 @@ impl SettingsWindow {
         let label = shared.t("Télécharger le Pack Anglais (enUS)");
         let mut resp = widgets::level_button(ui, &label, Level::Secondary, &blue, enabled, width);
         if !self.client_found {
-            resp = resp.on_hover_text(shared.t("Veuillez d'abord configurer le dossier WoW (Wow.exe)"));
+            resp = resp
+                .on_hover_text(shared.t("Veuillez d'abord configurer le dossier WoW (Wow.exe)"));
         }
         if resp.clicked() {
             self.on_download_enus(shared);
@@ -282,23 +334,41 @@ impl SettingsWindow {
     }
 
     fn patch_section(&mut self, ui: &mut Ui, shared: &mut Shared) {
-        let Some(panel) = self.patches.as_mut() else { return };
+        let Some(panel) = self.patches.as_mut() else {
+            return;
+        };
         ui.add_space(SPACE_XS);
         centered_title(ui, &shared.t("Gestion des Patchs HD"));
 
         // Master ON/OFF
         let (text, fill, border, color) = if panel.master {
-            (shared.t("Patch HD : ACTIVÉ"), hex("#3a6a2f"), hex("#5a8c4f"), Color32::WHITE)
+            (
+                shared.t("Patch HD : ACTIVÉ"),
+                hex("#3a6a2f"),
+                hex("#5a8c4f"),
+                Color32::WHITE,
+            )
         } else {
-            (shared.t("Patch HD : DÉSACTIVÉ"), hex("#5a1a1a"), hex("#8a3a3a"), hex("#e0c0c0"))
+            (
+                shared.t("Patch HD : DÉSACTIVÉ"),
+                hex("#5a1a1a"),
+                hex("#8a3a3a"),
+                hex("#e0c0c0"),
+            )
         };
         let tip = shared.t(
             "ACTIVÉ : active tous les patchs présents.\nDÉSACTIVÉ : éteint tous les patchs (client d'origine).",
         );
         let width = ui.available_width();
-        if toggle_like_button(ui, theme::bold(text, 13.0).color(color), fill, border, vec2(width, 40.0))
-            .on_hover_text(tip)
-            .clicked()
+        if toggle_like_button(
+            ui,
+            theme::bold(text, 13.0).color(color),
+            fill,
+            border,
+            vec2(width, 40.0),
+        )
+        .on_hover_text(tip)
+        .clicked()
         {
             shared.sounds.play("button");
             panel.set_master(!panel.master);
@@ -320,7 +390,8 @@ impl SettingsWindow {
             "Patch « Dangereux » : il remplace une table .dbc (risque de détection « unlike check » ou de crash selon le serveur).",
         );
         let absent_tip = shared.t("Ce patch n'est pas présent dans votre installation.");
-        let (on_text, off_text, absent_text) = (shared.t("ACTIVÉ"), shared.t("ÉTEINT"), shared.t("Absent"));
+        let (on_text, off_text, absent_text) =
+            (shared.t("ACTIVÉ"), shared.t("ÉTEINT"), shared.t("Absent"));
         let mut clicked = None;
         egui::Frame::new()
             .stroke(Stroke::new(1.0, hex("#5a4a2d")))
@@ -334,10 +405,12 @@ impl SettingsWindow {
                     .show(ui, |ui| {
                         for (i, row) in panel.rows.iter().enumerate() {
                             ui.horizontal(|ui| {
-                                let label = theme::bold(shared.t(row.def.label), 11.0).color(theme::GOLD);
+                                let label =
+                                    theme::bold(shared.t(row.def.label), 11.0).color(theme::GOLD);
                                 let mut resp = ui.label(label);
                                 if row.def.dangerous {
-                                    resp |= ui.label(RichText::new("⚠").size(11.0).color(hex("#e0a040")));
+                                    resp |= ui
+                                        .label(RichText::new("⚠").size(11.0).color(hex("#e0a040")));
                                     resp.on_hover_text(danger_tip.as_str());
                                 }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -378,7 +451,10 @@ impl SettingsWindow {
             .inner_margin(SPACE_SM)
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());
-                ui.label(theme::bold(shared.t("Téléchargement du Pack Anglais"), 12.0).color(hex("#7ec8e3")));
+                ui.label(
+                    theme::bold(shared.t("Téléchargement du Pack Anglais"), 12.0)
+                        .color(hex("#7ec8e3")),
+                );
                 if let Some(task) = &self.enus.task {
                     let p = task.progress();
                     let bar = match p.fraction {
@@ -388,7 +464,11 @@ impl SettingsWindow {
                     ui.add(bar.fill(hex("#2e6a9a")));
                     ui.label(RichText::new(&p.status).color(Color32::WHITE));
                     if !p.details.is_empty() {
-                        ui.label(RichText::new(&p.details).size(11.0).color(theme::TEXT_MUTED));
+                        ui.label(
+                            RichText::new(&p.details)
+                                .size(11.0)
+                                .color(theme::TEXT_MUTED),
+                        );
                     }
                     if p.cancellable && widgets::dialog_button(ui, &shared.t("Annuler")).clicked() {
                         cancel = true;
@@ -410,7 +490,11 @@ impl SettingsWindow {
 
     fn on_browse(&mut self, shared: &mut Shared) {
         shared.sounds.play("button");
-        let start = if self.path.is_empty() { dirs::home_dir().unwrap_or_default() } else { PathBuf::from(&self.path) };
+        let start = if self.path.is_empty() {
+            dirs::home_dir().unwrap_or_default()
+        } else {
+            PathBuf::from(&self.path)
+        };
         let Some(dir) = rfd::FileDialog::new()
             .set_title(shared.t("Sélectionner le dossier World of Warcraft"))
             .set_directory(start)
@@ -436,7 +520,10 @@ impl SettingsWindow {
     fn on_clear_cache(&mut self, shared: &mut Shared) {
         shared.sounds.play("button");
         if self.path.is_empty() {
-            msg::warning(&shared.t("Erreur"), &shared.t("Aucun dossier WoW configuré."));
+            msg::warning(
+                &shared.t("Erreur"),
+                &shared.t("Aucun dossier WoW configuré."),
+            );
             return;
         }
         let cache = Path::new(&self.path).join("Cache");
@@ -447,7 +534,9 @@ impl SettingsWindow {
         }
         if !msg::confirm(
             &shared.t("Confirmer"),
-            &shared.t("Êtes-vous sûr de vouloir vider le cache WoW?\nCela supprimera le dossier Cache."),
+            &shared.t(
+                "Êtes-vous sûr de vouloir vider le cache WoW?\nCela supprimera le dossier Cache.",
+            ),
         ) {
             return;
         }
@@ -455,7 +544,10 @@ impl SettingsWindow {
             Ok(()) => msg::info(&shared.t("Succès"), &shared.t("Cache vidé avec succès!")),
             Err(e) => {
                 log::warn!("Vidage du cache impossible: {e}");
-                msg::warning(&shared.t("Erreur"), &shared.t("Impossible de vider le cache."));
+                msg::warning(
+                    &shared.t("Erreur"),
+                    &shared.t("Impossible de vider le cache."),
+                );
             }
         }
     }
@@ -463,7 +555,10 @@ impl SettingsWindow {
     fn on_open_addons(&mut self, shared: &mut Shared) {
         shared.sounds.play("button");
         if self.path.is_empty() {
-            msg::warning(&shared.t("Erreur"), &shared.t("Aucun dossier WoW configuré."));
+            msg::warning(
+                &shared.t("Erreur"),
+                &shared.t("Aucun dossier WoW configuré."),
+            );
             return;
         }
         let addons = Path::new(&self.path).join("Interface").join("AddOns");
@@ -476,15 +571,23 @@ impl SettingsWindow {
     fn on_download_enus(&mut self, shared: &mut Shared) {
         shared.sounds.play("button");
         if self.path.is_empty() {
-            msg::warning(&shared.t("Erreur"), &shared.t("Aucun dossier WoW configuré."));
+            msg::warning(
+                &shared.t("Erreur"),
+                &shared.t("Aucun dossier WoW configuré."),
+            );
             return;
         }
         let data = Path::new(&self.path).join("Data");
-        self.enus = EnUsState { task: Some(EnUsTask::start(data, shared.i18n.clone())), result: None };
+        self.enus = EnUsState {
+            task: Some(EnUsTask::start(data, shared.i18n.clone())),
+            result: None,
+        };
     }
 
     fn poll_enus(&mut self, shared: &mut Shared) {
-        let Some(task) = self.enus.task.as_mut() else { return };
+        let Some(task) = self.enus.task.as_mut() else {
+            return;
+        };
         let Some(outcome) = task.poll() else { return };
         self.enus.task = None;
         self.enus.result = Some(match outcome {
@@ -509,7 +612,11 @@ impl SettingsWindow {
         shared.config.set_sound_enabled(self.sound);
         shared.config.set_background(&self.background);
         shared.config.set_random_background(self.random_bg);
-        let failures = self.patches.as_ref().map(PatchPanel::apply).unwrap_or_default();
+        let failures = self
+            .patches
+            .as_ref()
+            .map(PatchPanel::apply)
+            .unwrap_or_default();
         shared.config.save();
         shared.sounds.play("button");
         if !failures.is_empty() {
@@ -542,9 +649,21 @@ fn centered_title(ui: &mut Ui, text: &str) {
 }
 
 /// Flat coloured button used for the ON/OFF toggles.
-fn toggle_like_button(ui: &mut Ui, text: RichText, fill: Color32, border: Color32, min_size: egui::Vec2) -> Response {
-    ui.add(egui::Button::new(text).fill(fill).stroke(Stroke::new(1.5, border)).corner_radius(5).min_size(min_size))
-        .on_hover_cursor(CursorIcon::PointingHand)
+fn toggle_like_button(
+    ui: &mut Ui,
+    text: RichText,
+    fill: Color32,
+    border: Color32,
+    min_size: egui::Vec2,
+) -> Response {
+    ui.add(
+        egui::Button::new(text)
+            .fill(fill)
+            .stroke(Stroke::new(1.5, border))
+            .corner_radius(5)
+            .min_size(min_size),
+    )
+    .on_hover_cursor(CursorIcon::PointingHand)
 }
 
 /// Per-feature ACTIVÉ / ÉTEINT button (fixed width, like Qt).

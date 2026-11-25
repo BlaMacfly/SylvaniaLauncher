@@ -27,7 +27,10 @@ fn main() -> eframe::Result<()> {
     let viewport = egui::ViewportBuilder::default()
         .with_title(constants::WINDOW_TITLE)
         .with_inner_size([constants::MAIN_WINDOW_WIDTH, constants::MAIN_WINDOW_HEIGHT])
-        .with_min_inner_size([constants::MAIN_WINDOW_MIN_WIDTH, constants::MAIN_WINDOW_MIN_HEIGHT])
+        .with_min_inner_size([
+            constants::MAIN_WINDOW_MIN_WIDTH,
+            constants::MAIN_WINDOW_MIN_HEIGHT,
+        ])
         .with_icon(ui::app_icon());
 
     let options = eframe::NativeOptions {
@@ -56,22 +59,26 @@ fn init_logging() {
                 return;
             }
             use std::io::Write;
-            if let Ok(mut f) = self.0.lock() {
-                if let Some(f) = f.as_mut() {
-                    let _ = writeln!(
-                        f,
-                        "{} [{}] {}",
-                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                        r.level(),
-                        r.args()
-                    );
-                }
+            if let Ok(mut f) = self.0.lock()
+                && let Some(f) = f.as_mut()
+            {
+                let _ = writeln!(
+                    f,
+                    "{} [{}] {}",
+                    chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                    r.level(),
+                    r.args()
+                );
             }
         }
         fn flush(&self) {}
     }
     fn max_level() -> log::Level {
-        if cfg!(debug_assertions) { log::Level::Debug } else { log::Level::Warn }
+        if cfg!(debug_assertions) {
+            log::Level::Debug
+        } else {
+            log::Level::Warn
+        }
     }
     let file = std::fs::OpenOptions::new()
         .create(true)
@@ -91,7 +98,10 @@ fn set_app_user_model_id() {
     unsafe extern "system" {
         fn SetCurrentProcessExplicitAppUserModelID(app_id: *const u16) -> i32;
     }
-    let id: Vec<u16> = "sylvania.launcher".encode_utf16().chain(std::iter::once(0)).collect();
+    let id: Vec<u16> = "sylvania.launcher"
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
     // SAFETY: `id` is a valid NUL-terminated UTF-16 string that outlives the call.
     unsafe {
         SetCurrentProcessExplicitAppUserModelID(id.as_ptr());

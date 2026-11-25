@@ -36,7 +36,11 @@ pub struct DownloadParams {
 
 impl DownloadParams {
     /// WoW 3.3.5a client (Qt `configureForClient`).
-    pub fn for_client(destination: PathBuf, realmlist_address: Option<String>, language: &str) -> Self {
+    pub fn for_client(
+        destination: PathBuf,
+        realmlist_address: Option<String>,
+        language: &str,
+    ) -> Self {
         let address = realmlist_address
             .filter(|a| !a.trim().is_empty())
             .unwrap_or_else(|| constants::DEFAULT_REALMLIST.to_string());
@@ -84,7 +88,12 @@ pub struct Outcome {
 
 impl Outcome {
     pub fn cancelled(i18n: &I18n) -> Self {
-        Outcome { ok: false, message: i18n.t("Téléchargement annulé"), critical: false, client_dir: None }
+        Outcome {
+            ok: false,
+            message: i18n.t("Téléchargement annulé"),
+            critical: false,
+            client_dir: None,
+        }
     }
 }
 
@@ -114,7 +123,12 @@ impl DownloadTask {
         if let Err(e) = spawned {
             log::warn!("Impossible de lancer le téléchargement: {e}");
         }
-        DownloadTask { rx, cancel, i18n, finished: false }
+        DownloadTask {
+            rx,
+            cancel,
+            i18n,
+            finished: false,
+        }
     }
 
     /// Drains pending events (non-blocking). A worker that died without a
@@ -251,9 +265,19 @@ impl Worker {
                 if let Some(f) = remove {
                     let _ = std::fs::remove_file(f);
                 }
-                Outcome { ok: false, message, critical: true, client_dir: None }
+                Outcome {
+                    ok: false,
+                    message,
+                    critical: true,
+                    client_dir: None,
+                }
             }
-            Err(Fail::Plain(message)) => Outcome { ok: false, message, critical: false, client_dir: None },
+            Err(Fail::Plain(message)) => Outcome {
+                ok: false,
+                message,
+                critical: false,
+                client_dir: None,
+            },
         };
         let _ = self.tx.send(DlEvent::Finished(outcome));
     }
@@ -327,7 +351,9 @@ impl Worker {
             self.snap.speed = self.i18n.tf("Vitesse: %1/s", &[&self.fmt(bps)]);
             if bps > 0 && self.total_bytes > 0 {
                 let remaining = self.total_bytes.saturating_sub(received) / bps;
-                self.snap.eta = self.i18n.tf("Temps restant: %1", &[&util::format_duration(remaining)]);
+                self.snap.eta = self
+                    .i18n
+                    .tf("Temps restant: %1", &[&util::format_duration(remaining)]);
             }
         }
     }
@@ -340,13 +366,17 @@ impl Worker {
             self.snap.percent = Some(pct);
             self.snap.button_percent = Some(pct);
             self.snap.status = self.i18n.tf("Téléchargement en cours... %1%", &[&pct]);
-            self.snap.size = self.i18n.tf("Taille: %1 / %2", &[&self.fmt(received), &self.fmt(total)]);
+            self.snap.size = self
+                .i18n
+                .tf("Taille: %1 / %2", &[&self.fmt(received), &self.fmt(total)]);
         } else {
             // Size unknown (no Content-Length): busy bar + received bytes.
             self.snap.percent = None;
             self.snap.button_percent = None;
             self.snap.status = self.t("Téléchargement...");
-            self.snap.size = self.i18n.tf("Taille: %1 / %2", &[&self.fmt(received), &"--"]);
+            self.snap.size = self
+                .i18n
+                .tf("Taille: %1 / %2", &[&self.fmt(received), &"--"]);
         }
         self.update_speed(received);
         self.send(false);
@@ -358,7 +388,10 @@ impl Worker {
         }
         if e.is_connect() {
             let detail = format!("{e:?}").to_lowercase();
-            if detail.contains("dns") || detail.contains("resolve") || detail.contains("no such host") {
+            if detail.contains("dns")
+                || detail.contains("resolve")
+                || detail.contains("no such host")
+            {
                 return self.t("Serveur introuvable");
             }
             return self.t("Connexion refusée par le serveur");
@@ -371,8 +404,12 @@ impl Worker {
     fn single_stream(&mut self, disk_checked: bool) -> Result<(), Fail> {
         let path = self.p.archive_path();
         // Written straight to disk as it arrives, never buffered in memory.
-        let mut file = std::fs::File::create(&path)
-            .map_err(|_| Fail::Critical(self.t("Impossible de créer le fichier de téléchargement"), None))?;
+        let mut file = std::fs::File::create(&path).map_err(|_| {
+            Fail::Critical(
+                self.t("Impossible de créer le fichier de téléchargement"),
+                None,
+            )
+        })?;
 
         self.snap.status = self.t("Connexion au serveur...");
         self.send(true);
@@ -382,7 +419,10 @@ impl Worker {
             .send()
             .map_err(|e| Fail::Critical(self.net_error(&e), Some(path.clone())))?;
         if !resp.status().is_success() {
-            return Err(Fail::Critical(self.t("Erreur réseau: ") + &format!("HTTP {}", resp.status()), Some(path)));
+            return Err(Fail::Critical(
+                self.t("Erreur réseau: ") + &format!("HTTP {}", resp.status()),
+                Some(path),
+            ));
         }
         let total = resp.content_length().unwrap_or(0);
         // Size was unknown: gate on the server-announced size (done once).
@@ -398,9 +438,12 @@ impl Worker {
             if self.cancelled() {
                 return Err(Fail::Cancelled);
             }
-            let n = resp
-                .read(&mut buf)
-                .map_err(|e| Fail::Critical(self.t("Erreur réseau: ") + &e.to_string(), Some(path.clone())))?;
+            let n = resp.read(&mut buf).map_err(|e| {
+                Fail::Critical(
+                    self.t("Erreur réseau: ") + &e.to_string(),
+                    Some(path.clone()),
+                )
+            })?;
             if n == 0 {
                 break;
             }
@@ -447,10 +490,20 @@ impl Worker {
             .create(true)
             .truncate(false)
             .open(&path)
-            .map_err(|_| Fail::Critical(self.t("Impossible de créer le fichier de téléchargement"), None))?;
+            .map_err(|_| {
+                Fail::Critical(
+                    self.t("Impossible de créer le fichier de téléchargement"),
+                    None,
+                )
+            })?;
         file.set_len(offset)
             .and_then(|_| file.seek(SeekFrom::Start(offset)))
-            .map_err(|_| Fail::Critical(self.t("Impossible de préparer le fichier de téléchargement"), None))?;
+            .map_err(|_| {
+                Fail::Critical(
+                    self.t("Impossible de préparer le fichier de téléchargement"),
+                    None,
+                )
+            })?;
 
         if offset < expected {
             // Seed the speed baseline at the resume offset.
@@ -466,16 +519,23 @@ impl Worker {
                 if self.cancelled() {
                     return Err(Fail::Cancelled);
                 }
-                let (start, end) = segment_range(offset, expected, constants::DOWNLOAD_SEGMENT_BYTES);
+                let (start, end) =
+                    segment_range(offset, expected, constants::DOWNLOAD_SEGMENT_BYTES);
                 seg.clear();
-                let result = self.fetch_segment(&client, start, end, offset, &mut seg).and_then(|()| {
-                    // A short body is a failed segment: never commit partial data.
-                    if seg.len() as u64 == end - start + 1 {
-                        Ok(())
-                    } else {
-                        Err(SegError::Net(format!("{} / {}", seg.len(), end - start + 1)))
-                    }
-                });
+                let result = self
+                    .fetch_segment(&client, start, end, offset, &mut seg)
+                    .and_then(|()| {
+                        // A short body is a failed segment: never commit partial data.
+                        if seg.len() as u64 == end - start + 1 {
+                            Ok(())
+                        } else {
+                            Err(SegError::Net(format!(
+                                "{} / {}",
+                                seg.len(),
+                                end - start + 1
+                            )))
+                        }
+                    });
                 match result {
                     Ok(()) => {
                         file.write_all(&seg).map_err(|_| {
@@ -490,7 +550,9 @@ impl Worker {
                     }
                     Err(SegError::Cancelled) => return Err(Fail::Cancelled),
                     Err(SegError::NoRange) => {
-                        log::warn!("Le serveur ignore les requêtes Range: téléchargement en un flux");
+                        log::warn!(
+                            "Le serveur ignore les requêtes Range: téléchargement en un flux"
+                        );
                         drop(file);
                         return self.single_stream(true);
                     }
@@ -501,7 +563,8 @@ impl Worker {
                         if retries > constants::DOWNLOAD_SEGMENT_RETRIES {
                             // Archive kept on disk: the next attempt resumes.
                             return Err(Fail::Critical(
-                                self.i18n.tf("Erreur réseau pendant le téléchargement : %1", &[&why]),
+                                self.i18n
+                                    .tf("Erreur réseau pendant le téléchargement : %1", &[&why]),
                                 None,
                             ));
                         }
@@ -562,7 +625,9 @@ impl Worker {
             if self.cancelled() {
                 return Err(SegError::Cancelled);
             }
-            let n = resp.read(&mut buf).map_err(|e| SegError::Net(e.to_string()))?;
+            let n = resp
+                .read(&mut buf)
+                .map_err(|e| SegError::Net(e.to_string()))?;
             if n == 0 {
                 break;
             }
@@ -641,7 +706,9 @@ impl Worker {
                 return Err(Fail::Cancelled);
             }
             // The archive is kept so the user can retry.
-            return Err(Fail::Plain(self.i18n.tf("Erreur lors de l'extraction : %1", &[&e])));
+            return Err(Fail::Plain(
+                self.i18n.tf("Erreur lors de l'extraction : %1", &[&e]),
+            ));
         }
 
         self.snap.percent = Some(100);
@@ -701,11 +768,22 @@ pub fn free_disk_space(dir: &Path) -> Option<u64> {
             total_free: *mut u64,
         ) -> i32;
     }
-    let wide: Vec<u16> = dir.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let wide: Vec<u16> = dir
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
     let mut available = 0u64;
     // SAFETY: `wide` is NUL-terminated and outlives the call; the out pointer
     // is valid, the two optional ones are null.
-    let ok = unsafe { GetDiskFreeSpaceExW(wide.as_ptr(), &mut available, std::ptr::null_mut(), std::ptr::null_mut()) };
+    let ok = unsafe {
+        GetDiskFreeSpaceExW(
+            wide.as_ptr(),
+            &mut available,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+        )
+    };
     (ok != 0).then_some(available)
 }
 
@@ -720,7 +798,9 @@ pub fn find_client_exe(root: &Path) -> Option<PathBuf> {
     let target = constants::CLIENT_EXE_NAME.to_lowercase();
     let mut queue = std::collections::VecDeque::from([root.to_path_buf()]);
     while let Some(dir) = queue.pop_front() {
-        let Ok(rd) = std::fs::read_dir(&dir) else { continue };
+        let Ok(rd) = std::fs::read_dir(&dir) else {
+            continue;
+        };
         let mut subdirs = Vec::new();
         for entry in rd.flatten() {
             let Ok(ft) = entry.file_type() else { continue };
@@ -809,12 +889,19 @@ pub fn config_wtf_content(language: &str, realmlist_address: &str) -> String {
 
 /// Writes `<client_dir>/WTF/Config.wtf` atomically. Like the Qt text-mode
 /// write, lines end with CRLF on Windows.
-pub fn write_config_wtf(client_dir: &Path, language: &str, realmlist_address: &str) -> std::io::Result<()> {
+pub fn write_config_wtf(
+    client_dir: &Path,
+    language: &str,
+    realmlist_address: &str,
+) -> std::io::Result<()> {
     let mut content = config_wtf_content(language, realmlist_address);
     if cfg!(windows) {
         content = content.replace('\n', "\r\n");
     }
-    paths::write_atomic(&client_dir.join("WTF").join("Config.wtf"), content.as_bytes())
+    paths::write_atomic(
+        &client_dir.join("WTF").join("Config.wtf"),
+        content.as_bytes(),
+    )
 }
 
 #[cfg(test)]

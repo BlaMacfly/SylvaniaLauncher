@@ -39,7 +39,10 @@ impl AddonRegistry {
 
     /// A registry stored at `path`, loaded (missing/corrupt file = empty).
     pub fn open(path: PathBuf) -> Self {
-        let mut r = AddonRegistry { path, addons: BTreeMap::new() };
+        let mut r = AddonRegistry {
+            path,
+            addons: BTreeMap::new(),
+        };
         r.reload();
         r
     }
@@ -81,7 +84,10 @@ impl AddonRegistry {
     }
 
     pub fn all(&self) -> Vec<InstalledAddon> {
-        self.addons.iter().map(|(id, v)| from_json(id, Some(v))).collect()
+        self.addons
+            .iter()
+            .map(|(id, v)| from_json(id, Some(v)))
+            .collect()
     }
 
     /// Inserts or replaces a record, then persists atomically. Returns false
@@ -103,7 +109,11 @@ impl AddonRegistry {
     }
 
     fn save(&self) -> bool {
-        let map: Map<String, Value> = self.addons.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        let map: Map<String, Value> = self
+            .addons
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
         // 4-space indentation, like QJsonDocument::Indented.
         let mut out = Vec::new();
         let fmt = serde_json::ser::PrettyFormatter::with_indent(b"    ");
@@ -129,7 +139,12 @@ impl Default for AddonRegistry {
 }
 
 fn from_json(id: &str, value: Option<&Value>) -> InstalledAddon {
-    let s = |key: &str| value.and_then(|v| v.get(key)).and_then(Value::as_str).map(String::from);
+    let s = |key: &str| {
+        value
+            .and_then(|v| v.get(key))
+            .and_then(Value::as_str)
+            .map(String::from)
+    };
     InstalledAddon {
         id: s("id").unwrap_or_else(|| id.to_string()),
         name: s("name").unwrap_or_default(),
@@ -138,7 +153,13 @@ fn from_json(id: &str, value: Option<&Value>) -> InstalledAddon {
         folders: value
             .and_then(|v| v.get("folders"))
             .and_then(Value::as_array)
-            .map(|a| a.iter().filter_map(Value::as_str).filter(|f| !f.is_empty()).map(String::from).collect())
+            .map(|a| {
+                a.iter()
+                    .filter_map(Value::as_str)
+                    .filter(|f| !f.is_empty())
+                    .map(String::from)
+                    .collect()
+            })
             .unwrap_or_default(),
     }
 }
@@ -181,10 +202,16 @@ mod tests {
 
         let reloaded = AddonRegistry::open(path.clone());
         let all = reloaded.all();
-        assert_eq!(all.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), ["alpha", "zeta"]);
+        assert_eq!(
+            all.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(),
+            ["alpha", "zeta"]
+        );
         assert_eq!(reloaded.get("zeta"), sample("zeta"));
         assert_eq!(reloaded.installed_version("alpha"), "1.2");
-        assert_eq!(reloaded.folders("alpha"), vec!["alpha_A".to_string(), "alpha_B".to_string()]);
+        assert_eq!(
+            reloaded.folders("alpha"),
+            vec!["alpha_A".to_string(), "alpha_B".to_string()]
+        );
 
         // Qt-compatible schema.
         let raw: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
@@ -210,7 +237,10 @@ mod tests {
         let reg = AddonRegistry::open(path.clone());
         let dbm = reg.get("dbm");
         assert_eq!(dbm.id, "dbm"); // falls back to the key
-        assert_eq!(dbm.folders, vec!["DBM-Core".to_string(), "DBM-GUI".to_string()]);
+        assert_eq!(
+            dbm.folders,
+            vec!["DBM-Core".to_string(), "DBM-GUI".to_string()]
+        );
         assert!(reg.contains("odd"));
         assert!(reg.get("odd").folders.is_empty());
 
