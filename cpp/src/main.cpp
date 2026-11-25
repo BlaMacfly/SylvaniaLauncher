@@ -1,6 +1,6 @@
 /**
  * @file main.cpp
- * @brief Sylvania Launcher - World of Warcraft launcher (WotLK 3.3.5a + Legion 7.3.5)
+ * @brief Sylvania Launcher - World of Warcraft launcher (WotLK 3.3.5a)
  *
  * Main entry point for the C++ version of Sylvania Launcher.
  */
@@ -9,16 +9,12 @@
 #include <QIcon>
 #include <QDir>
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <shobjidl.h>
 #endif
 
-#include "core/GameEdition.h"
-#include "core/BuildInfoPatcher.h"
 #include "ui/MainWindow.h"
 #include "ui/DownloadDialog.h"
 #include "utils/PathUtils.h"
@@ -44,23 +40,15 @@ static int runDownloadSelfTest(QApplication& app, const QString& spec) {
         }
     });
 
-    GameEdition ed = GameEdition::legion();   // start from a real edition
-    ed.clientDownloadUrl = p[0];
-    ed.clientExpectedSize = p[1].toLongLong();
-    ed.clientExpectedSha256 = p[2].toLower();
-    ed.requireHashBeforeExtract = true;
     const qint64 seg = p[3].toLongLong();
     const QString dir = p[4];
 
     auto* dlg = new DownloadDialog(nullptr, QString());  // empty dest = no auto-start
-    dlg->configureForEdition(ed);
+    dlg->setDownloadUrl(p[0]);
+    dlg->setExpectedSize(p[1].toLongLong());
+    dlg->setExpectedSha256(p[2]);
     dlg->setSegmentSize(seg);
     dlg->setVerifyOnly(true);
-    // Optional 6th field: a per-chunk manifest path (tests the chunk-verified
-    // download path against a matching slice of the real client).
-    if (p.size() >= 6 && !p[5].isEmpty()) {
-        dlg->loadChunkManifestFromFile(p[5]);
-    }
 
     int rc = 1;
     QTextStream out(stdout);
@@ -74,20 +62,6 @@ static int runDownloadSelfTest(QApplication& app, const QString& spec) {
     dlg->startDownload(dir);
     app.exec();
     return rc;
-}
-
-// Reads the persisted active edition without spinning up a full ConfigManager,
-// so the correct taskbar icon is set before any window exists. The value is
-// validated by GameEdition::byId — garbage in config can never select an
-// unknown edition or be injected into an asset path.
-static const GameEdition& peekActiveEdition() {
-    QFile file(PathUtils::getConfigDir() + "/config.json");
-    QString id;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        id = doc.object().value("active_edition").toString();
-    }
-    return GameEdition::byId(id);
 }
 
 int main(int argc, char* argv[]) {
@@ -104,10 +78,7 @@ int main(int argc, char* argv[]) {
     app.setOrganizationDomain("sylvania-servergame.com");
 
 #ifdef Q_OS_WIN
-    // Windows: single edition-neutral AppUserModelID for taskbar grouping.
-    // The launcher hosts both WotLK and Legion, so the id is no longer tied
-    // to 3.3.5; the visible taskbar icon follows the active edition's window
-    // icon instead.
+    // Windows: explicit AppUserModelID for taskbar grouping.
     SetCurrentProcessExplicitAppUserModelID(L"sylvania.launcher");
 #endif
 
@@ -116,15 +87,10 @@ int main(int argc, char* argv[]) {
         if (arg.startsWith(QStringLiteral("--selftest-download="))) {
             return runDownloadSelfTest(app, arg.section('=', 1));
         }
-        if (arg.startsWith(QStringLiteral("--selftest-buildinfo="))) {
-            QString err;
-            return patchBuildInfoCdn(arg.section('=', 1), &err) ? 0 : 1;
-        }
     }
 
-    // Set application icon from the active edition's theme.
-    const GameEdition& edition = peekActiveEdition();
-    const QString iconPath = PathUtils::getAssetsDir() + "/" + edition.taskbarIconAsset;
+    // Set application icon.
+    const QString iconPath = PathUtils::getAssetsDir() + "/LogoSylvania/LogoSylvania256.ico";
     if (QFile::exists(iconPath)) {
         app.setWindowIcon(QIcon(iconPath));
     } else {

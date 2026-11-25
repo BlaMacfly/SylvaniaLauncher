@@ -13,7 +13,6 @@
 
 #include "ButtonStyles.h"
 
-struct GameEdition;
 class ConfigManager;
 class SoundManager;
 class NotesManager;
@@ -31,12 +30,9 @@ class AddonsWindow;
 /**
  * @brief Main window for Sylvania Launcher (v3.0)
  *
- * - "2 launchers en 1": a toggle switches the active GameEdition (WotLK ⇄
- *   Legion) in-process — window logo, taskbar icon, background, accent and
- *   all edition-bound data (path, realmlist, stats, addons) follow.
  * - Single primary action button (WowButton): Installer / Téléchargement /
- *   Jouer, driven by per-edition client detection.
- * - Layout: header (logo + edition/lang switches), info panels (server +
+ *   Jouer, driven by client detection.
+ * - Layout: header (logo + lang switch), info panels (server +
  *   stats), anchored primary action zone, secondary nav bar, footer. All
  *   Qt layouts, spacing from SylvaniaConstants, button styles from
  *   ButtonStyles (3 strict levels).
@@ -56,7 +52,6 @@ protected:
 
 private slots:
     void onPrimaryButtonClicked();   // Play or Install depending on state
-    void onEditionToggleClicked();
     void onHdButtonClicked();
     void onSettingsButtonClicked();
     void onNotesButtonClicked();
@@ -73,19 +68,13 @@ private slots:
 private:
     void setupUi();
     void connectSignals();
-    // Applies everything bound to the active edition: window title, logo,
-    // window/taskbar/tray icon, background, accent, HD gating, realmlist,
-    // stats and the primary button state. Called at startup and on toggle.
-    void applyEdition();
-    // Windows: force the running taskbar button to repaint with the edition
-    // icon (WM_SETICON). Qt's setWindowIcon doesn't always refresh a taskbar
-    // button once the app has been pinned. No-op on other platforms.
-    void applyTaskbarIcon(const QString& icoPath);
+    // Applies window title, logo, window/tray icon, background, realmlist,
+    // stats and the primary button state. Called once at startup.
+    void applyBranding();
     void applyTheme(const QString& bgName);
     ButtonStyles::ThemeTokens themeTokensFor(const QString& bgName) const;
     QString pickRandomBackground(const QString& exclude = QString()) const;
-    const GameEdition& activeEdition() const;
-    // Full path of the active edition's client exe, empty if not found.
+    // Full path of the client exe, empty if not found.
     QString clientExePath() const;
     // Refreshes the 3-state primary button from on-disk client detection.
     void refreshPrimaryState();
@@ -134,8 +123,7 @@ private:
 
     // Buttons — exactly one primary, a consistent secondary row, tertiary lang.
     WowButton* m_playButton = nullptr;        // primary (Install/Download/Play)
-    QPushButton* m_editionButton = nullptr;   // secondary (header, fixed spot)
-    QPushButton* m_hdButton = nullptr;        // secondary (WotLK only)
+    QPushButton* m_hdButton = nullptr;        // secondary
     QPushButton* m_settingsButton = nullptr;  // secondary
     QPushButton* m_notesButton = nullptr;     // secondary
     QPushButton* m_addonsButton = nullptr;    // secondary
@@ -164,7 +152,7 @@ private:
     QPixmap m_backgroundImage;
     QPixmap m_logoImage;
 
-    // Stats (per active edition)
+    // Stats
     int m_launchCount = 0;
     qint64 m_totalPlayTime = 0; // seconds
     QDateTime m_lastSession;

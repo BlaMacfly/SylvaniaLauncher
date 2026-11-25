@@ -1,6 +1,5 @@
 #include "SettingsDialog.h"
 #include "ConfigManager.h"
-#include "GameEdition.h"
 #include "Constants.h"
 #include "SoundManager.h"
 #include "PathUtils.h"
@@ -196,10 +195,6 @@ void SettingsDialog::setupUi() {
         }
     )");
     mainLayout->addWidget(m_downloadEnUsButton);
-    // The enUS language pack is a 3.3.5-only asset; hide the button for
-    // editions that don't ship it (e.g. Legion), mirroring the HD-patch gating.
-    m_downloadEnUsButton->setVisible(
-        GameEdition::byId(m_config->activeEditionId()).supportsEnUsPack);
 
     // Appearance section
     QLabel* appearanceTitle = new QLabel(tr("Apparence"), this);
@@ -212,9 +207,8 @@ void SettingsDialog::setupUi() {
     bgLabel->setStyleSheet("color: #ffffff; font-size: 12px;");
 
     m_backgroundCombo = new QComboBox(this);
-    // Populate from the ACTIVE edition's background pool (WotLK and Legion each
-    // have their own set). The base name doubles as the display label.
-    for (const QString& bg : GameEdition::byId(m_config->activeEditionId()).backgrounds) {
+    // The base name doubles as the display label.
+    for (const QString& bg : SylvaniaConstants::backgroundNames()) {
         m_backgroundCombo->addItem(bg, bg);
     }
     m_backgroundCombo->setStyleSheet(R"(
@@ -294,11 +288,8 @@ void SettingsDialog::setupUi() {
     )");
     mainLayout->addWidget(m_soundCheckbox);
 
-    // Patch Management Section: only for editions that support the HD patch
-    // (WotLK 3.3.5). Legion 7.3.5 already embeds those assets natively, so the
-    // whole section — master ON/OFF + per-feature toggles — is hidden there.
-    if (GameEdition::byId(m_config->activeEditionId()).supportsHdPatch
-        && !m_config->getWowPath().isEmpty()) {
+    // Patch Management Section (needs a configured client path).
+    if (!m_config->getWowPath().isEmpty()) {
         setupPatchUI(mainLayout);
     }
 

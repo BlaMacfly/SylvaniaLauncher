@@ -65,13 +65,9 @@ class ServerEditDialog : public QDialog {
     Q_OBJECT
 
 public:
-    // legionPortal = true switches the address field hint to Legion's
-    // "portal" semantics (Legion 7.3.5 connects via SET portal in Config.wtf,
-    // not realmlist.wtf).
     explicit ServerEditDialog(QWidget* parent = nullptr,
                               const QString& name = "",
-                              const QString& address = "",
-                              bool legionPortal = false);
+                              const QString& address = "");
 
     QString getName() const;
     QString getAddress() const;
@@ -80,7 +76,7 @@ private slots:
     void validate();
 
 private:
-    void setupUi(const QString& name, const QString& address, bool legionPortal);
+    void setupUi(const QString& name, const QString& address);
 
     class QLineEdit* m_nameEdit = nullptr;
     class QLineEdit* m_addressEdit = nullptr;

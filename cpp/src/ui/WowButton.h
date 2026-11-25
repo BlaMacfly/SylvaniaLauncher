@@ -3,10 +3,10 @@
 #include <QPushButton>
 
 /**
- * @brief Primary action button — a 3-state machine driven by the active
- *        edition's client detection (v3.0, Lot 2).
+ * @brief Primary action button — a 3-state machine driven by client
+ *        detection (v3.0, Lot 2).
  *
- *  - Install:     client exe not found at the edition's path → "INSTALLER",
+ *  - Install:     client exe not found at the configured path → "INSTALLER",
  *                 clicking starts the DownloadDialog flow.
  *  - Downloading: download/extraction in progress → label shows progress,
  *                 button disabled.

@@ -35,9 +35,7 @@ set(SOURCES
     src/core/HdPatchManager.cpp
     src/core/AddonRegistry.cpp
     src/core/AddonManifest.cpp
-    src/core/GameEdition.cpp
     src/core/ReminderService.cpp
-    src/core/BuildInfoPatcher.cpp
     src/ui/ButtonStyles.cpp
 )
 
@@ -58,9 +56,7 @@ set(HEADERS
     src/core/HdPatchManager.h
     src/core/AddonRegistry.h
     src/core/AddonManifest.h
-    src/core/GameEdition.h
     src/core/ReminderService.h
-    src/core/BuildInfoPatcher.h
     src/ui/ButtonStyles.h
 )
 

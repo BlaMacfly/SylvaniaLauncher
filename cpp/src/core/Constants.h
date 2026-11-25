@@ -76,39 +76,24 @@ inline constexpr const char* kEnUsPackUrl =
 inline constexpr long long kWotlkClientExpectedSize = 0;
 inline constexpr const char* kWotlkClientSha256 = "";
 
-// --- Legion 7.3.5 client --------------------------------------------------
-inline constexpr const char* kLegionClientUrl =
-    "https://legendesylvania.com/downloads/Legion7.3.5.tar.gz";
-// Official integrity data (server-side sha256sum + stat, confirmed against the
-// HTTP Content-Length). The download is verified size + SHA-256 BEFORE any
-// extraction; a mismatch aborts and deletes the file.
-inline constexpr long long kLegionClientExpectedSize = 47702669464LL;
-inline constexpr const char* kLegionClientSha256 =
-    "5d384ac788f985b7d767723c9b228378ee521d8d50500a5d5ee4864deed9af24";
-// Legion auth server. On Legion 7.3.5 realmlist.wtf is ignored; the client
-// connects via the SET portal line of WTF/Config.wtf (port 3724 is appended
-// automatically by the client). Written/patched before launch.
-inline constexpr const char* kLegionDefaultPortal = "164.132.43.2";
-// The placeholder portal that shipped in the very first v3.0 build, before the
-// real auth server was known. ConfigManager rewrites Legion entries still
-// carrying it to kLegionDefaultPortal (one-time, Legion-scoped) so early
-// configs pick up the correct value.
-inline constexpr const char* kLegionPlaceholderPortal = "sylvania-servergame.com";
+// --- WotLK 3.3.5a client identity -----------------------------------------
+inline constexpr const char* kClientDisplayName = "WoW 3.3.5a";
+inline constexpr const char* kWindowTitle =
+    "Sylvania Launcher - World of Warcraft 3.3.5";
+inline constexpr const char* kClientExeName = "Wow.exe";
+inline constexpr const char* kDefaultRealmName = "Sylvania";
+inline constexpr const char* kDefaultRealmlist = "set realmlist sylvania-servergame.com";
 
-// --- CASC CDN mirror (Legion 7.3.5) -------------------------------------
-// Blizzard's 7.3.5 CDN is dead (404), so the client can't stream missing
-// files. Before launch we repoint the "CDN Hosts"/"CDN Servers" fields of the
-// client's .build.info to our mirror (reverse-proxy to the wow.tools archive).
-// Change these two values if the mirror moves.
-inline constexpr const char* kCdnMirrorHost = "legendesylvania.com";
-inline constexpr const char* kCdnMirrorServers = "http://legendesylvania.com/";
-// Legion addon manifest (own list — never mixed with WotLK's). The recommended
-// addons live on legendesylvania.com; until a JSON manifest is published at
-// this URL the launcher falls back to the embedded copy (:/addons/manifest_legion).
-inline constexpr const char* kLegionAddonManifestUrl =
-    "https://legendesylvania.com/addons.json";
-// Host serving the Legion addon archives (validated before any download).
-inline constexpr const char* kLegionAddonHost = "legendesylvania.com";
+// --- Theme ----------------------------------------------------------------
+inline constexpr const char* kAccentColor = "#d4af37";   // WoW gold
+// Background pool (base file names under Asset/Background, without extension).
+inline QStringList backgroundNames() {
+    return {QStringLiteral("Alliance"), QStringLiteral("Arbre de Vie"),
+            QStringLiteral("Azeroth"), QStringLiteral("Horde"),
+            QStringLiteral("Ilidan"), QStringLiteral("Lich King"),
+            QStringLiteral("Ragnaros"), QStringLiteral("Taverne")};
+}
+inline constexpr const char* kDefaultBackground = "Azeroth";
 
 // --- Archive extraction -------------------------------------------------
 // Arguments passed to "powershell" to extract a ZIP.
@@ -143,46 +128,6 @@ inline QStringList extractArchiveArgs() {
            " & tar.exe -xf $src -C $dst 2>$null;"
            " if ($LASTEXITCODE -eq 0) { $ok=$true } };"
            "if ($ok) { exit 0 } else { exit 1 }";
-}
-
-// --- tar.gz extraction (Legion client) -----------------------------------
-// Expand-Archive cannot read .tar.gz, so the Legion client uses tar.exe
-// (bsdtar, shipped with Windows 10 >= 1803 / 11). Same security principle as
-// the ZIP path: SYL_SRC / SYL_DST flow through QProcess environment variables
-// and are never interpolated into the command string.
-
-// Extracts gzip+tar into the destination directory.
-//
-// Anti path-traversal: bsdtar (libarchive) is SECURE BY DEFAULT. Without the
-// -P / --absolute-paths flag it strips any leading "/" and refuses entries
-// that use ".." to escape the destination — so a single extraction pass is
-// safe. We deliberately do NOT pre-list the archive (tar -tzf) first: on a
-// multi-GB client that means fully decompressing the whole stream twice
-// (once to list, once to extract), which is slow enough to look like a hang.
-//
-// tar's stderr is intentionally NOT redirected to $null so a real failure
-// (disk space, unreadable entry, long path) is captured by the QProcess and
-// surfaced to the user instead of a blank error.
-//
-// --strip-components=1 drops the leading "./" component every entry carries
-// (the client archive is built with `tar czf x.tar.gz .`, so every path is
-// "./Wow.exe", "./Data/...", plus a bare "./" self-entry). Dropping it is a
-// no-op for the file layout — "./Wow.exe" and "Wow.exe" resolve to the same
-// place — but it removes the "./" self-entry, which is what broke extraction
-// to a drive root: bsdtar uses extended-length "\\?\" paths where "." is a
-// LITERAL name, so the self-entry became "\\?\G:\." and Windows rejected it
-// ("Can't create '\\?\G:\.': Permission denied"). All real files extracted,
-// but tar then exited non-zero and the whole install was reported as failed.
-inline QStringList extractTarGzArgs() {
-    return QStringList()
-        << "-NoProfile"
-        << "-ExecutionPolicy" << "Bypass"
-        << "-Command"
-        << "$src=$env:SYL_SRC; $dst=$env:SYL_DST;"
-           "if (-not (Test-Path -LiteralPath $dst)) {"
-           " New-Item -ItemType Directory -Force -Path $dst | Out-Null };"
-           "& tar.exe -xzf $src --strip-components=1 -C $dst;"
-           "exit $LASTEXITCODE";
 }
 
 }  // namespace SylvaniaConstants

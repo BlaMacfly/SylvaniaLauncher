@@ -12,21 +12,17 @@
 #include <QByteArray>
 #include <memory>
 
-struct GameEdition;
-
 /**
- * @brief Download dialog for a game client (edition-aware since v3.0)
+ * @brief Download dialog for the WoW 3.3.5a client (and the enUS pack)
  *
  * Features:
  * - HTTP download with progress, streamed straight to disk (no in-memory
- *   buffering — Legion clients weigh several GB)
+ *   buffering)
  * - Free-disk-space check before the download starts
  * - Speed and ETA display
- * - Mandatory integrity verification (size + SHA-256) BEFORE extraction;
- *   editions flagged requireHashBeforeExtract refuse to extract while the
- *   expected hash is unknown — never a silent "no verification"
- * - ZIP (Expand-Archive) or tar.gz (tar.exe) extraction, with an anti
- *   path-traversal pre-check on tar archives
+ * - Integrity verification (size + SHA-256) BEFORE extraction, when the
+ *   expected values are known
+ * - ZIP extraction (Expand-Archive, tar.exe fallback)
  */
 class DownloadDialog : public QDialog {
   Q_OBJECT
@@ -36,11 +32,13 @@ public:
                           const QString &destination = "");
   ~DownloadDialog() override;
 
-  // Pulls URL, archive format, expected size/hash and exe names from the
-  // edition descriptor. Must be called before startDownload().
-  void configureForEdition(const GameEdition &edition);
+  // Configures the dialog for the WoW 3.3.5a client (URL, expected size/hash,
+  // title). Must be called before startDownload().
+  void configureForClient();
 
   void setDownloadUrl(const QString &url) { m_downloadUrl = url; }
+  void setExpectedSize(qint64 bytes) { m_expectedSize = bytes; }
+  void setExpectedSha256(const QString &hex) { m_expectedSha256 = hex.toLower(); }
   void setWindowTitleText(const QString &title) { setWindowTitle(title); }
 
   void startDownload(const QString &directory = "");
@@ -51,12 +49,9 @@ public:
   // Stop after the integrity check succeeds (no extraction). Used by the
   // headless download self-test.
   void setVerifyOnly(bool v) { m_verifyOnly = v; }
-  // Self-test: load a per-chunk manifest from an arbitrary file path (call
-  // after configureForEdition, which sets the expected size used to validate).
-  void loadChunkManifestFromFile(const QString& path) { loadChunkManifest(path); }
   void setSkipConfigWtf(bool skip) { m_skipConfigWtf = skip; }
   void setLanguage(const QString &lang) { m_language = lang; }
-  // Address written into the generated launch config (realmList / portal).
+  // Address written into the generated Config.wtf (realmList).
   void setRealmlistAddress(const QString &address) { m_realmlistAddress = address; }
 
 signals:
@@ -68,8 +63,6 @@ signals:
 protected:
   void setupUi();
   void extractArchive(const QString &archivePath);
-  void extractZip(const QString &archivePath);
-  void extractTarGz(const QString &archivePath);
   void runExtractionProcess(const QString &archivePath, const QStringList &args);
   void onExtractionSucceeded(const QString &archivePath);
   void generateConfigWtf();
@@ -77,14 +70,12 @@ protected:
   bool checkDiskSpace(qint64 requiredBytes);
 
   // --- Download strategies ------------------------------------------------
-  // Single streamed GET (used when the total size is unknown, e.g. the WotLK
-  // enUS pack endpoint).
+  // Single streamed GET (used when the total size is unknown, e.g. the enUS
+  // pack endpoint).
   void startSingleStream();
-  // Resumable, segmented HTTP Range download (used for sized clients). Each
-  // segment is buffered in memory, verified against its per-chunk SHA-256
-  // (when a chunk manifest is present), committed to disk only once correct,
-  // and re-fetched if corrupted — so a rare corruption over a multi-hour
-  // download is repaired on the fly instead of discarding the whole file.
+  // Resumable, segmented HTTP Range download (used when the expected size is
+  // known). Each segment is buffered in memory, committed to disk once fully
+  // received, and re-fetched on a network error.
   void startSegmentedDownload();
   void requestNextSegment();
   void onSegmentFinished();
@@ -93,8 +84,6 @@ protected:
   bool commitSegmentBuffer();
   // Called once every byte is downloaded + verified.
   void onDownloadAssembled();
-  // Loads an embedded per-chunk SHA-256 manifest; sets m_haveChunks on success.
-  void loadChunkManifest(const QString &resourcePath);
   void updateDownloadUi();
 
   QString archivePath() const;
@@ -122,13 +111,9 @@ private:
   QString m_language = "fr";
   QString m_realmlistAddress;
 
-  // Edition parameters (defaults = historical WotLK behaviour).
-  QString m_editionId = "wotlk";
-  QString m_archiveFormat = "zip";       // "zip" | "tar.gz"
+  // Integrity data (configureForClient / self-test). Unknown by default.
   qint64 m_expectedSize = 0;             // 0 = unknown
   QString m_expectedSha256;              // empty = unknown
-  bool m_requireHash = false;            // true -> refuse extraction w/o hash
-  QStringList m_exeCandidates{QStringLiteral("Wow.exe")};
 
   qint64 m_totalBytes = 0;
   qint64 m_receivedBytes = 0;
@@ -142,14 +127,8 @@ private:
   // Segmented-download state.
   qint64 m_segmentSize = 0;        // 0 = SylvaniaConstants default
   qint64 m_downloadOffset = 0;     // bytes confirmed (verified) on disk
-  int m_segmentRetries = 0;        // consecutive failures/corruptions for the current chunk
-  QByteArray m_segBuffer;          // current segment, buffered until verified
-
-  // Per-chunk integrity manifest (embedded). When present, every segment is
-  // checked against m_chunkHashes[offset / m_chunkSize] before being committed.
-  bool m_haveChunks = false;
-  qint64 m_chunkSize = 0;
-  QStringList m_chunkHashes;       // lowercase hex SHA-256, one per chunk, in order
+  int m_segmentRetries = 0;        // consecutive failures for the current segment
+  QByteArray m_segBuffer;          // current segment, buffered until complete
 
   // UI Elements
   QLabel *m_statusLabel = nullptr;

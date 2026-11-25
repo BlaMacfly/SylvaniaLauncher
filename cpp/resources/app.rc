@@ -13,7 +13,7 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "CompanyName",      "Sylvania"
-            VALUE "FileDescription",  "Sylvania Launcher - World of Warcraft (WotLK 3.3.5 / Legion 7.3.5)"
+            VALUE "FileDescription",  "Sylvania Launcher - World of Warcraft 3.3.5a"
             VALUE "FileVersion",      "3.0.0.0"
             VALUE "InternalName",     "SylvaniaLauncher"
             VALUE "LegalCopyright",   "Copyright (C) 2026 Sylvania - GPLv3"

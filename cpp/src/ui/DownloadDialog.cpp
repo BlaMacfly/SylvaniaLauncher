@@ -1,6 +1,5 @@
 #include "DownloadDialog.h"
 #include "Constants.h"
-#include "GameEdition.h"
 #include "ConfigManager.h"
 
 #include <QVBoxLayout>
@@ -47,27 +46,19 @@ DownloadDialog::~DownloadDialog() {
     }
 }
 
-void DownloadDialog::configureForEdition(const GameEdition& edition) {
-    m_editionId = edition.id;
-    m_downloadUrl = edition.clientDownloadUrl;
-    m_archiveFormat = edition.archiveFormat;
-    m_expectedSize = edition.clientExpectedSize;
-    m_expectedSha256 = edition.clientExpectedSha256.toLower();
-    m_requireHash = edition.requireHashBeforeExtract;
-    m_exeCandidates = edition.clientExeCandidates;
+void DownloadDialog::configureForClient() {
+    m_downloadUrl = QString::fromUtf8(SylvaniaConstants::kWotlkClientUrl);
+    m_expectedSize = SylvaniaConstants::kWotlkClientExpectedSize;
+    m_expectedSha256 = QString::fromUtf8(SylvaniaConstants::kWotlkClientSha256).toLower();
     if (m_realmlistAddress.isEmpty()) {
-        m_realmlistAddress = edition.defaultRealmlist;
+        m_realmlistAddress = QString::fromUtf8(SylvaniaConstants::kDefaultRealmlist);
     }
-    // Embedded per-chunk integrity manifest (enables on-the-fly chunk repair).
-    loadChunkManifest(edition.chunkManifestResource);
-    setWindowTitle(tr("Téléchargement du Client — %1").arg(edition.displayName));
+    setWindowTitle(tr("Téléchargement du Client — %1")
+                       .arg(QString::fromUtf8(SylvaniaConstants::kClientDisplayName)));
 }
 
 QString DownloadDialog::archivePath() const {
-    const QString suffix = (m_archiveFormat == QLatin1String("tar.gz"))
-                               ? QStringLiteral(".tar.gz")
-                               : QStringLiteral(".zip");
-    return m_destination + "/SylvaniaClient_" + m_editionId + "_temp" + suffix;
+    return m_destination + "/SylvaniaClient_temp.zip";
 }
 
 void DownloadDialog::setupUi() {
@@ -226,8 +217,8 @@ void DownloadDialog::startDownload(const QString& directory) {
 
     m_speedTimer.start();
 
-    // Sized clients use the robust, resumable segmented downloader; endpoints
-    // of unknown size (e.g. the WotLK enUS pack) use a single stream.
+    // A known size enables the resumable segmented downloader; endpoints of
+    // unknown size (e.g. the enUS pack) use a single stream.
     if (m_expectedSize > 0) {
         startSegmentedDownload();
     } else {
@@ -271,66 +262,14 @@ void DownloadDialog::startSingleStream() {
 // ---------------------------------------------------------------------------
 // Segmented, resumable download (known size + server byte-range support)
 // ---------------------------------------------------------------------------
-void DownloadDialog::loadChunkManifest(const QString& resourcePath) {
-    m_haveChunks = false;
-    m_chunkHashes.clear();
-    m_chunkSize = 0;
-    if (resourcePath.isEmpty()) return;
-
-    QFile f(resourcePath);
-    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return;
-    const QList<QByteArray> lines = f.readAll().split('\n');
-    if (lines.isEmpty() || lines.first().trimmed() != "SYLCHUNKS1") return;
-
-    qint64 size = 0, chunk = 0;
-    int i = 1;
-    for (; i < lines.size(); ++i) {
-        const QByteArray l = lines[i].trimmed();
-        if (l.startsWith("size=")) size = l.mid(5).toLongLong();
-        else if (l.startsWith("chunk=")) chunk = l.mid(6).toLongLong();
-        else break;  // first non-header line = first hash
-    }
-    if (chunk <= 0) return;
-
-    QStringList hashes;
-    for (; i < lines.size(); ++i) {
-        const QByteArray l = lines[i].trimmed();
-        if (l.size() == 64) hashes << QString::fromLatin1(l).toLower();
-    }
-
-    // The manifest must describe exactly the client we expect.
-    if (size != m_expectedSize) {
-        qWarning() << "Manifeste de blocs ignoré: taille" << size << "!=" << m_expectedSize;
-        return;
-    }
-    const qint64 expectedCount = (size + chunk - 1) / chunk;
-    if (hashes.size() != expectedCount) {
-        qWarning() << "Manifeste de blocs ignoré: " << hashes.size()
-                   << "blocs au lieu de" << expectedCount;
-        return;
-    }
-
-    m_chunkSize = chunk;
-    m_chunkHashes = hashes;
-    m_segmentSize = chunk;    // one download segment == one verifiable chunk
-    m_haveChunks = true;
-    qDebug() << "Manifeste de blocs chargé:" << hashes.size() << "blocs de" << chunk << "octets";
-}
-
 void DownloadDialog::startSegmentedDownload() {
     qint64 existing = 0;
     const QFileInfo fi(archivePath());
     if (fi.exists()) existing = fi.size();
     if (existing > m_expectedSize) existing = 0;  // garbage -> restart fresh
-    // Resume must land on a whole-chunk boundary so each segment maps to one
-    // chunk hash; drop any partial trailing chunk from a previous run.
-    if (m_haveChunks && m_chunkSize > 0 && existing < m_expectedSize) {
-        existing = (existing / m_chunkSize) * m_chunkSize;
-    }
     m_downloadOffset = existing;
 
-    // ReadWrite keeps already-downloaded (and previously verified) bytes; we
-    // then trim to the aligned offset and append from there.
+    // ReadWrite keeps already-downloaded bytes; we then append from there.
     m_file = std::make_unique<QFile>(archivePath());
     if (!m_file->open(QIODevice::ReadWrite)) {
         failDownload(tr("Impossible de créer le fichier de téléchargement"));
@@ -380,8 +319,8 @@ void DownloadDialog::requestNextSegment() {
 
     m_reply = m_networkManager->get(request);
 
-    // Buffer the segment in memory; it is committed to disk only after passing
-    // its chunk hash. The UI tracks committed + in-flight bytes.
+    // Buffer the segment in memory; it is committed to disk once complete.
+    // The UI tracks committed + in-flight bytes.
     connect(m_reply, &QNetworkReply::readyRead, this, [this]() {
         if (m_reply) { m_segBuffer.append(m_reply->readAll()); updateDownloadUi(); }
     });
@@ -414,9 +353,9 @@ void DownloadDialog::onSegmentFinished() {
     reply->deleteLater();
     if (m_cancelled) return;
 
-    // Re-fetch the SAME chunk on failure/corruption (bounded retries). Because
-    // unverified bytes are never written, a retry simply re-requests the chunk
-    // from m_downloadOffset — no duplicated or skipped bytes.
+    // Re-fetch the SAME segment on failure (bounded retries). Because partial
+    // segments are never written, a retry simply re-requests the segment from
+    // m_downloadOffset — no duplicated or skipped bytes.
     auto retryOrFail = [this](const QString& why) {
         m_segBuffer.clear();
         if (++m_segmentRetries > SylvaniaConstants::kDownloadSegmentRetries) {
@@ -432,23 +371,6 @@ void DownloadDialog::onSegmentFinished() {
         return;
     }
 
-    // Verify this segment against its expected chunk hash (the core fix: a
-    // corrupted chunk is caught and re-fetched immediately instead of failing
-    // the whole multi-GB download at the very end).
-    if (m_haveChunks) {
-        const qint64 idx = m_downloadOffset / m_chunkSize;
-        const QString got = QString::fromLatin1(
-            QCryptographicHash::hash(m_segBuffer, QCryptographicHash::Sha256).toHex());
-        const QString exp = idx < m_chunkHashes.size() ? m_chunkHashes.at(idx) : QString();
-        if (idx >= m_chunkHashes.size() || got != exp) {
-            qWarning() << "Bloc" << idx << "invalide (tentative" << m_segmentRetries
-                       << "): reçu" << got.left(12) << "attendu" << exp.left(12);
-            retryOrFail(tr("Bloc %1 corrompu après plusieurs tentatives "
-                           "(le manifeste est peut-être périmé).").arg(idx));
-            return;
-        }
-    }
-
     if (!commitSegmentBuffer()) return;  // disk error already reported
     m_segmentRetries = 0;
     updateDownloadUi();
@@ -458,31 +380,13 @@ void DownloadDialog::onSegmentFinished() {
 void DownloadDialog::onDownloadAssembled() {
     if (m_file) { m_file->flush(); m_file->close(); }
 
-    // Cheap final size sanity (the per-chunk hashes already guarantee content).
+    // Cheap final size sanity before hashing.
     if (m_expectedSize > 0 && QFileInfo(archivePath()).size() != m_expectedSize) {
         failDownload(tr("Fichier corrompu: taille inattendue. Le fichier a été supprimé."),
                      archivePath());
         return;
     }
 
-    if (m_haveChunks) {
-        // Every chunk passed its hash → the whole file is correct by
-        // construction; skip the slow multi-GB re-hash and go to extraction.
-        if (m_verifyOnly) {
-            emit downloadFinished(true, tr("Intégrité vérifiée."));
-            accept();
-            return;
-        }
-        m_progressBar->setRange(0, 100);
-        m_progressBar->setValue(100);
-        emit progressChanged(100);
-        m_statusLabel->setText(tr("Intégrité vérifiée (par blocs). Extraction…"));
-        QCoreApplication::processEvents();
-        QTimer::singleShot(200, this, [this]() { extractArchive(archivePath()); });
-        return;
-    }
-
-    // No chunk manifest → fall back to a whole-file hash check.
     showVerifyingState();
     verifyIntegrity(archivePath());
 }
@@ -598,20 +502,10 @@ void DownloadDialog::verifyIntegrity(const QString& filePath) {
         }
     }
 
-    // 2) SHA-256 — REQUIRED for editions flagged requireHashBeforeExtract:
-    // if the expected hash is not configured, the archive is never extracted
-    // (no silent degradation to "pas de vérif").
+    // 2) SHA-256, when known. The historical endpoint publishes no hash yet;
+    // log and continue.
     if (m_expectedSha256.isEmpty()) {
-        if (m_requireHash) {
-            failDownload(tr("Le hash SHA-256 attendu du client n'est pas encore configuré: "
-                            "extraction refusée par sécurité. Le fichier téléchargé a été "
-                            "supprimé. Mettez le launcher à jour."),
-                         filePath);
-            return;
-        }
-        // Legacy WotLK endpoint publishes no hash; log and continue.
-        qWarning() << "Aucun hash attendu configuré pour" << m_editionId
-                   << "- extraction sans comparaison.";
+        qWarning() << "Aucun hash attendu configuré - extraction sans comparaison.";
     }
 
     QFutureWatcher<QByteArray>* watcher = new QFutureWatcher<QByteArray>(this);
@@ -669,21 +563,7 @@ void DownloadDialog::verifyIntegrity(const QString& filePath) {
 }
 
 void DownloadDialog::extractArchive(const QString& archivePath) {
-    if (m_archiveFormat == QLatin1String("tar.gz")) {
-        // Single pass: bsdtar is safe-by-default (no -P), so we don't pre-list
-        // the archive — that would decompress a multi-GB client twice.
-        extractTarGz(archivePath);
-    } else {
-        extractZip(archivePath);
-    }
-}
-
-void DownloadDialog::extractZip(const QString& archivePath) {
     runExtractionProcess(archivePath, SylvaniaConstants::extractArchiveArgs());
-}
-
-void DownloadDialog::extractTarGz(const QString& archivePath) {
-    runExtractionProcess(archivePath, SylvaniaConstants::extractTarGzArgs());
 }
 
 void DownloadDialog::runExtractionProcess(const QString& archivePath, const QStringList& args) {
@@ -715,7 +595,7 @@ void DownloadDialog::runExtractionProcess(const QString& archivePath, const QStr
         if (exitStatus == QProcess::NormalExit && exitCode == 0) {
             onExtractionSucceeded(archivePath);
         } else {
-            // Surface the real reason: tar's stderr (disk space, unreadable
+            // Surface the real reason: the extractor's stderr (disk space, unreadable
             // entry, path too long...) plus the exit code. The archive is kept
             // so the user can retry the extraction without re-downloading.
             QString detail = QString::fromLocal8Bit(process->readAllStandardError()).trimmed();
@@ -746,7 +626,7 @@ void DownloadDialog::onExtractionSucceeded(const QString& archivePath) {
     // Remove temp archive
     QFile::remove(archivePath);
 
-    // Generate the launch config if not skipped
+    // Generate Config.wtf if not skipped
     if (!m_skipConfigWtf) {
         generateConfigWtf();
     }
@@ -834,8 +714,9 @@ QString DownloadDialog::formatDuration(qint64 seconds) const {
 void DownloadDialog::generateConfigWtf() {
     QString targetPath = m_destination;
 
-    // Search for the actual client directory (containing the edition's exe).
-    QDirIterator it(m_destination, m_exeCandidates, QDir::Files, QDirIterator::Subdirectories);
+    // Search for the actual client directory (containing Wow.exe).
+    QDirIterator it(m_destination, {QString::fromUtf8(SylvaniaConstants::kClientExeName)},
+                    QDir::Files, QDirIterator::Subdirectories);
     if (it.hasNext()) {
         targetPath = QFileInfo(it.next()).absolutePath();
     }
@@ -856,75 +737,62 @@ void DownloadDialog::generateConfigWtf() {
     }
     QTextStream out(&configFile);
 
-    if (m_editionId == QLatin1String("legion")) {
-        // Legion (7.3.5) launch config: the login server is SET portal; the
-        // 3.3.5 realmList/realmName keys don't apply.
-        out << "SET portal \"" << host << "\"\n";
-        out << "SET textLocale \"" << locale << "\"\n";
-        out << "SET audioLocale \"" << locale << "\"\n";
-        out << "SET agentUILocale \"" << locale << "\"\n";
-        out << "SET readTOS \"1\"\n";
-        out << "SET readEULA \"1\"\n";
-        out << "SET gxWindow \"1\"\n";
-        out << "SET gxMaximize \"1\"\n";
-    } else {
-        out << "SET locale \"" << locale << "\"\n";
-        out << "SET hwDetect \"0\"\n";
-        out << "SET gxRefresh \"60\"\n";
-        out << "SET gxMultisampleQuality \"0.000000\"\n";
-        out << "SET gxWindow \"1\"\n";
-        out << "SET videoOptionsVersion \"3\"\n";
-        out << "SET movie \"0\"\n";
-        out << "SET Gamma \"1.000000\"\n";
-        out << "SET readTOS \"1\"\n";
-        out << "SET readEULA \"1\"\n";
-        out << "SET readTerminationWithoutNotice \"1\"\n";
-        out << "SET showToolsUI \"1\"\n";
-        out << "SET Sound_OutputDriverName \"System Default\"\n";
-        out << "SET Sound_MusicVolume \"0.40000000596046\"\n";
-        out << "SET Sound_AmbienceVolume \"0.60000002384186\"\n";
-        out << "SET componentTextureLevel \"9\"\n";
-        out << "SET farclip \"1277\"\n";
-        out << "SET projectedTextures \"1\"\n";
-        out << "SET weatherDensity \"3\"\n";
-        out << "SET accounttype \"LK\"\n";
-        out << "SET mouseSpeed \"1.2000000476837\"\n";
-        out << "SET gameTip \"16\"\n";
-        out << "SET uiScale \"0.75999999046326\"\n";
-        out << "SET useUiScale \"1\"\n";
-        out << "SET checkAddonVersion \"0\"\n";
-        out << "SET Sound_VoiceChatInputDriverName \"Réglage du système\"\n";
-        out << "SET Sound_VoiceChatOutputDriverName \"Réglage du système\"\n";
-        out << "SET movieSubtitle \"1\"\n";
-        out << "SET Sound_SFXVolume \"0.5\"\n";
-        out << "SET dbCompress \"0\"\n";
-        out << "SET gxResolution \"1920x1080\"\n";
-        out << "SET textureFilteringMode \"5\"\n";
-        out << "SET groundEffectDist \"140\"\n";
-        out << "SET environmentDetail \"1.5\"\n";
-        out << "SET timingTestError \"0\"\n";
-        out << "SET windowResizeLock \"1\"\n";
-        out << "SET particleDensity \"1\"\n";
-        out << "SET mapShadows \"0\"\n";
-        out << "SET vertexShaders \"0\"\n";
-        out << "SET pixelShaders \"0\"\n";
-        out << "SET M2UseShaders \"0\"\n";
-        out << "SET M2Faster \"3\"\n";
-        out << "SET shadowinstancing \"0\"\n";
-        out << "SET objectFade \"0\"\n";
-        out << "SET timingMethod \"2\"\n";
-        out << "SET ffxSpecial \"0\"\n";
-        out << "SET groundEffectDensity \"64\"\n";
-        out << "SET realmList \"" << host << "\"\n";
-        out << "SET realmName \"The Kingdom of Sylvania\"\n";
-        out << "SET specular \"1\"\n";
-        out << "SET Sound_MasterVolume \"0.60000002384186\"\n";
-        out << "SET Sound_ZoneMusicNoDelay \"1\"\n";
-        out << "SET gxTripleBuffer \"1\"\n";
-        out << "SET gxMultisample \"8\"\n";
-        out << "SET shadowLevel \"0\"\n";
-        out << "SET extShadowQuality \"5\"\n";
-    }
+    out << "SET locale \"" << locale << "\"\n";
+    out << "SET hwDetect \"0\"\n";
+    out << "SET gxRefresh \"60\"\n";
+    out << "SET gxMultisampleQuality \"0.000000\"\n";
+    out << "SET gxWindow \"1\"\n";
+    out << "SET videoOptionsVersion \"3\"\n";
+    out << "SET movie \"0\"\n";
+    out << "SET Gamma \"1.000000\"\n";
+    out << "SET readTOS \"1\"\n";
+    out << "SET readEULA \"1\"\n";
+    out << "SET readTerminationWithoutNotice \"1\"\n";
+    out << "SET showToolsUI \"1\"\n";
+    out << "SET Sound_OutputDriverName \"System Default\"\n";
+    out << "SET Sound_MusicVolume \"0.40000000596046\"\n";
+    out << "SET Sound_AmbienceVolume \"0.60000002384186\"\n";
+    out << "SET componentTextureLevel \"9\"\n";
+    out << "SET farclip \"1277\"\n";
+    out << "SET projectedTextures \"1\"\n";
+    out << "SET weatherDensity \"3\"\n";
+    out << "SET accounttype \"LK\"\n";
+    out << "SET mouseSpeed \"1.2000000476837\"\n";
+    out << "SET gameTip \"16\"\n";
+    out << "SET uiScale \"0.75999999046326\"\n";
+    out << "SET useUiScale \"1\"\n";
+    out << "SET checkAddonVersion \"0\"\n";
+    out << "SET Sound_VoiceChatInputDriverName \"Réglage du système\"\n";
+    out << "SET Sound_VoiceChatOutputDriverName \"Réglage du système\"\n";
+    out << "SET movieSubtitle \"1\"\n";
+    out << "SET Sound_SFXVolume \"0.5\"\n";
+    out << "SET dbCompress \"0\"\n";
+    out << "SET gxResolution \"1920x1080\"\n";
+    out << "SET textureFilteringMode \"5\"\n";
+    out << "SET groundEffectDist \"140\"\n";
+    out << "SET environmentDetail \"1.5\"\n";
+    out << "SET timingTestError \"0\"\n";
+    out << "SET windowResizeLock \"1\"\n";
+    out << "SET particleDensity \"1\"\n";
+    out << "SET mapShadows \"0\"\n";
+    out << "SET vertexShaders \"0\"\n";
+    out << "SET pixelShaders \"0\"\n";
+    out << "SET M2UseShaders \"0\"\n";
+    out << "SET M2Faster \"3\"\n";
+    out << "SET shadowinstancing \"0\"\n";
+    out << "SET objectFade \"0\"\n";
+    out << "SET timingMethod \"2\"\n";
+    out << "SET ffxSpecial \"0\"\n";
+    out << "SET groundEffectDensity \"64\"\n";
+    out << "SET realmList \"" << host << "\"\n";
+    out << "SET realmName \"The Kingdom of Sylvania\"\n";
+    out << "SET specular \"1\"\n";
+    out << "SET Sound_MasterVolume \"0.60000002384186\"\n";
+    out << "SET Sound_ZoneMusicNoDelay \"1\"\n";
+    out << "SET gxTripleBuffer \"1\"\n";
+    out << "SET gxMultisample \"8\"\n";
+    out << "SET shadowLevel \"0\"\n";
+    out << "SET extShadowQuality \"5\"\n";
     out.flush();
     configFile.commit();
 }

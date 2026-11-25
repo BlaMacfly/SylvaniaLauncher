@@ -10,8 +10,6 @@
 #include "SoundManager.h"
 #include "NotesManager.h"
 #include "ReminderService.h"
-#include "GameEdition.h"
-#include "BuildInfoPatcher.h"
 #include "PathUtils.h"
 #include "HdPatchManager.h"
 #include "Constants.h"
@@ -36,10 +34,6 @@
 #include <QScreen>
 #include <QGuiApplication>
 #include <QSystemTrayIcon>
-
-#ifdef Q_OS_WIN
-#include <windows.h>
-#endif
 
 namespace {
 
@@ -82,11 +76,6 @@ Palette paletteFor(const QString& bgName) {
         pal = {"rgba(0, 0, 0, 150)", "#5a4a2d", "#ffffff", "#7ec8e3",
                "#4a7c3f", "#3a6a2f", "#2a5a1f", "#5a8c4f",
                "#5a4a3d", "#4a3a2d", "#3a2a1d", "#6a5a4d"};
-    } else if (bgName == "Legion") {
-        // Fel-green Legion theme (fixed background, edition accent).
-        pal = {"rgba(8, 24, 8, 190)", "#2f7a1e", "#eaffea", "#9cf07a",
-               "#3c9a26", "#2f7a1e", "#1f5512", "#76e84c",
-               "#2d3a2a", "#22301f", "#172414", "#4a6a40"};
     } else { // Azeroth or Default
         pal = {"rgba(230, 210, 170, 200)", "#5a4a2d", "#3a2a1d", "#5a4a2d",
                "#4a7c3f", "#3a6a2f", "#2a5a1f", "#5a8c4f",
@@ -116,7 +105,7 @@ MainWindow::MainWindow(QWidget* parent)
     connectSignals();
 
     // Tray icon: hosts reminder toasts and restores the window on click.
-    // Created before applyEdition() so the edition icon lands on it too.
+    // Created before applyBranding() so the icon lands on it too.
     m_trayIcon = new QSystemTrayIcon(this);
     m_trayIcon->setToolTip(QStringLiteral("Sylvania Launcher"));
     connect(m_trayIcon, &QSystemTrayIcon::activated, this,
@@ -146,14 +135,14 @@ MainWindow::MainWindow(QWidget* parent)
     if (currentLang.isEmpty()) currentLang = "fr";
     changeLanguage(currentLang, true); // true means initial, so we DON'T check for enUS yet
 
-    // Background on launch: if the random toggle is ON, pick a fresh one from
-    // the active edition's pool (different from last time); otherwise keep the
-    // saved per-edition background. Applied by applyEdition() just below.
+    // Background on launch: if the random toggle is ON, pick a fresh one
+    // (different from last time); otherwise keep the saved background.
+    // Applied by applyBranding() just below.
     if (m_config->isRandomBackgroundEnabled()) {
         m_config->setBackground(pickRandomBackground(m_config->getBackground()));
     }
 
-    applyEdition();
+    applyBranding();
 
     // Restore the last window size/position (or center at the default size).
     restoreWindowGeometry();
@@ -161,14 +150,8 @@ MainWindow::MainWindow(QWidget* parent)
 
 MainWindow::~MainWindow() = default;
 
-const GameEdition& MainWindow::activeEdition() const {
-    return GameEdition::byId(m_config->activeEditionId());
-}
-
 QString MainWindow::pickRandomBackground(const QString& exclude) const {
-    // Pick from the ACTIVE edition's own background pool (WotLK and Legion each
-    // have their own set — never mixed).
-    const QStringList& backgrounds = activeEdition().backgrounds;
+    const QStringList backgrounds = SylvaniaConstants::backgroundNames();
     if (backgrounds.isEmpty()) return QString();
     if (backgrounds.size() == 1) return backgrounds.first();
     QString chosen = exclude;
@@ -179,23 +162,22 @@ QString MainWindow::pickRandomBackground(const QString& exclude) const {
 }
 
 // ---------------------------------------------------------------------------
-// Edition handling ("2 launchers en 1")
+// Branding
 // ---------------------------------------------------------------------------
 
-void MainWindow::applyEdition() {
-    const GameEdition& edition = activeEdition();
+void MainWindow::applyBranding() {
     const QString assets = PathUtils::getAssetsDir();
 
-    setWindowTitle(edition.windowTitle);
+    setWindowTitle(QString::fromUtf8(SylvaniaConstants::kWindowTitle));
 
     // Logo (header)
-    const QString logoPath = assets + "/" + edition.logoAsset;
+    const QString logoPath = assets + "/sylvania_logo.png";
     m_logoImage = QPixmap();
     if (QFile::exists(logoPath)) {
         m_logoImage.load(logoPath);
     }
     if (m_logoImage.isNull()) {
-        // Fallback to the embedded WotLK logo so the header never goes blank.
+        // Fallback to the embedded logo so the header never goes blank.
         m_logoImage.load(QStringLiteral(":/logo"));
     }
     if (!m_logoImage.isNull() && m_logoLabel) {
@@ -203,101 +185,17 @@ void MainWindow::applyEdition() {
             m_logoLabel->maximumHeight(), Qt::SmoothTransformation));
     }
 
-    // Window + taskbar + tray icon: on Windows the taskbar follows the
-    // top-level window icon, so an in-process swap is enough — no restart.
-    const QString iconPath = assets + "/" + edition.taskbarIconAsset;
+    // Window + taskbar + tray icon.
+    const QString iconPath = assets + "/LogoSylvania/LogoSylvania256.ico";
     QIcon icon = QFile::exists(iconPath) ? QIcon(iconPath) : QIcon(QStringLiteral(":/icon"));
     setWindowIcon(icon);
     qApp->setWindowIcon(icon);
     if (m_trayIcon) m_trayIcon->setIcon(icon);
-    applyTaskbarIcon(iconPath);
 
-    // Background: each edition has its own dynamic pool. getBackground() is
-    // per-edition, so this restores the edition's last-used background; the
-    // image + palette are applied by applyTheme.
+    // Background image + palette.
     applyTheme(m_config->getBackground());
 
-    // HD patch is a 3.3.5-only feature: gated, not removed. Same slot in the
-    // nav bar in both modes — controls never move between editions.
-    m_hdButton->setVisible(edition.supportsHdPatch);
-
     retranslateUi();
-}
-
-void MainWindow::applyTaskbarIcon(const QString& icoPath) {
-#ifdef Q_OS_WIN
-    // The pinned taskbar button is bound to the AppUserModelID and Qt's
-    // setWindowIcon() doesn't reliably repaint it on an in-process edition
-    // switch. Sending WM_SETICON with a freshly loaded HICON forces Windows to
-    // refresh the running button's icon. Previous HICONs are destroyed so we
-    // don't leak one per switch.
-    static HICON s_big = nullptr;
-    static HICON s_small = nullptr;
-
-    if (!QFile::exists(icoPath)) return;
-    const std::wstring path = QDir::toNativeSeparators(icoPath).toStdWString();
-
-    HICON big = static_cast<HICON>(LoadImageW(nullptr, path.c_str(), IMAGE_ICON,
-                                              0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE));
-    HICON small = static_cast<HICON>(LoadImageW(nullptr, path.c_str(), IMAGE_ICON,
-                                                GetSystemMetrics(SM_CXSMICON),
-                                                GetSystemMetrics(SM_CYSMICON),
-                                                LR_LOADFROMFILE));
-    const HWND hwnd = reinterpret_cast<HWND>(winId());
-    if (big) {
-        SendMessageW(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(big));
-        if (s_big) DestroyIcon(s_big);
-        s_big = big;
-    }
-    if (small) {
-        SendMessageW(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(small));
-        if (s_small) DestroyIcon(s_small);
-        s_small = small;
-    }
-#else
-    Q_UNUSED(icoPath);
-#endif
-}
-
-void MainWindow::onEditionToggleClicked() {
-    if (m_downloadInProgress ||
-        (m_hdPatchManager && m_hdPatchManager->isInstalling())) {
-        QMessageBox::information(this, tr("Changement d'édition"),
-            tr("Impossible de changer d'édition pendant une installation."));
-        return;
-    }
-
-    m_soundManager->play("toggle");
-
-    // Close the running play session against the edition that owns it.
-    if (m_wowRunning && m_sessionStartTime.isValid()) {
-        m_totalPlayTime += m_sessionStartTime.secsTo(QDateTime::currentDateTime());
-        m_wowRunning = false;
-        m_sessionStartTime = QDateTime();
-    }
-    saveStats();  // persist stats of the edition we're leaving
-
-    const QString next = (m_config->activeEditionId() == GameEdition::wotlk().id)
-                             ? GameEdition::legion().id
-                             : GameEdition::wotlk().id;
-    m_config->setActiveEditionId(next);
-    m_config->save();
-
-    // Edition-bound child windows reload their data lazily on next open.
-    if (m_addonsWindow) {
-        m_addonsWindow->close();
-        m_addonsWindow->deleteLater();
-        m_addonsWindow = nullptr;
-    }
-    if (m_realmlistWindow) {
-        m_realmlistWindow->close();
-        m_realmlistWindow->deleteLater();
-        m_realmlistWindow = nullptr;
-    }
-    m_hdPatchManager.reset();
-
-    loadStats();
-    applyEdition();  // theme + icon + realmlist + stats + primary state
 }
 
 // ---------------------------------------------------------------------------
@@ -306,7 +204,7 @@ void MainWindow::onEditionToggleClicked() {
 
 ButtonStyles::ThemeTokens MainWindow::themeTokensFor(const QString& bgName) const {
     const Palette pal = paletteFor(bgName);
-    const GameEdition& edition = activeEdition();
+    const QString accent = QString::fromUtf8(SylvaniaConstants::kAccentColor);
 
     ButtonStyles::ThemeTokens t;
     t.primary1 = pal.p1; t.primary2 = pal.p2; t.primary3 = pal.p3;
@@ -315,22 +213,22 @@ ButtonStyles::ThemeTokens MainWindow::themeTokensFor(const QString& bgName) cons
     t.secondaryBorder = pal.sBorder;
     t.primaryText = QStringLiteral("#ffffff");
     t.secondaryText = (bgName == QLatin1String("Azeroth")) ? QStringLiteral("#ffffff")
-                                                           : edition.accentColor;
-    t.accent = edition.accentColor;
+                                                           : accent;
+    t.accent = accent;
     return t;
 }
 
 void MainWindow::applyTheme(const QString& bgName) {
-    // Load the chosen background image from the ACTIVE edition's pool. Tries
-    // .jpg then .png, falling back to the first background of the edition, then
-    // to the embedded resource, so the window never paints blank.
-    const GameEdition& edition = activeEdition();
-    const QString bgRoot = PathUtils::getAssetsDir() + "/" + edition.backgroundDir + "/";
+    // Load the chosen background image. Tries .jpg then .png, falling back to
+    // the default background, then to the embedded resource, so the window
+    // never paints blank.
+    const QString bgRoot = PathUtils::getAssetsDir() + "/Background/";
+    const QString fallback = QString::fromUtf8(SylvaniaConstants::kDefaultBackground);
     QString bgPath = bgRoot + bgName + ".jpg";
     if (!QFile::exists(bgPath)) bgPath = bgRoot + bgName + ".png";
-    if (!QFile::exists(bgPath) && !edition.backgrounds.isEmpty()) {
-        bgPath = bgRoot + edition.backgrounds.first() + ".jpg";
-        if (!QFile::exists(bgPath)) bgPath = bgRoot + edition.backgrounds.first() + ".png";
+    if (!QFile::exists(bgPath)) {
+        bgPath = bgRoot + fallback + ".jpg";
+        if (!QFile::exists(bgPath)) bgPath = bgRoot + fallback + ".png";
     }
     if (QFile::exists(bgPath)) {
         m_backgroundImage.load(bgPath);
@@ -339,12 +237,9 @@ void MainWindow::applyTheme(const QString& bgName) {
     }
     update(); // Trigger repaint
 
-    // Palette: Legion forces one fel palette for every background; WotLK picks
-    // per background name.
-    const QString paletteKey = edition.backgroundPaletteKey.isEmpty()
-                                   ? bgName : edition.backgroundPaletteKey;
-    const Palette pal = paletteFor(paletteKey);
-    const ButtonStyles::ThemeTokens tokens = themeTokensFor(paletteKey);
+    // Palette chosen per background name.
+    const Palette pal = paletteFor(bgName);
+    const ButtonStyles::ThemeTokens tokens = themeTokensFor(bgName);
 
     // Panels
     const QString panelStyle = QString(
@@ -384,7 +279,7 @@ void MainWindow::applyTheme(const QString& bgName) {
 
     // Buttons — ONE template per level, applied from the central system.
     ButtonStyles::applyPrimary(m_playButton, tokens);
-    for (QPushButton* btn : {m_editionButton, m_hdButton, m_settingsButton,
+    for (QPushButton* btn : {m_hdButton, m_settingsButton,
                              m_notesButton, m_addonsButton, m_serversButton,
                              m_quitButton}) {
         ButtonStyles::applySecondary(btn, tokens);
@@ -393,7 +288,7 @@ void MainWindow::applyTheme(const QString& bgName) {
 }
 
 // ---------------------------------------------------------------------------
-// Stats (per edition)
+// Stats
 // ---------------------------------------------------------------------------
 
 void MainWindow::loadStats() {
@@ -406,15 +301,11 @@ void MainWindow::loadStats() {
     const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
     file.close();
 
-    QJsonObject stats;
-    if (root.contains("editions")) {
-        stats = root.value("editions").toObject()
-                    .value(m_config->activeEditionId()).toObject();
-    } else if (m_config->activeEditionId() == GameEdition::wotlk().id) {
-        // Pre-3.0 flat stats.json belongs to WotLK (transparent migration:
-        // the next save rewrites the nested per-edition format).
-        stats = root;
-    }
+    // v3.0 nested the stats per edition: keep only the WotLK counters (the
+    // next save rewrites the flat format).
+    const QJsonObject stats = root.contains("editions")
+        ? root.value("editions").toObject().value("wotlk").toObject()
+        : root;
 
     m_launchCount = stats.value("launch_count").toInt(0);
     m_totalPlayTime = stats.value("total_play_time").toInteger(0);
@@ -425,34 +316,15 @@ void MainWindow::saveStats() {
     const QString statsPath = PathUtils::getDataDir() + "/stats.json";
     QDir().mkpath(PathUtils::getDataDir());
 
-    // Read-modify-write so each edition keeps its own counters.
-    QJsonObject root;
-    {
-        QFile in(statsPath);
-        if (in.open(QIODevice::ReadOnly)) {
-            root = QJsonDocument::fromJson(in.readAll()).object();
-        }
-    }
-    QJsonObject editions = root.value("editions").toObject();
-    if (editions.isEmpty() && root.contains("launch_count")) {
-        // Capture pre-3.0 flat values as WotLK before they are dropped.
-        QJsonObject legacy;
-        legacy["launch_count"] = root.value("launch_count");
-        legacy["total_play_time"] = root.value("total_play_time");
-        legacy["last_session"] = root.value("last_session");
-        editions[GameEdition::wotlk().id] = legacy;
-    }
-
-    QJsonObject mine;
-    mine["launch_count"] = m_launchCount;
-    mine["total_play_time"] = m_totalPlayTime;
-    mine["last_session"] = m_lastSession.toString(Qt::ISODate);
-    editions[m_config->activeEditionId()] = mine;
+    QJsonObject stats;
+    stats["launch_count"] = m_launchCount;
+    stats["total_play_time"] = m_totalPlayTime;
+    stats["last_session"] = m_lastSession.toString(Qt::ISODate);
 
     // C3: atomic write, consistent with config.json / notes.json.
     QSaveFile file(statsPath);
     if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(QJsonObject{{"editions", editions}}).toJson());
+        file.write(QJsonDocument(stats).toJson());
         file.commit();
     }
 }
@@ -478,7 +350,7 @@ void MainWindow::paintEvent(QPaintEvent* event) {
 
 // ---------------------------------------------------------------------------
 // UI construction — pure Qt layouts, spacing from the shared scale, zero
-// absolute pixel positioning. Skeleton identical in both editions.
+// absolute pixel positioning.
 // ---------------------------------------------------------------------------
 
 void MainWindow::setupUi() {
@@ -491,7 +363,7 @@ void MainWindow::setupUi() {
     mainLayout->setContentsMargins(kSpaceLg, kSpaceMd, kSpaceLg, kSpaceMd);
     mainLayout->setSpacing(kSpaceMd);
 
-    // 1. Header: logo left, edition + language switches right (fixed spots).
+    // 1. Header: logo left, language switch right.
     mainLayout->addWidget(createHeader());
 
     // 2. Info panels.
@@ -525,8 +397,7 @@ void MainWindow::setupUi() {
     setTabOrder(m_notesButton, m_serversButton);
     setTabOrder(m_serversButton, m_hdButton);
     setTabOrder(m_hdButton, m_quitButton);
-    setTabOrder(m_quitButton, m_editionButton);
-    setTabOrder(m_editionButton, m_langButton);
+    setTabOrder(m_quitButton, m_langButton);
 }
 
 QWidget* MainWindow::createHeader() {
@@ -543,10 +414,6 @@ QWidget* MainWindow::createHeader() {
     layout->addWidget(m_logoLabel);
 
     layout->addStretch();
-
-    // Edition toggle: same recognizable spot in both modes.
-    m_editionButton = ButtonStyles::makeSecondary(QString(), header);
-    layout->addWidget(m_editionButton);
 
     m_langButton = ButtonStyles::makeTertiary("Lang: FR", header);
     m_langButton->setToolTip(tr("Changer la langue (FR/EN)"));
@@ -660,7 +527,7 @@ QWidget* MainWindow::createNavBar() {
     m_addonsButton = ButtonStyles::makeSecondary(tr("ADDONS"), bar);
     m_notesButton = ButtonStyles::makeSecondary(tr("NOTES"), bar);
     m_serversButton = ButtonStyles::makeSecondary(tr("SERVEURS"), bar);
-    m_hdButton = ButtonStyles::makeSecondary(tr("PATCH HD"), bar);  // WotLK only
+    m_hdButton = ButtonStyles::makeSecondary(tr("PATCH HD"), bar);
     m_quitButton = ButtonStyles::makeSecondary(tr("QUITTER"), bar);
 
     layout->addWidget(m_settingsButton);
@@ -676,7 +543,6 @@ QWidget* MainWindow::createNavBar() {
 
 void MainWindow::connectSignals() {
     connect(m_playButton, &QPushButton::clicked, this, &MainWindow::onPrimaryButtonClicked);
-    connect(m_editionButton, &QPushButton::clicked, this, &MainWindow::onEditionToggleClicked);
     connect(m_hdButton, &QPushButton::clicked, this, &MainWindow::onHdButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainWindow::onSettingsButtonClicked);
     connect(m_notesButton, &QPushButton::clicked, this, &MainWindow::onNotesButtonClicked);
@@ -697,11 +563,7 @@ void MainWindow::updateServerInfo() {
     if (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) {
         m_serverNameLabel->setText(tr("Serveur: %1").arg(entries[activeIndex].name));
         const QString host = ConfigManager::hostFromAddress(entries[activeIndex].address);
-        // Legion connects via a "portal"; WotLK via a "realmlist".
-        m_realmlistLabel->setText(
-            activeEdition().id == QLatin1String("legion")
-                ? tr("Portal: %1").arg(host)
-                : tr("Realmlist: %1").arg(host));
+        m_realmlistLabel->setText(tr("Realmlist: %1").arg(host));
     }
 }
 
@@ -729,11 +591,8 @@ void MainWindow::updateStats() {
 QString MainWindow::clientExePath() const {
     const QString wowPath = m_config->getWowPath();
     if (wowPath.isEmpty()) return QString();
-    for (const QString& exe : activeEdition().clientExeCandidates) {
-        const QString path = wowPath + "/" + exe;
-        if (QFile::exists(path)) return path;
-    }
-    return QString();
+    const QString path = wowPath + "/" + QString::fromUtf8(SylvaniaConstants::kClientExeName);
+    return QFile::exists(path) ? path : QString();
 }
 
 void MainWindow::refreshPrimaryState() {
@@ -742,13 +601,13 @@ void MainWindow::refreshPrimaryState() {
         return;
     }
 
-    const GameEdition& edition = activeEdition();
+    const QString clientName = QString::fromUtf8(SylvaniaConstants::kClientDisplayName);
     const QString exePath = clientExePath();
 
     if (exePath.isEmpty()) {
         m_playButton->setState(WowButton::State::Install);
         m_statusLabel->setText(tr("Client %1 non détecté — cliquez sur INSTALLER.")
-                                   .arg(edition.displayName));
+                                   .arg(clientName));
         return;
     }
 
@@ -760,7 +619,7 @@ void MainWindow::refreshPrimaryState() {
         ? entries[activeIndex].name : "Sylvania";
 
     m_statusLabel->setText(tr("%1 est installé. Prêt à jouer sur %2!")
-                               .arg(edition.displayName, serverName));
+                               .arg(clientName, serverName));
 
     updateStats();
 }
@@ -790,7 +649,7 @@ void MainWindow::playGame() {
         return;
     }
 
-    // Update realmlist (or Legion portal) before launching
+    // Update realmlist before launching
     auto entries = m_config->getRealmlistEntries();
     int activeIndex = m_config->getActiveRealmlistIndex();
     if (activeIndex >= 0 && activeIndex < static_cast<int>(entries.size())) {
@@ -804,18 +663,6 @@ void MainWindow::playGame() {
     updateStats();
 
     const QString workDir = QFileInfo(exePath).absolutePath();
-
-    // Legion (CASC 7.3.5): Blizzard's CDN is dead, so repoint the client's
-    // .build.info to our mirror before launch — otherwise missing files fail to
-    // stream (CASC init failure / crash #132). No-op for WotLK (no .build.info).
-    // Non-blocking: a failure is logged/shown but never prevents launching.
-    if (activeEdition().id == QLatin1String("legion")) {
-        QString cdnErr;
-        if (!patchBuildInfoCdn(workDir, &cdnErr)) {
-            qWarning() << "Patch CDN .build.info:" << cdnErr;
-            m_statusLabel->setText(tr("Attention : CDN du client non reconfiguré (%1).").arg(cdnErr));
-        }
-    }
 
     // Launch the game
     bool started = QProcess::startDetached(exePath, {}, workDir);
@@ -831,10 +678,10 @@ void MainWindow::playGame() {
 }
 
 void MainWindow::startClientInstall() {
-    const GameEdition& edition = activeEdition();
+    const QString clientName = QString::fromUtf8(SylvaniaConstants::kClientDisplayName);
 
     QString dir = QFileDialog::getExistingDirectory(this,
-        tr("Choisir l'emplacement d'installation — %1").arg(edition.displayName),
+        tr("Choisir l'emplacement d'installation — %1").arg(clientName),
         QDir::homePath());
 
     if (dir.isEmpty()) {
@@ -843,10 +690,10 @@ void MainWindow::startClientInstall() {
 
     m_downloadInProgress = true;
     m_playButton->setState(WowButton::State::Downloading);
-    m_statusLabel->setText(tr("Installation de %1 en cours...").arg(edition.displayName));
+    m_statusLabel->setText(tr("Installation de %1 en cours...").arg(clientName));
 
     m_downloadDialog = new DownloadDialog(this, dir);
-    m_downloadDialog->configureForEdition(edition);
+    m_downloadDialog->configureForClient();
     m_downloadDialog->setLanguage(m_config->getLanguage());
 
     const auto entries = m_config->getRealmlistEntries();
@@ -874,9 +721,9 @@ void MainWindow::onDownloadComplete(bool success, const QString& message) {
         if (m_downloadDialog) {
             const QString downloadPath = m_downloadDialog->getDestination();
 
-            // Search recursively for the edition's exe (handles subfolders
+            // Search recursively for the client exe (handles subfolders
             // inside the archive).
-            QDirIterator it(downloadPath, activeEdition().clientExeCandidates,
+            QDirIterator it(downloadPath, {QString::fromUtf8(SylvaniaConstants::kClientExeName)},
                             QDir::Files, QDirIterator::Subdirectories);
             if (it.hasNext()) {
                 const QString foundExe = it.next();
@@ -889,15 +736,11 @@ void MainWindow::onDownloadComplete(bool success, const QString& message) {
 }
 
 // ---------------------------------------------------------------------------
-// HD patch (WotLK only, gated by GameEdition::supportsHdPatch)
+// HD patch
 // ---------------------------------------------------------------------------
 
 void MainWindow::onHdButtonClicked() {
     m_soundManager->play("button");
-
-    if (!activeEdition().supportsHdPatch) {
-        return;  // button is hidden in Legion; double safety
-    }
 
     QString wowPath = m_config->getWowPath();
     if (wowPath.isEmpty() || clientExePath().isEmpty()) {
@@ -952,7 +795,6 @@ void MainWindow::onHdButtonClicked() {
 
             // Re-enable actions
             m_hdButton->setEnabled(true);
-            m_editionButton->setEnabled(true);
             refreshPrimaryState();
         });
     }
@@ -960,7 +802,6 @@ void MainWindow::onHdButtonClicked() {
     // Disable conflicting actions during install
     m_playButton->setEnabled(false);
     m_hdButton->setEnabled(false);
-    m_editionButton->setEnabled(false);
 
     m_progressLabel->setText(tr("Préparation de l'installation..."));
     m_progressLabel->show();
@@ -980,7 +821,7 @@ void MainWindow::onSettingsButtonClicked() {
     SettingsDialog* dialog = new SettingsDialog(m_config.get(), m_soundManager.get(), this);
     connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::refreshPrimaryState);
     connect(dialog, &SettingsDialog::backgroundChanged, this, [this](const QString& bgName) {
-        // Both editions have dynamic backgrounds; apply the chosen one live.
+        // Apply the chosen background live.
         applyTheme(bgName);
     });
     dialog->exec();
@@ -1113,15 +954,12 @@ void MainWindow::checkWowProcess() {
     // dereference null. Each handler guards on identity to delete exactly once.
     QProcess* proc = new QProcess(this);
     m_wowCheckProcess = proc;
-    const QStringList candidates = activeEdition().clientExeCandidates;
     connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, proc, candidates](int, QProcess::ExitStatus) {
+            this, [this, proc](int, QProcess::ExitStatus) {
         if (m_wowCheckProcess != proc) return;
         const QString output = QString::fromLocal8Bit(proc->readAllStandardOutput());
-        bool running = false;
-        for (const QString& exe : candidates) {
-            if (output.contains(exe, Qt::CaseInsensitive)) { running = true; break; }
-        }
+        const bool running = output.contains(
+            QString::fromUtf8(SylvaniaConstants::kClientExeName), Qt::CaseInsensitive);
         m_wowCheckProcess = nullptr;
         proc->deleteLater();
         handleWowRunningState(running);
@@ -1131,9 +969,9 @@ void MainWindow::checkWowProcess() {
         m_wowCheckProcess = nullptr;
         proc->deleteLater();
     });
-    // No IMAGENAME filter: the edition may probe several exe names (Wow.exe,
-    // Wow-64.exe), and tasklist /FI filters combine as AND, not OR.
-    proc->start("tasklist", QStringList() << "/NH");
+    proc->start("tasklist", QStringList() << "/NH" << "/FI"
+                << QStringLiteral("IMAGENAME eq %1")
+                       .arg(QString::fromUtf8(SylvaniaConstants::kClientExeName)));
 #endif
 }
 
@@ -1209,7 +1047,7 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
 
     retranslateUi();
 
-    // Update Config.wtf locale (3.3.5 key; harmless no-op for Legion files)
+    // Update Config.wtf locale
     QString wtfPath = m_config->getWowPath() + "/WTF/Config.wtf";
     if (QFile::exists(wtfPath)) {
         QString content;
@@ -1240,8 +1078,6 @@ void MainWindow::changeLanguage(const QString& lang, bool initial) {
 }
 
 void MainWindow::retranslateUi() {
-    const GameEdition& edition = activeEdition();
-
     m_playButton->retranslate();
     m_hdButton->setText(tr("PATCH HD"));
     m_settingsButton->setText(tr("RÉGLAGES"));
@@ -1249,17 +1085,14 @@ void MainWindow::retranslateUi() {
     m_quitButton->setText(tr("QUITTER"));
     m_addonsButton->setText(tr("ADDONS"));
     m_serversButton->setText(tr("SERVEURS"));
-    m_editionButton->setText(edition.id == GameEdition::wotlk().id
-                                 ? tr("⇄ Passer à Legion")
-                                 : tr("⇄ Passer à WotLK"));
-    m_editionButton->setToolTip(tr("Basculer entre WoW 3.3.5a et WoW Legion 7.x"));
 
     if (m_serverTitleLabel) m_serverTitleLabel->setText(tr("Serveur"));
     if (m_statsTitleLabel) m_statsTitleLabel->setText(tr("Statistiques de Jeu"));
     // Note: m_serverNameLabel is updated via updateServerInfo below
 
     if (m_footerLabel) {
-        m_footerLabel->setText(tr("© 2026 Sylvania Launcher v3.0 — %1").arg(edition.displayName));
+        m_footerLabel->setText(tr("© 2026 Sylvania Launcher v3.0 — %1")
+                                   .arg(QString::fromUtf8(SylvaniaConstants::kClientDisplayName)));
     }
 
     refreshPrimaryState();

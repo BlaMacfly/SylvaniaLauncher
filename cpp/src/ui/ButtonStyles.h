@@ -21,7 +21,7 @@ class QWidget;
  *
  * Hover / pressed / disabled / focus states are defined once per level and
  * are identical for every button of that level. Colors come from the theme
- * tokens (edition accent + dynamic background palette), sizes and radius from
+ * tokens (accent + dynamic background palette), sizes and radius from
  * SylvaniaConstants.
  *
  * Scope note: secondary windows opened as separate dialogs (Notes, Download,
@@ -36,8 +36,8 @@ namespace ButtonStyles {
  * @brief Theme tokens driving the three button templates.
  *
  * Filled by MainWindow::applyTheme() from the dynamic background palette and
- * the active edition's accent. Only these values change between themes and
- * editions — the templates (layout, sizes, states) never do.
+ * the accent. Only these values change between themes — the templates
+ * (layout, sizes, states) never do.
  */
 struct ThemeTokens {
     // Primary gradient (top, middle, bottom) + border.
@@ -47,7 +47,7 @@ struct ThemeTokens {
     // Text colors.
     QString primaryText;
     QString secondaryText;
-    // Edition/theme accent, used for the focus ring of every level.
+    // Theme accent, used for the focus ring of every level.
     QString accent;
 };
 
@@ -60,8 +60,8 @@ QPushButton* makePrimary(const QString& text, QWidget* parent);
 QPushButton* makeSecondary(const QString& text, QWidget* parent);
 QPushButton* makeTertiary(const QString& text, QWidget* parent);
 
-// Re-apply the level template with new tokens (called on every theme or
-// edition change). Safe on null pointers.
+// Re-apply the level template with new tokens (called on every theme
+// change). Safe on null pointers.
 void applyPrimary(QPushButton* btn, const ThemeTokens& tokens);
 void applySecondary(QPushButton* btn, const ThemeTokens& tokens);
 void applyTertiary(QPushButton* btn, const ThemeTokens& tokens);

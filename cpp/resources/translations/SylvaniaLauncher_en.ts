@@ -551,19 +551,9 @@ Check your administrator rights.</translation>
       <translation>Resuming download…</translation>
     </message>
     <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="446" />
-      <source>Bloc %1 corrompu après plusieurs tentatives (le manifeste est peut-être périmé).</source>
-      <translation>Block %1 corrupted after several attempts (the manifest may be outdated).</translation>
-    </message>
-    <message>
       <location filename="../../src/ui/DownloadDialog.cpp" line="463" />
       <source>Fichier corrompu: taille inattendue. Le fichier a été supprimé.</source>
       <translation>Corrupted file: unexpected size. The file has been deleted.</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="479" />
-      <source>Intégrité vérifiée (par blocs). Extraction…</source>
-      <translation>Integrity verified (per-block). Extracting…</translation>
     </message>
     <message>
       <location filename="../../src/ui/DownloadDialog.cpp" line="501" />
@@ -606,11 +596,6 @@ Check your administrator rights.</translation>
       <location filename="../../src/ui/DownloadDialog.cpp" line="593" />
       <source>Fichier corrompu: taille inattendue (%1 au lieu de %2). Le fichier a été supprimé.</source>
       <translation>Corrupted file: unexpected size (%1 instead of %2). The file has been deleted.</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/DownloadDialog.cpp" line="606" />
-      <source>Le hash SHA-256 attendu du client n'est pas encore configuré: extraction refusée par sécurité. Le fichier téléchargé a été supprimé. Mettez le launcher à jour.</source>
-      <translation>The client's expected SHA-256 hash is not configured yet: extraction refused for safety. The downloaded file has been deleted. Please update the launcher.</translation>
     </message>
     <message>
       <location filename="../../src/ui/DownloadDialog.cpp" line="628" />
@@ -922,21 +907,6 @@ Check your administrator rights.</translation>
       <translation>MM/dd/yyyy hh:mm</translation>
     </message>
     <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1249" />
-      <source>⇄ Passer à Legion</source>
-      <translation>⇄ Switch to Legion</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1250" />
-      <source>⇄ Passer à WotLK</source>
-      <translation>⇄ Switch to WotLK</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="1251" />
-      <source>Basculer entre WoW 3.3.5a et WoW Legion 7.x</source>
-      <translation>Toggle between WoW 3.3.5a and WoW Legion 7.x</translation>
-    </message>
-    <message>
       <location filename="../../src/ui/MainWindow.cpp" line="1258" />
       <source>© 2026 Sylvania Launcher v3.0 — %1</source>
       <translation>© 2026 Sylvania Launcher v3.0 — %1</translation>
@@ -946,21 +916,6 @@ Check your administrator rights.</translation>
       <location filename="../../src/ui/MainWindow.cpp" line="717" />
       <source>Dernière session: --</source>
       <translation>Last session: --</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="261" />
-      <source>Changement d'édition</source>
-      <translation>Edition switch</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="262" />
-      <source>Impossible de changer d'édition pendant une installation.</source>
-      <translation>Cannot switch edition while an installation is in progress.</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="699" />
-      <source>Portal: %1</source>
-      <translation>Portal: %1</translation>
     </message>
     <message>
       <location filename="../../src/ui/MainWindow.cpp" line="746" />
@@ -978,11 +933,6 @@ Check your administrator rights.</translation>
 Veuillez vérifier le chemin d'installation.</source>
       <translation>Game executable not found!
 Please check the installation path.</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/MainWindow.cpp" line="812" />
-      <source>Attention : CDN du client non reconfiguré (%1).</source>
-      <translation>Warning: client CDN not reconfigured (%1).</translation>
     </message>
     <message>
       <location filename="../../src/ui/MainWindow.cpp" line="833" />
@@ -1374,16 +1324,6 @@ Do you want to reinstall it or force an update anyway?</translation>
       <location filename="../../src/ui/RealmlistWindow.cpp" line="346" />
       <source>Adresse (realmlist):</source>
       <translation>Address (realmlist):</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/RealmlistWindow.cpp" line="346" />
-      <source>Adresse (portal):</source>
-      <translation>Address (portal):</translation>
-    </message>
-    <message>
-      <location filename="../../src/ui/RealmlistWindow.cpp" line="349" />
-      <source>Ex: 164.132.43.2</source>
-      <translation>Ex: 164.132.43.2</translation>
     </message>
     <message>
       <location filename="../../src/ui/RealmlistWindow.cpp" line="350" />

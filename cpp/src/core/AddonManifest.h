@@ -21,20 +21,17 @@ struct ManifestAddon {
 };
 
 /**
- * @brief Loads the "recommended addons" manifest of ONE game edition.
+ * @brief Loads the "recommended addons" manifest.
  *
- * Fetches the edition's addons.json (GameEdition::addonManifestUrl) and, if
- * that fails or returns nothing usable, falls back to the edition's embedded
- * copy (e.g. :/addons/manifest) so the list always renders — even offline.
- * WotLK and Legion each have their own manifest; the two lists are never
- * mixed. Adding an addon later is a server-side manifest edit; no client
- * rebuild needed.
+ * Fetches addons.json (SylvaniaConstants::kAddonManifestUrl) and, if that
+ * fails or returns nothing usable, falls back to the embedded copy
+ * (:/addons/manifest) so the list always renders — even offline. Adding an
+ * addon later is a server-side manifest edit; no client rebuild needed.
  */
 class AddonManifest : public QObject {
     Q_OBJECT
 
 public:
-    // manifestUrl + embeddedResource come from the active GameEdition.
     explicit AddonManifest(const QString& manifestUrl,
                            const QString& embeddedResource,
                            QObject* parent = nullptr);
