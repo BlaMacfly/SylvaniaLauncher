@@ -54,7 +54,7 @@ pub const WINDOW_TITLE: &str = "Sylvania Launcher - World of Warcraft 3.3.5";
 pub const CLIENT_EXE_NAME: &str = "Wow.exe";
 pub const DEFAULT_REALM_NAME: &str = "Sylvania";
 pub const DEFAULT_REALMLIST: &str = "set realmlist sylvania-servergame.com";
-pub const APP_VERSION: &str = "3.0";
+pub const APP_VERSION: &str = "3.1";
 
 // --- Theme ------------------------------------------------------------------
 pub const ACCENT_COLOR: &str = "#d4af37"; // WoW gold

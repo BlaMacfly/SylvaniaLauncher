@@ -279,7 +279,7 @@
  "dd/MM/yyyy hh:mm": "MM/dd/yyyy hh:mm",
  "installé par le launcher": "installed by the launcher",
  "o": "B",
- "© 2026 Sylvania Launcher v3.0 — %1": "© 2026 Sylvania Launcher v3.0 — %1",
+ "© 2026 Sylvania Launcher v%1 — %2": "© 2026 Sylvania Launcher v%1 — %2",
  "ÉTEINT": "OFF",
  "Échec de l'extraction: ": "Extraction failed: ",
  "Échéances passées pendant que le launcher était fermé :\n%1": "Deadlines passed while the launcher was closed:\n%1",

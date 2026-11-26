@@ -1,7 +1,7 @@
 # Sylvania Launcher — Édition Windows 🪟
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
-![Version](https://img.shields.io/badge/version-v3.0-success)
+![Version](https://img.shields.io/badge/version-v3.1-success)
 
 🎮 **Launcher officiel du serveur Sylvania — World of Warcraft 3.3.5a (WotLK)**
 
@@ -37,15 +37,18 @@
 
 ## Version actuelle
 
-**v3.0** - Application native Rust (egui) — un seul exécutable, sans DLL
+**v3.1** - Application native Rust (egui) — un seul exécutable, sans DLL
+
+### Nouveautés v3.1
+- 🦀 **Réécriture complète en Rust** (egui/eframe) à la place de C++/Qt : un unique `SylvaniaLauncher.exe` qui embarque fonds, logo, sons et traductions — plus aucune DLL Qt/FFmpeg à déployer. Extraction des archives en Rust pur (plus de PowerShell). Configuration, notes, statistiques et addons existants repris tels quels.
+- 🗑️ **Retrait du support Legion 7.3.5** : le launcher est de nouveau dédié à WotLK 3.3.5a. Les configurations et statistiques v3.0 sont migrées automatiquement (seules les données WotLK sont conservées).
+- 🧭 **Nouvel addon recommandé : Sylvania Survival 0.2.0** — jauges de nourriture, d'hydratation et de froid pour le défi Survie, installable en un clic depuis la fenêtre Addons.
 
 ### Nouveautés v3.0
-- 🦀 **Réécriture complète en Rust** (egui/eframe) à la place de C++/Qt : un unique `SylvaniaLauncher.exe` qui embarque fonds, logo, sons et traductions — plus aucune DLL Qt/FFmpeg à déployer. Extraction des archives en Rust pur (plus de PowerShell). Configuration, notes, statistiques et addons existants repris tels quels.
 - 🎯 **Bouton principal à 3 états** : « Installer » quand le client est absent, progression pendant le téléchargement, « Jouer » quand il est détecté. Le bouton « Télécharger » redondant a été retiré.
 - 📅 **Notes enrichies** : calendrier avec décoration des jours portant une note ou un rappel, rappels datés par note, notifications système natives (icône de zone de notification) + son, rattrapage des rappels manqués au démarrage.
 - 🎨 **Refonte de l'interface** : système de boutons centralisé à 3 niveaux (primaire/secondaire/tertiaire), échelle d'espacement unique, navigation clavier ; thème sombre et thèmes dynamiques conservés.
 - 📥 **Téléchargement du client fiabilisé** : flux écrit directement sur disque, vérification d'espace libre, téléchargement segmenté avec reprise et contrôle d'intégrité taille + SHA-256 quand ils sont connus.
-- 🗑️ **Retrait du support Legion 7.3.5** : le launcher est de nouveau dédié à WotLK 3.3.5a. Les configurations et statistiques v3.0 sont migrées automatiquement (seules les données WotLK sont conservées).
 
 ### Nouveautés v2.9
 - 🐛 **Corrections de bugs** : fuites de `QNetworkReply`/`QProcess`, course sur le suivi du processus de jeu, et écriture atomique du `Config.wtf` lors du changement de langue.
@@ -79,7 +82,7 @@
 ## Téléchargement
 
 - 🌐 [Télécharger depuis le site officiel](https://sylvania-servergame.com/launcher)
-- 📦 [Releases GitHub](https://github.com/BlaMacfly/SylvaniaLauncher/releases) (dernière version : v3.0)
+- 📦 [Releases GitHub](https://github.com/BlaMacfly/SylvaniaLauncher/releases) (dernière version : v3.1)
 
 ## Configuration requise
 

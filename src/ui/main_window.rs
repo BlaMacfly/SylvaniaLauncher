@@ -482,8 +482,8 @@ impl MainWindow {
         ui.vertical_centered(|ui| {
             ui.label(
                 RichText::new(shared.tf(
-                    "© 2026 Sylvania Launcher v3.0 — %1",
-                    &[&CLIENT_DISPLAY_NAME],
+                    "© 2026 Sylvania Launcher v%1 — %2",
+                    &[&APP_VERSION, &CLIENT_DISPLAY_NAME],
                 ))
                 .size(11.0)
                 .color(pal.text_secondary),

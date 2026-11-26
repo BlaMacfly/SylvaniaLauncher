@@ -111,6 +111,14 @@
             "description": "Support manette / contrôleur complet pour WoW 3.3.5a (ConsolePort porté pour WotLK).",
             "url": "https://sylvania-servergame.com/download_addon.php?file=ConsolePortLK-1.5.0-rc.zip",
             "folders": ["ConsolePort", "ConsolePortAdvanced", "ConsolePortBar", "ConsolePortHelp", "ConsolePortKeyboard", "ConsolePortLoader", "ConsolePortUI_Loot", "ConsolePortUI_Menu"]
+        },
+        {
+            "id": "sylvaniasurvival",
+            "name": "Sylvania Survival",
+            "version": "0.2.0",
+            "description": "Jauges de nourriture, d'hydratation et de froid pour le défi Survie de Sylvania.",
+            "url": "https://sylvania-servergame.com/download_addon.php?file=SylvaniaSurvival-0.2.0-WotLK-3.3.5a.zip",
+            "folders": ["SylvaniaSurvival"]
         }
     ]
 }
